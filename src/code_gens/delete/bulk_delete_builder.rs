@@ -63,3 +63,10 @@ fn push_where(dest: &mut String, no: usize, delete_inner: &DeleteInner) {
     delete_inner.build_where(dest);
     dest.push(')');
 }
+
+impl<'s> super::DeleteCodeGen for BulkDeleteBuilder<'s> {
+    fn add_where_field(&mut self, field_name: &str, sql_value: SqlValue) {
+        self.current
+            .add_where_field(&mut self.numbered_params, field_name, sql_value);
+    }
+}

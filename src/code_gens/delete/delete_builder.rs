@@ -30,3 +30,10 @@ impl<'s> DeleteBuilder<'s> {
         self.numbered_params.build_params()
     }
 }
+
+impl<'s> super::DeleteCodeGen for DeleteBuilder<'s> {
+    fn add_where_field(&mut self, field_name: &str, sql_value: SqlValue) {
+        self.inner
+            .add_where_field(&mut self.numbered_params, field_name, sql_value);
+    }
+}
