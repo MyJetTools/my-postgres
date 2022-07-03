@@ -259,11 +259,8 @@ async fn write_telemetry(
     telemetry_context: &MyTelemetryContext,
 ) {
     if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
-        println!("Telemetry is not set up");
         return;
     }
-
-    println!("Writing telemetry event");
 
     my_telemetry::TELEMETRY_INTERFACE
         .write_telemetry_event(TelemetryEvent {
