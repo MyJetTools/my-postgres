@@ -5,7 +5,7 @@ pub trait SelectEntity {
 }
 
 pub trait InsertOrUpdateEntity {
-    fn populate(&self, sql_builder: &mut InsertOrUpdateBuilder);
+    fn populate(self, sql_builder: &mut InsertOrUpdateBuilder);
 }
 
 pub trait DeleteEntity {
