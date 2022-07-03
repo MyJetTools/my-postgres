@@ -25,7 +25,7 @@ impl MyPostgres {
         &self,
         select: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
         let result = self.client.query(select, params).await;
@@ -68,7 +68,7 @@ impl MyPostgres {
         &self,
         select: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
 
@@ -109,7 +109,7 @@ impl MyPostgres {
         entities: Vec<TEntity>,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
         let builder = self.client.build_transaction();
@@ -159,7 +159,7 @@ impl MyPostgres {
         entity: TEntity,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
         let mut sql_builder = crate::code_gens::insert_or_update::InsertOrUpdateBuilder::new();
@@ -171,7 +171,7 @@ impl MyPostgres {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
-        if let Some(telemetry_context) = &telemetry_context {
+        if let Some(telemetry_context) = telemetry_context {
             match &result {
                 Ok(result) => {
                     write_telemetry(
@@ -205,7 +205,7 @@ impl MyPostgres {
         &self,
         entities: Vec<TEntity>,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
 
@@ -220,7 +220,7 @@ impl MyPostgres {
             .execute(sql.as_str(), sql_builder.get_values_data())
             .await;
 
-        if let Some(telemetry_context) = &telemetry_context {
+        if let Some(telemetry_context) = telemetry_context {
             match &result {
                 Ok(result) => {
                     write_telemetry(
