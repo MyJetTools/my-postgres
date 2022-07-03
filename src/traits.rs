@@ -9,5 +9,5 @@ pub trait InsertOrUpdateEntity {
 }
 
 pub trait DeleteEntity {
-    fn populate(&self, sql_builder: &mut dyn crate::code_gens::delete::DeleteCodeGen);
+    fn populate(self, sql_builder: &mut dyn crate::code_gens::delete::DeleteCodeGen);
 }
