@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_postgres::NoTls;
@@ -158,6 +156,8 @@ impl MyPostgres {
         let mut sql_builder = crate::code_gens::update::UpdateBuilder::new();
         entity.populate(&mut sql_builder);
         let sql = sql_builder.build(table_name);
+
+        println!("UPDATE SQL: {}", sql);
 
         let result = self
             .client
