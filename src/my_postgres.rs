@@ -157,8 +157,6 @@ impl MyPostgres {
         entity.populate(&mut sql_builder);
         let sql = sql_builder.build(table_name);
 
-        println!("UPDATE SQL: {}", sql);
-
         let result = self
             .client
             .execute(&sql, sql_builder.get_values_data())
