@@ -15,14 +15,14 @@ impl<'s> UpdateBuilder<'s> {
         }
     }
 
-    pub fn append_field(&mut self, field_name: &str, sql_value: SqlValue) {
+    pub fn append_field(&mut self, field_name: &str, sql_value: SqlValue, is_primary_key: bool) {
         let sql_value = self.numbered_params.add_or_get(sql_value);
-        self.update_fields.add_update(field_name, &sql_value);
-    }
 
-    pub fn append_where(&mut self, field_name: &str, sql_value: SqlValue) {
-        let sql_value = self.numbered_params.add_or_get(sql_value);
-        self.where_clause.add(field_name, sql_value)
+        if is_primary_key {
+            self.where_clause.add(field_name, sql_value)
+        } else {
+            self.update_fields.add_update(field_name, &sql_value);
+        }
     }
 
     pub fn build(&self, table_name: &str) -> String {
