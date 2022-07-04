@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_postgres::NoTls;
@@ -124,19 +126,13 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
-                        start,
-                        format!("INSERT INTO {}", table_name),
-                        format!("OK").into(),
-                        None,
-                        telemetry_context,
-                    )
-                    .await;
+                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
+                        .await;
                 }
                 Err(err) => {
                     write_telemetry(
                         start,
-                        format!("INSERT INTO {}", table_name),
+                        sql,
                         None,
                         format!("{:?}", err).into(),
                         telemetry_context,
@@ -171,19 +167,13 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
-                        start,
-                        format!("UPDATE {}", table_name),
-                        format!("OK").into(),
-                        None,
-                        telemetry_context,
-                    )
-                    .await;
+                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
+                        .await;
                 }
                 Err(err) => {
                     write_telemetry(
                         start,
-                        format!("UPDATE {}", table_name),
+                        sql,
                         None,
                         format!("{:?}", err).into(),
                         telemetry_context,
