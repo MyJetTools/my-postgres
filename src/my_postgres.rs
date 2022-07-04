@@ -2,7 +2,7 @@ use my_telemetry::{MyTelemetryContext, TelemetryEvent};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_postgres::NoTls;
 
-use crate::{DeleteEntity, InsertOrUpdateEntity, SelectEntity};
+use crate::{DeleteEntity, InsertEntity, InsertOrUpdateEntity, SelectEntity};
 
 pub struct MyPostgres {
     client: tokio_postgres::Client,
@@ -102,6 +102,53 @@ impl MyPostgres {
 
         let result = result.iter().map(|itm| TEntity::from_db_row(itm)).collect();
         Ok(result)
+    }
+
+    pub async fn insert_db_entity<TEntity: InsertEntity>(
+        &self,
+        entity: TEntity,
+        table_name: &str,
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<(), tokio_postgres::Error> {
+        let start = DateTimeAsMicroseconds::now();
+
+        let mut sql_builder = crate::code_gens::insert::InsertBuilder::new();
+        entity.populate(&mut sql_builder);
+        let sql = sql_builder.build(table_name);
+
+        let result = self
+            .client
+            .execute(&sql, sql_builder.get_values_data())
+            .await;
+
+        if let Some(telemetry_context) = &telemetry_context {
+            match &result {
+                Ok(_) => {
+                    write_telemetry(
+                        start,
+                        format!("INSERT INTO {}", table_name),
+                        format!("OK").into(),
+                        None,
+                        telemetry_context,
+                    )
+                    .await;
+                }
+                Err(err) => {
+                    write_telemetry(
+                        start,
+                        format!("INSERT INTO {}", table_name),
+                        None,
+                        format!("{:?}", err).into(),
+                        telemetry_context,
+                    )
+                    .await;
+                }
+            }
+        }
+
+        result?;
+
+        Ok(())
     }
 
     pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
