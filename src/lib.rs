@@ -1,7 +1,7 @@
 pub mod code_gens;
+mod connections_pool;
 mod my_postgres;
-mod objects_pool;
 mod traits;
+pub use connections_pool::ConnectionsPool;
 pub use my_postgres::MyPostgres;
-pub use objects_pool::*;
 pub use traits::*;
