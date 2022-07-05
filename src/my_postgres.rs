@@ -10,7 +10,7 @@ pub struct MyPostgres {
 
 impl MyPostgres {
     pub async fn crate_no_tls(conn_string: &str, app_name: &str) -> Self {
-        let conn_string = format!("{};application_name={}", conn_string, app_name);
+        let conn_string = format!("{}&application_name={}", conn_string, app_name);
 
         let (client, connection) = tokio_postgres::connect(conn_string.as_str(), NoTls)
             .await
