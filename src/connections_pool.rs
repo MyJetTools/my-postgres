@@ -9,18 +9,22 @@ use crate::{
 
 struct MyPostgresFactory {
     conn_string: String,
+    app_name: String,
 }
 
 impl MyPostgresFactory {
-    pub fn new(conn_string: String) -> Self {
-        Self { conn_string }
+    pub fn new(conn_string: String, app_name: String) -> Self {
+        Self {
+            conn_string,
+            app_name,
+        }
     }
 }
 
 #[async_trait::async_trait]
 impl rust_extensions::objects_pool::ObjectsPoolFactory<MyPostgres> for MyPostgresFactory {
     async fn create_new(&self) -> MyPostgres {
-        MyPostgres::crate_no_tls(self.conn_string.as_str()).await
+        MyPostgres::crate_no_tls(self.conn_string.as_str(), self.app_name.as_str()).await
     }
 }
 
@@ -29,11 +33,11 @@ pub struct ConnectionsPool {
 }
 
 impl ConnectionsPool {
-    pub fn no_tls(connection_string: String, max_pool_size: usize) -> Self {
+    pub fn no_tls(connection_string: String, app_name: String, max_pool_size: usize) -> Self {
         Self {
             connections: ObjectsPool::new(
                 max_pool_size,
-                Arc::new(MyPostgresFactory::new(connection_string)),
+                Arc::new(MyPostgresFactory::new(connection_string, app_name)),
             ),
         }
     }
