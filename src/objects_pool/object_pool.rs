@@ -6,8 +6,9 @@ use crate::{ObjectPoolInner, RentedObject};
 
 use super::object_pool_inner::RentResult;
 
+#[async_trait::async_trait]
 pub trait ObjectsPoolFactory<T: Sync + Send + 'static> {
-    fn create_new(&self) -> T;
+    async fn create_new(&self) -> T;
 }
 
 pub struct ObjectsPool<T: Sync + Send + 'static, TFactory: ObjectsPoolFactory<T>> {
@@ -39,7 +40,7 @@ impl<T: Sync + Send + 'static, TFactory: ObjectsPoolFactory<T>> ObjectsPool<T, T
                 RentResult::CreateNew => {
                     return RentedObject::new(
                         self.inner.clone(),
-                        Arc::new(Mutex::new(self.factory.create_new())),
+                        Arc::new(Mutex::new(self.factory.create_new().await)),
                     );
                 }
                 RentResult::Wait => {
