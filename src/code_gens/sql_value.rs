@@ -29,6 +29,8 @@ pub enum SqlValue {
     U32(u32),
     I64(i64),
     U64(u64),
+    F32(f32),
+    F64(f64),
     ISize(isize),
     USize(usize),
     DateTime(DateTimeAsMicroseconds),
@@ -55,6 +57,8 @@ impl SqlValue {
             SqlValue::U32(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::I64(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::U64(value) => SqlValueAsString::String(format!("{}", value)),
+            SqlValue::F32(value) => SqlValueAsString::String(format!("{}", value)),
+            SqlValue::F64(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::ISize(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::USize(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::DateTime(value) => {
