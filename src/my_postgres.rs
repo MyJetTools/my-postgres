@@ -12,17 +12,23 @@ impl MyPostgres {
     pub async fn crate_no_tls(conn_string: &str, app_name: &str) -> Self {
         let conn_string = format!("{}&application_name={}", conn_string, app_name);
 
-        let (client, connection) = tokio_postgres::connect(conn_string.as_str(), NoTls)
-            .await
-            .unwrap();
+        let result = tokio_postgres::connect(conn_string.as_str(), NoTls).await;
 
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                eprintln!("connection error: {}", e);
+        match result {
+            Ok((client, connection)) => {
+                tokio::spawn(async move {
+                    if let Err(e) = connection.await {
+                        eprintln!("connection error: {}", e);
+                    }
+                });
+
+                Self { client }
             }
-        });
-
-        Self { client }
+            Err(err) => {
+                println!("Looks like connstring is invalid. {}", conn_string);
+                panic!("{}", err);
+            }
+        }
     }
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
