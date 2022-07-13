@@ -1,5 +1,5 @@
 use crate::code_gens::{
-    insert::InsertBuilder, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
+    insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
 };
 
 pub trait SelectEntity {
@@ -7,7 +7,7 @@ pub trait SelectEntity {
 }
 
 pub trait InsertEntity {
-    fn populate(self, sql_builder: &mut InsertBuilder);
+    fn populate(self, sql_builder: &mut dyn InsertCodeGen);
 }
 
 pub trait UpdateEntity {

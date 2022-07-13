@@ -85,6 +85,19 @@ impl ConnectionsPool {
             .await
     }
 
+    pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
+        &self,
+        entities: Vec<TEntity>,
+        table_name: &str,
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<(), tokio_postgres::Error> {
+        let connection = self.get_connection().await;
+        let write_access = connection.value.lock().await;
+        write_access
+            .bulk_insert_db_entities(entities, table_name, telemetry_context)
+            .await
+    }
+
     pub async fn update_db_entity<TEntity: UpdateEntity>(
         &self,
         entity: TEntity,

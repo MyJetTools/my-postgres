@@ -1,10 +1,14 @@
-use super::super::{sql_line_builder::SqlLineBuilder, NumberedParams, SqlValue};
+use super::{
+    super::{sql_line_builder::SqlLineBuilder, NumberedParams, SqlValue},
+    InsertCodeGen,
+};
 
 pub struct BulkInsertBuilder<'s> {
     fields: SqlLineBuilder,
     values: Vec<SqlLineBuilder>,
     current_value: SqlLineBuilder,
     numbered_params: NumberedParams<'s>,
+    line_no: usize,
 }
 
 impl<'s> BulkInsertBuilder<'s> {
@@ -14,6 +18,7 @@ impl<'s> BulkInsertBuilder<'s> {
             values: Vec::new(),
             current_value: SqlLineBuilder::new(','),
             numbered_params: NumberedParams::new(),
+            line_no: 0,
         }
     }
 
@@ -65,5 +70,15 @@ impl<'s> BulkInsertBuilder<'s> {
 
     pub fn get_values_data(&mut self) -> &'s [&(dyn tokio_postgres::types::ToSql + Sync)] {
         self.numbered_params.build_params()
+    }
+}
+
+impl<'s> InsertCodeGen for BulkInsertBuilder<'s> {
+    fn append_field(&mut self, field_name: &str, value: SqlValue) {
+        if self.line_no == 1 {
+            self.append_field(field_name);
+        }
+
+        self.append_value(value);
     }
 }

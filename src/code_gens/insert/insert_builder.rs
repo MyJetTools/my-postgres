@@ -1,4 +1,7 @@
-use super::super::{NumberedParams, SqlLineBuilder, SqlValue};
+use super::{
+    super::{NumberedParams, SqlLineBuilder, SqlValue},
+    InsertCodeGen,
+};
 
 pub struct InsertBuilder<'s> {
     fields: SqlLineBuilder,
@@ -16,12 +19,6 @@ impl<'s> InsertBuilder<'s> {
         }
     }
 
-    pub fn append_field(&mut self, field_name: &str, value: SqlValue) {
-        let value = self.numbered_params.add_or_get(value);
-        self.fields.add(field_name);
-        self.values.add_sql_value(&value);
-    }
-
     pub fn build(&self, table_name: &str) -> String {
         format!(
             "INSERT INTO {table_name} ({fields}) VALUES ({values})",
@@ -32,5 +29,13 @@ impl<'s> InsertBuilder<'s> {
 
     pub fn get_values_data(&mut self) -> &'s [&(dyn tokio_postgres::types::ToSql + Sync)] {
         self.numbered_params.build_params()
+    }
+}
+
+impl<'s> InsertCodeGen for InsertBuilder<'s> {
+    fn append_field(&mut self, field_name: &str, value: SqlValue) {
+        let value = self.numbered_params.add_or_get(value);
+        self.fields.add(field_name);
+        self.values.add_sql_value(&value);
     }
 }
