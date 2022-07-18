@@ -27,6 +27,7 @@ impl<'s> BulkInsertBuilder<'s> {
     }
 
     pub fn start_new_value_line(&mut self) {
+        self.line_no += 1;
         if !self.current_value.has_value() {
             return;
         }
