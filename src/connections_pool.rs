@@ -85,6 +85,19 @@ impl ConnectionsPool {
             .await
     }
 
+    pub async fn insert_db_entity_if_not_exists<TEntity: InsertEntity>(
+        &self,
+        entity: TEntity,
+        table_name: &str,
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<(), tokio_postgres::Error> {
+        let connection = self.get_connection().await;
+        let write_access = connection.value.lock().await;
+        write_access
+            .insert_db_entity_if_not_exists(entity, table_name, telemetry_context)
+            .await
+    }
+
     pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
         &self,
         entities: Vec<TEntity>,
@@ -95,6 +108,19 @@ impl ConnectionsPool {
         let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_db_entities(entities, table_name, telemetry_context)
+            .await
+    }
+
+    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
+        &self,
+        entities: Vec<TEntity>,
+        table_name: &str,
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<(), tokio_postgres::Error> {
+        let connection = self.get_connection().await;
+        let write_access = connection.value.lock().await;
+        write_access
+            .bulk_insert_db_entities_if_not_exists(entities, table_name, telemetry_context)
             .await
     }
 
