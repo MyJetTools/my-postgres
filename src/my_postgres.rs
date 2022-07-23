@@ -31,6 +31,51 @@ impl MyPostgres {
         }
     }
 
+    pub async fn get_count(
+        &self,
+        select: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<Option<i64>, tokio_postgres::Error> {
+        let start = DateTimeAsMicroseconds::now();
+        let result = self.client.query(select, params).await;
+
+        if let Some(telemetry_context) = &telemetry_context {
+            match &result {
+                Ok(_) => {
+                    write_telemetry(
+                        start,
+                        select.to_string(),
+                        format!("OK").into(),
+                        None,
+                        telemetry_context,
+                    )
+                    .await;
+                }
+                Err(err) => {
+                    write_telemetry(
+                        start,
+                        select.to_string(),
+                        None,
+                        format!("{:?}", err).into(),
+                        telemetry_context,
+                    )
+                    .await;
+                }
+            }
+        }
+
+        let rows = result?;
+
+        match rows.get(0) {
+            Some(row) => {
+                let result: i64 = row.get(0);
+                Ok(Some(result))
+            }
+            None => Ok(None),
+        }
+    }
+
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         select: &str,

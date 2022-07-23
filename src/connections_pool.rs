@@ -46,6 +46,19 @@ impl ConnectionsPool {
         self.connections.get_element().await
     }
 
+    pub async fn get_count(
+        &self,
+        select: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<Option<i64>, tokio_postgres::Error> {
+        let connection = self.get_connection().await;
+        let write_access = connection.value.lock().await;
+        write_access
+            .get_count(select, params, telemetry_context)
+            .await
+    }
+
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         select: &str,
