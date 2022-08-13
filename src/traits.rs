@@ -7,17 +7,17 @@ pub trait SelectEntity {
 }
 
 pub trait InsertEntity {
-    fn populate(self, sql_builder: &mut dyn InsertCodeGen);
+    fn populate(&self, sql_builder: &mut dyn InsertCodeGen);
 }
 
 pub trait UpdateEntity {
-    fn populate(self, sql_builder: &mut UpdateBuilder);
+    fn populate(&self, sql_builder: &mut UpdateBuilder);
 }
 
 pub trait InsertOrUpdateEntity {
-    fn populate(self, sql_builder: &mut InsertOrUpdateBuilder);
+    fn populate(&self, sql_builder: &mut InsertOrUpdateBuilder);
 }
 
 pub trait DeleteEntity {
-    fn populate(self, sql_builder: &mut dyn crate::code_gens::delete::DeleteCodeGen);
+    fn populate(&self, sql_builder: &mut dyn crate::code_gens::delete::DeleteCodeGen);
 }

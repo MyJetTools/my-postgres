@@ -17,9 +17,9 @@ impl<'s> SqlValueAsString<'s> {
 }
 
 #[derive(Debug, Clone)]
-pub enum SqlValue {
+pub enum SqlValue<'s> {
     ByIndex(u32),
-    String(String),
+    String(&'s str),
     Bool(bool),
     I8(i8),
     U8(u8),
@@ -36,7 +36,7 @@ pub enum SqlValue {
     DateTime(DateTimeAsMicroseconds),
 }
 
-impl SqlValue {
+impl<'s> SqlValue<'s> {
     pub fn as_sql_value_to_injext(&self) -> SqlValueAsString {
         match self {
             SqlValue::ByIndex(value) => SqlValueAsString::String(format!("${}", value)),

@@ -87,7 +87,7 @@ impl ConnectionsPool {
 
     pub async fn insert_db_entity<TEntity: InsertEntity>(
         &self,
-        entity: TEntity,
+        entity: &TEntity,
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {

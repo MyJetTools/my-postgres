@@ -36,7 +36,7 @@ impl<'s> BulkInsertBuilder<'s> {
         self.values.push(old_value);
     }
 
-    pub fn append_value(&mut self, sql_value: SqlValue) {
+    pub fn append_value(&mut self, sql_value: SqlValue<'s>) {
         let sql_value = self.numbered_params.add_or_get(sql_value);
         self.current_value.add_sql_value(&sql_value);
     }
@@ -74,8 +74,8 @@ impl<'s> BulkInsertBuilder<'s> {
     }
 }
 
-impl<'s> InsertCodeGen for BulkInsertBuilder<'s> {
-    fn append_field(&mut self, field_name: &str, value: SqlValue) {
+impl<'s> InsertCodeGen<'s> for BulkInsertBuilder<'s> {
+    fn append_field(&mut self, field_name: &str, value: SqlValue<'s>) {
         if self.line_no == 1 {
             self.append_field(field_name);
         }

@@ -19,7 +19,7 @@ impl<'s> InsertOrUpdateBuilder<'s> {
         }
     }
 
-    pub fn add_field(&mut self, field_name: &str, sql_value: SqlValue, is_primary_key: bool) {
+    pub fn add_field(&mut self, field_name: &str, sql_value: SqlValue<'s>, is_primary_key: bool) {
         let sql_value = self.numbered_params.add_or_get(sql_value);
 
         self.insert_fields.add(field_name);

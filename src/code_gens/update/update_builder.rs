@@ -2,7 +2,7 @@ use super::super::{NumberedParams, SqlLineBuilder, SqlValue, WhereBuilder};
 
 pub struct UpdateBuilder<'s> {
     update_fields: SqlLineBuilder,
-    where_clause: WhereBuilder,
+    where_clause: WhereBuilder<'s>,
     numbered_params: NumberedParams<'s>,
 }
 
@@ -15,7 +15,12 @@ impl<'s> UpdateBuilder<'s> {
         }
     }
 
-    pub fn append_field(&mut self, field_name: &str, sql_value: SqlValue, is_primary_key: bool) {
+    pub fn append_field(
+        &mut self,
+        field_name: &str,
+        sql_value: SqlValue<'s>,
+        is_primary_key: bool,
+    ) {
         let sql_value = self.numbered_params.add_or_get(sql_value);
 
         if is_primary_key {

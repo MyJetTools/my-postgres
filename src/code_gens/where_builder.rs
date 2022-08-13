@@ -1,11 +1,11 @@
 use super::SqlValue;
 
-pub struct WhereBuilder {
+pub struct WhereBuilder<'s> {
     operator: &'static str,
-    values: Vec<(String, SqlValue)>,
+    values: Vec<(String, SqlValue<'s>)>,
 }
 
-impl WhereBuilder {
+impl<'s> WhereBuilder<'s> {
     pub fn new(operator: &'static str) -> Self {
         Self {
             operator,
@@ -13,7 +13,7 @@ impl WhereBuilder {
         }
     }
 
-    pub fn add(&mut self, field_name: &str, value: SqlValue) {
+    pub fn add(&mut self, field_name: &str, value: SqlValue<'s>) {
         self.values.push((field_name.to_string(), value));
     }
 

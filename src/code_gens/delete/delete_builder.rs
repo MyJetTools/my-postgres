@@ -4,7 +4,7 @@ use super::DeleteInner;
 
 pub struct DeleteBuilder<'s> {
     numbered_params: NumberedParams<'s>,
-    inner: DeleteInner,
+    inner: DeleteInner<'s>,
 }
 
 impl<'s> DeleteBuilder<'s> {
@@ -15,7 +15,7 @@ impl<'s> DeleteBuilder<'s> {
         }
     }
 
-    pub fn add_where_field(&'s mut self, field_name: &str, sql_value: SqlValue) {
+    pub fn add_where_field(&'s mut self, field_name: &str, sql_value: SqlValue<'s>) {
         self.inner
             .add_where_field(&mut self.numbered_params, field_name, sql_value);
     }
@@ -31,8 +31,8 @@ impl<'s> DeleteBuilder<'s> {
     }
 }
 
-impl<'s> super::DeleteCodeGen for DeleteBuilder<'s> {
-    fn add_where_field(&mut self, field_name: &str, sql_value: SqlValue) {
+impl<'s> super::DeleteCodeGen<'s> for DeleteBuilder<'s> {
+    fn add_where_field(&mut self, field_name: &str, sql_value: SqlValue<'s>) {
         self.inner
             .add_where_field(&mut self.numbered_params, field_name, sql_value);
     }

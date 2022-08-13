@@ -32,8 +32,8 @@ impl<'s> InsertBuilder<'s> {
     }
 }
 
-impl<'s> InsertCodeGen for InsertBuilder<'s> {
-    fn append_field(&mut self, field_name: &str, value: SqlValue) {
+impl<'s> InsertCodeGen<'s> for InsertBuilder<'s> {
+    fn append_field(&mut self, field_name: &str, value: SqlValue<'s>) {
         let value = self.numbered_params.add_or_get(value);
         self.fields.add(field_name);
         self.values.add_sql_value(&value);

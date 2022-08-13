@@ -2,12 +2,12 @@ use super::super::{NumberedParams, SqlValue, WhereBuilder};
 
 const AND_OPERATOR: &str = "AND";
 
-pub struct DeleteInner {
-    pub where_builder: WhereBuilder,
+pub struct DeleteInner<'s> {
+    pub where_builder: WhereBuilder<'s>,
     pub has_value: bool,
 }
 
-impl DeleteInner {
+impl<'s> DeleteInner<'s> {
     pub fn new() -> Self {
         Self {
             where_builder: WhereBuilder::new(AND_OPERATOR),
@@ -17,9 +17,9 @@ impl DeleteInner {
 
     pub fn add_where_field(
         &mut self,
-        numbered_params: &mut NumberedParams,
+        numbered_params: &mut NumberedParams<'s>,
         field_name: &str,
-        sql_value: SqlValue,
+        sql_value: SqlValue<'s>,
     ) {
         let sql_value = numbered_params.add_or_get(sql_value);
         self.where_builder.add(field_name, sql_value);
