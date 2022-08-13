@@ -113,7 +113,7 @@ impl ConnectionsPool {
 
     pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
         &self,
-        entities: Vec<TEntity>,
+        entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
@@ -126,7 +126,7 @@ impl ConnectionsPool {
 
     pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
         &self,
-        entities: Vec<TEntity>,
+        entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
@@ -180,7 +180,7 @@ impl ConnectionsPool {
 
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
-        entities: Vec<TEntity>,
+        entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), tokio_postgres::Error> {
