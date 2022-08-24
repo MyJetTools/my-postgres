@@ -1,15 +1,22 @@
+use std::{collections::HashMap, sync::Arc};
+
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, Logger};
 use tokio_postgres::NoTls;
 
 use crate::{DeleteEntity, InsertEntity, InsertOrUpdateEntity, SelectEntity, UpdateEntity};
 
 pub struct MyPostgres {
     client: tokio_postgres::Client,
+    logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl MyPostgres {
-    pub async fn crate_no_tls(conn_string: &str, app_name: &str) -> Self {
+    pub async fn crate_no_tls(
+        conn_string: &str,
+        app_name: &str,
+        logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
         let conn_string = format!("{}&application_name={}", conn_string, app_name);
 
         let result = tokio_postgres::connect(conn_string.as_str(), NoTls).await;
@@ -22,10 +29,17 @@ impl MyPostgres {
                     }
                 });
 
-                Self { client }
+                Self { client, logger }
             }
             Err(err) => {
-                println!("Looks like connstring is invalid. {}", conn_string);
+                let mut ctx = HashMap::new();
+                ctx.insert("ConnString".to_string(), conn_string.to_string());
+                logger.write_fatal_error(
+                    "CreatingPosrgress".to_string(),
+                    format!("Invalid connection string. {:?}", err),
+                    Some(ctx),
+                );
+
                 panic!("{}", err);
             }
         }
@@ -33,32 +47,25 @@ impl MyPostgres {
 
     pub async fn get_count(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<i64>, tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
-        let result = self.client.query(select, params).await;
+        let result = self.client.query(&select, params).await;
 
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
-                        start,
-                        select.to_string(),
-                        format!("OK").into(),
-                        None,
-                        telemetry_context,
-                    )
-                    .await;
+                    write_ok_telemetry(start, select.to_string(), telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
-                        select.to_string(),
-                        None,
+                        select,
                         format!("{:?}", err).into(),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -78,32 +85,25 @@ impl MyPostgres {
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
-        let result = self.client.query(select, params).await;
+        let result = self.client.query(&select, params).await;
 
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
-                        start,
-                        select.to_string(),
-                        format!("OK").into(),
-                        None,
-                        telemetry_context,
-                    )
-                    .await;
+                    write_ok_telemetry(start, select, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
-                        select.to_string(),
-                        None,
-                        format!("{:?}", err).into(),
+                        select,
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -121,33 +121,26 @@ impl MyPostgres {
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, tokio_postgres::Error> {
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.client.query(select, params).await;
+        let result = self.client.query(&select, params).await;
 
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
-                        start,
-                        select.to_string(),
-                        format!("OK").into(),
-                        None,
-                        telemetry_context,
-                    )
-                    .await;
+                    write_ok_telemetry(start, select, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         select.to_string(),
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -179,16 +172,15 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
-                        .await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         sql,
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -220,16 +212,15 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
-                        .await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         sql,
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -266,16 +257,15 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
-                        .await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         sql,
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -312,16 +302,15 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
-                        .await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         sql,
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -353,16 +342,15 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(start, sql, format!("OK").into(), None, telemetry_context)
-                        .await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         sql,
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -397,22 +385,20 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_telemetry(
+                    write_ok_telemetry(
                         start,
                         format!("BulkInsertOrUpdate INTO {}", table_name),
-                        format!("OK").into(),
-                        None,
                         telemetry_context,
                     )
                     .await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         format!("BulkInsertOrUpdate INTO {}", table_name),
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -444,22 +430,20 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(result) => {
-                    write_telemetry(
+                    write_ok_telemetry(
                         start,
                         format!("InsertOrUpdate INTO {}", table_name),
-                        format!("Result: {}", result).into(),
-                        None,
                         telemetry_context,
                     )
                     .await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         format!("InsertOrUpdate INTO {}", table_name),
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -493,22 +477,20 @@ impl MyPostgres {
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(result) => {
-                    write_telemetry(
+                    write_ok_telemetry(
                         start,
                         format!("BulkDelete {}", table_name),
-                        format!("Result: {}", result).into(),
-                        None,
                         telemetry_context,
                     )
                     .await;
                 }
                 Err(err) => {
-                    write_telemetry(
+                    write_fail_telemetry(
                         start,
                         format!("BulkDelete {}", table_name),
-                        None,
-                        format!("{:?}", err).into(),
+                        format!("{:?}", err),
                         telemetry_context,
+                        &self.logger,
                     )
                     .await;
                 }
@@ -521,11 +503,9 @@ impl MyPostgres {
     }
 }
 
-async fn write_telemetry(
+async fn write_ok_telemetry(
     start: DateTimeAsMicroseconds,
     data: String,
-    success: Option<String>,
-    fail: Option<String>,
     telemetry_context: &MyTelemetryContext,
 ) {
     if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
@@ -537,9 +517,38 @@ async fn write_telemetry(
             process_id: telemetry_context.process_id,
             started: start.unix_microseconds,
             finished: DateTimeAsMicroseconds::now().unix_microseconds,
-            data: data.to_string(),
-            success,
-            fail,
+            data,
+            success: Some("Ok".to_string()),
+            fail: None,
+            ip: None,
+        })
+        .await;
+}
+
+async fn write_fail_telemetry(
+    start: DateTimeAsMicroseconds,
+    data: String,
+    fail: String,
+    telemetry_context: &MyTelemetryContext,
+    logger: &Arc<dyn Logger + Send + Sync + 'static>,
+) {
+    let mut ctx = HashMap::new();
+    ctx.insert("SQL".to_string(), data.to_string());
+
+    logger.write_error("SQL Request".to_string(), fail.to_string(), Some(ctx));
+
+    if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
+        return;
+    }
+
+    my_telemetry::TELEMETRY_INTERFACE
+        .write_telemetry_event(TelemetryEvent {
+            process_id: telemetry_context.process_id,
+            started: start.unix_microseconds,
+            finished: DateTimeAsMicroseconds::now().unix_microseconds,
+            data,
+            success: None,
+            fail: Some(fail),
             ip: None,
         })
         .await;

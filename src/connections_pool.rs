@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use my_telemetry::MyTelemetryContext;
-use rust_extensions::objects_pool::{ObjectsPool, RentedObject};
+use rust_extensions::{
+    objects_pool::{ObjectsPool, RentedObject},
+    Logger,
+};
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, SelectEntity, UpdateEntity,
@@ -10,13 +13,19 @@ use crate::{
 struct MyPostgresFactory {
     conn_string: String,
     app_name: String,
+    logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl MyPostgresFactory {
-    pub fn new(conn_string: String, app_name: String) -> Self {
+    pub fn new(
+        conn_string: String,
+        app_name: String,
+        logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
         Self {
             conn_string,
             app_name,
+            logger,
         }
     }
 }
@@ -24,7 +33,12 @@ impl MyPostgresFactory {
 #[async_trait::async_trait]
 impl rust_extensions::objects_pool::ObjectsPoolFactory<MyPostgres> for MyPostgresFactory {
     async fn create_new(&self) -> MyPostgres {
-        MyPostgres::crate_no_tls(self.conn_string.as_str(), self.app_name.as_str()).await
+        MyPostgres::crate_no_tls(
+            self.conn_string.as_str(),
+            self.app_name.as_str(),
+            self.logger.clone(),
+        )
+        .await
     }
 }
 
@@ -33,11 +47,16 @@ pub struct ConnectionsPool {
 }
 
 impl ConnectionsPool {
-    pub fn no_tls(connection_string: String, app_name: String, max_pool_size: usize) -> Self {
+    pub fn no_tls(
+        connection_string: String,
+        app_name: String,
+        max_pool_size: usize,
+        logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
         Self {
             connections: ObjectsPool::new(
                 max_pool_size,
-                Arc::new(MyPostgresFactory::new(connection_string, app_name)),
+                Arc::new(MyPostgresFactory::new(connection_string, app_name, logger)),
             ),
         }
     }
@@ -48,7 +67,7 @@ impl ConnectionsPool {
 
     pub async fn get_count(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<i64>, tokio_postgres::Error> {
@@ -61,7 +80,7 @@ impl ConnectionsPool {
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, tokio_postgres::Error> {
@@ -74,7 +93,7 @@ impl ConnectionsPool {
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: &str,
+        select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, tokio_postgres::Error> {
