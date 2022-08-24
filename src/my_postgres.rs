@@ -432,7 +432,7 @@ impl MyPostgres {
                 Ok(result) => {
                     write_ok_telemetry(
                         start,
-                        format!("InsertOrUpdate INTO {}", table_name),
+                        format!("InsertOrUpdate INTO {}. Result:{}", table_name, result),
                         telemetry_context,
                     )
                     .await;
@@ -479,7 +479,7 @@ impl MyPostgres {
                 Ok(result) => {
                     write_ok_telemetry(
                         start,
-                        format!("BulkDelete {}", table_name),
+                        format!("BulkDelete {}. Result: {}", table_name, result),
                         telemetry_context,
                     )
                     .await;
