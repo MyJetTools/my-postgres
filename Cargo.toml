@@ -1,13 +1,13 @@
 [package]
 name = "my-postgres"
-version = "0.1.2"
+version = "0.2.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 tokio-postgres = { version = "*", features = ["with-chrono-0_4"] }
-rust-extensions = { branch = "0.1.1", git = "https://github.com/MyJetTools/rust-extensions.git" }
+rust-extensions = { tag = "0.1.2", git = "https://github.com/MyJetTools/rust-extensions.git" }
 async-trait = "*"
 tokio = { version = "*", features = ["full"] }
-my-telemetry = { branch = "0.2.1", git = "https://github.com/MyJetTools/my-telemetry.git" }
+my-telemetry = { tag = "0.2.2", git = "https://github.com/MyJetTools/my-telemetry.git" }
