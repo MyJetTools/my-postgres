@@ -14,7 +14,7 @@ pub struct MyPostgres {
 }
 
 impl MyPostgres {
-    pub async fn crate_with_tls(
+    pub async fn create_with_tls(
         conn_string: &str,
         app_name: &str,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
