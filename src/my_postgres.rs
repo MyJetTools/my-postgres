@@ -1,7 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
+#[cfg(feature = "with-tls")]
 use openssl::ssl::{SslConnector, SslMethod};
+#[cfg(feature = "with-tls")]
 use postgres_openssl::MakeTlsConnector;
 use rust_extensions::{date_time::DateTimeAsMicroseconds, Logger};
 use tokio_postgres::NoTls;
@@ -14,18 +16,33 @@ pub struct MyPostgres {
 }
 
 impl MyPostgres {
-    pub async fn create_with_tls(
+    pub async fn create(
         conn_string: &str,
         app_name: &str,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let conn_string = format!("{} application_name={}", conn_string, app_name);
 
+        if conn_string.contains("sslmode=require") {
+            #[cfg(feature = "with-tls")]
+            return Self::create_with_tls(&conn_string, logger).await;
+            #[cfg(not(feature = "with-tls"))]
+            panic!("You need to enable the 'with-tls' feature to use sslmode=require");
+        } else {
+            Self::create_no_tls(&conn_string, logger).await
+        }
+    }
+
+    #[cfg(feature = "with-tls")]
+    async fn create_with_tls(
+        conn_string: &str,
+        logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
         let builder = SslConnector::builder(SslMethod::tls()).unwrap();
 
         let connector = MakeTlsConnector::new(builder.build());
 
-        let result = tokio_postgres::connect(conn_string.as_str(), connector).await;
+        let result = tokio_postgres::connect(conn_string, connector).await;
 
         match result {
             Ok((client, connection)) => {
@@ -38,12 +55,10 @@ impl MyPostgres {
                 Self { client, logger }
             }
             Err(err) => {
-                let mut ctx = HashMap::new();
-                ctx.insert("ConnString".to_string(), conn_string.to_string());
                 logger.write_fatal_error(
                     "CreatingPosrgress".to_string(),
                     format!("Invalid connection string. {:?}", err),
-                    Some(ctx),
+                    None,
                 );
 
                 panic!("{}", err);
@@ -51,14 +66,11 @@ impl MyPostgres {
         }
     }
 
-    pub async fn crate_no_tls(
+    async fn create_no_tls(
         conn_string: &str,
-        app_name: &str,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
-        let conn_string = format!("{}&application_name={}", conn_string, app_name);
-
-        let result = tokio_postgres::connect(conn_string.as_str(), NoTls).await;
+        let result = tokio_postgres::connect(conn_string, NoTls).await;
 
         match result {
             Ok((client, connection)) => {
@@ -71,12 +83,10 @@ impl MyPostgres {
                 Self { client, logger }
             }
             Err(err) => {
-                let mut ctx = HashMap::new();
-                ctx.insert("ConnString".to_string(), conn_string.to_string());
                 logger.write_fatal_error(
                     "CreatingPosrgress".to_string(),
                     format!("Invalid connection string. {:?}", err),
-                    Some(ctx),
+                    None,
                 );
 
                 panic!("{}", err);

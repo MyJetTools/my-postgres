@@ -33,7 +33,7 @@ impl MyPostgresFactory {
 #[async_trait::async_trait]
 impl rust_extensions::objects_pool::ObjectsPoolFactory<MyPostgres> for MyPostgresFactory {
     async fn create_new(&self) -> MyPostgres {
-        MyPostgres::crate_no_tls(
+        MyPostgres::create(
             self.conn_string.as_str(),
             self.app_name.as_str(),
             self.logger.clone(),
@@ -47,7 +47,7 @@ pub struct ConnectionsPool {
 }
 
 impl ConnectionsPool {
-    pub fn no_tls(
+    pub fn create(
         connection_string: String,
         app_name: String,
         max_pool_size: usize,
