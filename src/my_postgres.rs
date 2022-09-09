@@ -16,7 +16,7 @@ pub struct MyPostgres {
 }
 
 impl MyPostgres {
-    pub async fn create(
+    pub async fn new(
         conn_string: &str,
         app_name: &str,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
