@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
+use openssl::ssl::{SslConnector, SslMethod};
+use postgres_openssl::MakeTlsConnector;
 use rust_extensions::{date_time::DateTimeAsMicroseconds, Logger};
 use tokio_postgres::NoTls;
 
@@ -12,6 +14,43 @@ pub struct MyPostgres {
 }
 
 impl MyPostgres {
+    pub async fn crate_with_tls(
+        conn_string: &str,
+        app_name: &str,
+        logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
+        let conn_string = format!("{} application_name={}", conn_string, app_name);
+
+        let builder = SslConnector::builder(SslMethod::tls()).unwrap();
+
+        let connector = MakeTlsConnector::new(builder.build());
+
+        let result = tokio_postgres::connect(conn_string.as_str(), connector).await;
+
+        match result {
+            Ok((client, connection)) => {
+                tokio::spawn(async move {
+                    if let Err(e) = connection.await {
+                        eprintln!("connection error: {}", e);
+                    }
+                });
+
+                Self { client, logger }
+            }
+            Err(err) => {
+                let mut ctx = HashMap::new();
+                ctx.insert("ConnString".to_string(), conn_string.to_string());
+                logger.write_fatal_error(
+                    "CreatingPosrgress".to_string(),
+                    format!("Invalid connection string. {:?}", err),
+                    Some(ctx),
+                );
+
+                panic!("{}", err);
+            }
+        }
+    }
+
     pub async fn crate_no_tls(
         conn_string: &str,
         app_name: &str,
