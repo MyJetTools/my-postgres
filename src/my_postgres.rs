@@ -21,7 +21,7 @@ impl MyPostgres {
         app_name: &str,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
-        let conn_string = format!("{} application_name={}", conn_string, app_name);
+        let conn_string = super::connection_string::format(conn_string, app_name);
 
         if conn_string.contains("sslmode=require") {
             #[cfg(feature = "with-tls")]
