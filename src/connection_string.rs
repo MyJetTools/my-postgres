@@ -223,4 +223,38 @@ mod test {
 
         assert_eq!(true, connection_string.ssl_require,);
     }
+
+    #[test]
+    fn test_parsing_csharp_like_connection_string_with_timeout() {
+        let connection_string = ConnectionString::parse(
+            "postgresql://admin:example@10.0.0.3:5432/mydbname?connect_timeout=10".as_bytes(),
+        );
+
+        assert_eq!(
+            "admin",
+            connection_string.get_field_value(&connection_string.user_name)
+        );
+
+        assert_eq!(
+            "example",
+            connection_string.get_field_value(&connection_string.password)
+        );
+
+        assert_eq!(
+            "10.0.0.3",
+            connection_string.get_field_value(&connection_string.host)
+        );
+
+        assert_eq!(
+            "5432",
+            connection_string.get_field_value(&connection_string.port)
+        );
+
+        assert_eq!(
+            "mydbname",
+            connection_string.get_field_value(&connection_string.db_name)
+        );
+
+        assert_eq!(false, connection_string.ssl_require,);
+    }
 }
