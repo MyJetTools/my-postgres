@@ -142,7 +142,9 @@ pub fn find_pos(src: &[u8], start_pos: usize, search_byte: u8) -> Option<usize> 
 }
 
 pub fn format(conn_string: &str, app_name: &str) -> String {
-    if app_name.starts_with(PREFIX) {
+    let conn_string = conn_string.trim();
+
+    if conn_string.starts_with(PREFIX) {
         let conn_string = ConnectionString::parse(conn_string.as_bytes());
         return conn_string.to_string(app_name);
     }
