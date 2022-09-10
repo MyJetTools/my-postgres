@@ -23,8 +23,6 @@ impl MyPostgres {
     ) -> Self {
         let conn_string = super::connection_string::format(conn_string, app_name);
 
-        println!("Applying connection string: {}", conn_string);
-
         if conn_string.contains("sslmode=require") {
             #[cfg(feature = "with-tls")]
             return Self::create_with_tls(&conn_string, logger).await;
