@@ -109,7 +109,7 @@ impl<'s> ConnectionString<'s> {
     pub fn to_string(&self, app_name: &str) -> String {
         if self.ssl_require {
             format!(
-                "host={} port{} dbname={} user={} password={} application_name={} sslmode=require",
+                "host={} port={} dbname={} user={} password={} application_name={} sslmode=require",
                 self.get_field_value(&self.host),
                 self.get_field_value(&self.port),
                 self.get_field_value(&self.db_name),
@@ -119,7 +119,7 @@ impl<'s> ConnectionString<'s> {
             )
         } else {
             format!(
-                "host={} port{} dbname={} user={} password={} application_name={}",
+                "host={} port={} dbname={} user={} password={} application_name={}",
                 self.get_field_value(&self.host),
                 self.get_field_value(&self.port),
                 self.get_field_value(&self.db_name),
