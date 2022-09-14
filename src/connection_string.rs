@@ -399,7 +399,7 @@ mod test {
     #[test]
     fn test_parsing_semicolon_separated_connection_string() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
-            "Server=localhost;UserId=usr;Password=pswd;Database=payments;sslmode=require",
+            "Server=localhost;UserId=usr;Password=pswd;Database=payments;sslmode=require;",
         );
         let connection_string = ConnectionString::parse(conn_string_format);
 

@@ -7,7 +7,8 @@ use rust_extensions::{
 };
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, SelectEntity, UpdateEntity,
+    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError, SelectEntity,
+    UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -61,7 +62,7 @@ impl ConnectionsPool {
         }
     }
 
-    pub async fn get_connection(&self) -> RentedObject<MyPostgres> {
+    pub async fn get_postgres_client(&self) -> RentedObject<MyPostgres> {
         self.connections.get_element().await
     }
 
@@ -70,8 +71,8 @@ impl ConnectionsPool {
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<Option<i64>, tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<Option<i64>, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .get_count(select, params, telemetry_context)
@@ -83,8 +84,8 @@ impl ConnectionsPool {
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<Option<TEntity>, tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<Option<TEntity>, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .query_single_row(select, params, telemetry_context)
@@ -96,8 +97,8 @@ impl ConnectionsPool {
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<Vec<TEntity>, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .query_rows(select, params, telemetry_context)
@@ -109,8 +110,8 @@ impl ConnectionsPool {
         entity: &TEntity,
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .insert_db_entity(entity, table_name, telemetry_context)
@@ -122,8 +123,8 @@ impl ConnectionsPool {
         entity: TEntity,
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .insert_db_entity_if_not_exists(entity, table_name, telemetry_context)
@@ -135,8 +136,8 @@ impl ConnectionsPool {
         entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_db_entities(entities, table_name, telemetry_context)
@@ -148,8 +149,8 @@ impl ConnectionsPool {
         entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_db_entities_if_not_exists(entities, table_name, telemetry_context)
@@ -161,8 +162,8 @@ impl ConnectionsPool {
         entity: TEntity,
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .update_db_entity(entity, table_name, telemetry_context)
@@ -175,9 +176,9 @@ impl ConnectionsPool {
         table_name: &str,
         pk_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
-        let mut write_access = connection.value.lock().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
+        let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_or_update_db_entity(entities, table_name, pk_name, telemetry_context)
             .await
@@ -189,8 +190,8 @@ impl ConnectionsPool {
         table_name: &str,
         pk_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .insert_or_update_db_entity(entity, table_name, pk_name, telemetry_context)
@@ -202,8 +203,8 @@ impl ConnectionsPool {
         entities: &[TEntity],
         table_name: &str,
         telemetry_context: Option<MyTelemetryContext>,
-    ) -> Result<(), tokio_postgres::Error> {
-        let connection = self.get_connection().await;
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .bulk_delete(entities, table_name, telemetry_context)

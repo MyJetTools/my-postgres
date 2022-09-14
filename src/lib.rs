@@ -1,8 +1,12 @@
 pub mod code_gens;
 mod connection_string;
 mod connections_pool;
+mod error;
 mod my_postgres;
+mod postgres_connection;
 mod traits;
 pub use crate::my_postgres::*;
 pub use connections_pool::ConnectionsPool;
+pub use error::*;
+pub use postgres_connection::*;
 pub use traits::*;
