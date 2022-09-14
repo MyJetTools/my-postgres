@@ -273,6 +273,16 @@ async fn create_and_start_no_tls(
         let logger_spawned = logger.clone();
         match result {
             Ok((client, connection)) => {
+                let connected = {
+                    let mut write_access = shared_connection.write().await;
+                    let postgress_connection = PostgresConnection::new(client, logger.clone());
+                    let result = postgress_connection.connected.clone();
+                    *write_access = Some(postgress_connection);
+                    result
+                };
+
+                let connected_spawned = connected.clone();
+
                 tokio::spawn(async move {
                     if let Err(e) = connection.await {
                         eprintln!("connection error: {}", e);
@@ -283,15 +293,9 @@ async fn create_and_start_no_tls(
                         format!("Exist connection loop"),
                         None,
                     );
-                });
 
-                let connected = {
-                    let mut write_access = shared_connection.write().await;
-                    let postgress_connection = PostgresConnection::new(client, logger.clone());
-                    let result = postgress_connection.connected.clone();
-                    *write_access = Some(postgress_connection);
-                    result
-                };
+                    connected_spawned.store(true, Ordering::SeqCst);
+                });
 
                 while connected.load(Ordering::Relaxed) {
                     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -324,7 +328,18 @@ async fn create_and_start_tls(
         let logger_spawned = logger.clone();
         match result {
             Ok((client, connection)) => {
+                let connected = {
+                    let mut write_access = shared_connection.write().await;
+                    let postgress_connection = PostgresConnection::new(client, logger.clone());
+                    let result = postgress_connection.connected.clone();
+                    *write_access = Some(postgress_connection);
+                    result
+                };
+
+                let connected_copy = connected.clone();
+
                 tokio::spawn(async move {
+                    connected_copy.store(false, Ordering::SeqCst);
                     if let Err(e) = connection.await {
                         eprintln!("connection error: {}", e);
                     }
@@ -335,14 +350,6 @@ async fn create_and_start_tls(
                         None,
                     );
                 });
-
-                let connected = {
-                    let mut write_access = shared_connection.write().await;
-                    let postgress_connection = PostgresConnection::new(client, logger.clone());
-                    let result = postgress_connection.connected.clone();
-                    *write_access = Some(postgress_connection);
-                    result
-                };
 
                 while connected.load(Ordering::Relaxed) {
                     tokio::time::sleep(Duration::from_secs(1)).await;
