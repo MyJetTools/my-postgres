@@ -28,7 +28,7 @@ impl PostgresConnection {
         }
     }
 
-    pub fn disconnect(&mut self) {
+    pub fn disconnect(&self) {
         self.connected
             .store(false, std::sync::atomic::Ordering::SeqCst);
     }
@@ -52,6 +52,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, select.to_string(), telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         select,
@@ -90,6 +91,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, select, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         select,
@@ -127,6 +129,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, select, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         select.to_string(),
@@ -167,6 +170,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         sql,
@@ -207,6 +211,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         sql,
@@ -252,6 +257,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         sql,
@@ -297,6 +303,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         sql,
@@ -337,6 +344,7 @@ impl PostgresConnection {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         sql,
@@ -385,6 +393,7 @@ impl PostgresConnection {
                     .await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         format!("BulkInsertOrUpdate INTO {}", table_name),
@@ -430,6 +439,7 @@ impl PostgresConnection {
                     .await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         format!("InsertOrUpdate INTO {}", table_name),
@@ -477,6 +487,7 @@ impl PostgresConnection {
                     .await;
                 }
                 Err(err) => {
+                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         format!("BulkDelete {}", table_name),
@@ -492,6 +503,10 @@ impl PostgresConnection {
         result?;
 
         Ok(())
+    }
+
+    fn handle_error(&self, _err: &tokio_postgres::Error) {
+        self.disconnect();
     }
 }
 
