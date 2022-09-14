@@ -7,24 +7,24 @@ use rust_extensions::{
 };
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError, SelectEntity,
-    UpdateEntity,
+    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError,
+    PostgressSettings, SelectEntity, UpdateEntity,
 };
 
 struct MyPostgresFactory {
-    conn_string: String,
     app_name: String,
+    postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
     logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl MyPostgresFactory {
     pub fn new(
-        conn_string: String,
         app_name: String,
+        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
-            conn_string,
+            postgres_settings,
             app_name,
             logger,
         }
@@ -35,8 +35,8 @@ impl MyPostgresFactory {
 impl rust_extensions::objects_pool::ObjectsPoolFactory<MyPostgres> for MyPostgresFactory {
     async fn create_new(&self) -> MyPostgres {
         MyPostgres::new(
-            self.conn_string.as_str(),
-            self.app_name.as_str(),
+            self.app_name.clone(),
+            self.postgres_settings.clone(),
             self.logger.clone(),
         )
         .await
@@ -49,15 +49,19 @@ pub struct ConnectionsPool {
 
 impl ConnectionsPool {
     pub fn new(
-        connection_string: String,
         app_name: String,
+        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             connections: ObjectsPool::new(
                 max_pool_size,
-                Arc::new(MyPostgresFactory::new(connection_string, app_name, logger)),
+                Arc::new(MyPostgresFactory::new(
+                    app_name.clone(),
+                    postgres_settings.clone(),
+                    logger,
+                )),
             ),
         }
     }

@@ -14,7 +14,7 @@ use tokio_postgres::NoTls;
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, PostgresConnection,
-    SelectEntity, UpdateEntity,
+    PostgressSettings, SelectEntity, UpdateEntity,
 };
 
 pub struct MyPostgres {
@@ -23,48 +23,16 @@ pub struct MyPostgres {
 
 impl MyPostgres {
     pub async fn new(
-        conn_string: &str,
-        app_name: &str,
-        logger: Arc<dyn Logger + Sync + Send + 'static>,
-    ) -> Self {
-        let conn_string = super::connection_string::format(conn_string, app_name);
-
-        if conn_string.contains("sslmode=require") {
-            #[cfg(feature = "with-tls")]
-            return Self::create_with_tls(conn_string, logger).await;
-            #[cfg(not(feature = "with-tls"))]
-            panic!("You need to enable the 'with-tls' feature to use sslmode=require");
-        } else {
-            Self::create_no_tls(conn_string, logger).await
-        }
-    }
-
-    #[cfg(feature = "with-tls")]
-    async fn create_with_tls(
-        conn_string: String,
+        app_name: String,
+        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let shared_connection = Arc::new(RwLock::new(None));
-        tokio::spawn(create_and_start_tls(
-            conn_string,
+        tokio::spawn(do_connection(
+            app_name,
+            postgres_settings,
             shared_connection.clone(),
-            logger.clone(),
-        ));
-
-        Self {
-            client: shared_connection,
-        }
-    }
-
-    async fn create_no_tls(
-        conn_string: String,
-        logger: Arc<dyn Logger + Sync + Send + 'static>,
-    ) -> Self {
-        let shared_connection = Arc::new(RwLock::new(None));
-        tokio::spawn(create_and_start_no_tls(
-            conn_string,
-            shared_connection.clone(),
-            logger.clone(),
+            logger,
         ));
 
         Self {
@@ -262,107 +230,134 @@ impl MyPostgres {
     }
 }
 
-async fn create_and_start_no_tls(
-    conn_string: String,
+async fn do_connection(
+    app_name: String,
+    postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
     shared_connection: Arc<RwLock<Option<PostgresConnection>>>,
     logger: Arc<dyn Logger + Sync + Send + 'static>,
 ) {
     loop {
-        let result = tokio_postgres::connect(conn_string.as_str(), NoTls).await;
+        let conn_string = postgres_settings.get_connection_string().await;
 
-        let logger_spawned = logger.clone();
-        match result {
-            Ok((client, connection)) => {
-                let connected = {
-                    let mut write_access = shared_connection.write().await;
-                    let postgress_connection = PostgresConnection::new(client, logger.clone());
-                    let result = postgress_connection.connected.clone();
-                    *write_access = Some(postgress_connection);
-                    result
-                };
+        let conn_string = super::connection_string::format(conn_string.as_str(), app_name.as_str());
 
-                let connected_spawned = connected.clone();
-
-                tokio::spawn(async move {
-                    if let Err(e) = connection.await {
-                        eprintln!("connection error: {}", e);
-                    }
-
-                    logger_spawned.write_fatal_error(
-                        "Potgress background".to_string(),
-                        format!("Exist connection loop"),
-                        None,
-                    );
-
-                    connected_spawned.store(true, Ordering::SeqCst);
-                });
-
-                while connected.load(Ordering::Relaxed) {
-                    tokio::time::sleep(Duration::from_secs(1)).await;
-                }
-            }
-            Err(err) => {
-                logger.write_fatal_error(
-                    "CreatingPosrgress".to_string(),
-                    format!("Invalid connection string. {:?}", err),
+        if conn_string.contains("sslmode=require") {
+            #[cfg(feature = "with-tls")]
+            create_and_start_with_tls(conn_string, &shared_connection, &logger).await;
+            #[cfg(not(feature = "with-tls"))]
+            {
+                logger.write_error(
+                    "PostgressConnection".to_string(),
+                    "Postgres connection with sslmode=require is not supported without tls feature"
+                        .to_string(),
                     None,
                 );
-                tokio::time::sleep(Duration::from_secs(1)).await;
+
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
+        } else {
+            create_and_start_no_tls(conn_string, &shared_connection, &logger).await
         }
     }
 }
 
-async fn create_and_start_tls(
-    conn_string: String,
-    shared_connection: Arc<RwLock<Option<PostgresConnection>>>,
-    logger: Arc<dyn Logger + Sync + Send + 'static>,
+async fn create_and_start_no_tls(
+    connection_string: String,
+    shared_connection: &Arc<RwLock<Option<PostgresConnection>>>,
+    logger: &Arc<dyn Logger + Sync + Send + 'static>,
 ) {
-    loop {
-        let builder = SslConnector::builder(SslMethod::tls()).unwrap();
+    let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
 
-        let connector = MakeTlsConnector::new(builder.build());
+    let logger_spawned = logger.clone();
+    match result {
+        Ok((client, connection)) => {
+            let connected = {
+                let mut write_access = shared_connection.write().await;
+                let postgress_connection = PostgresConnection::new(client, logger.clone());
+                let result = postgress_connection.connected.clone();
+                *write_access = Some(postgress_connection);
+                result
+            };
 
-        let result = tokio_postgres::connect(conn_string.as_str(), connector).await;
+            let connected_spawned = connected.clone();
 
-        let logger_spawned = logger.clone();
-        match result {
-            Ok((client, connection)) => {
-                let connected = {
-                    let mut write_access = shared_connection.write().await;
-                    let postgress_connection = PostgresConnection::new(client, logger.clone());
-                    let result = postgress_connection.connected.clone();
-                    *write_access = Some(postgress_connection);
-                    result
-                };
-
-                let connected_copy = connected.clone();
-
-                tokio::spawn(async move {
-                    connected_copy.store(false, Ordering::SeqCst);
-                    if let Err(e) = connection.await {
-                        eprintln!("connection error: {}", e);
-                    }
-
-                    logger_spawned.write_fatal_error(
-                        "Potgress background".to_string(),
-                        format!("Exist connection loop"),
-                        None,
-                    );
-                });
-
-                while connected.load(Ordering::Relaxed) {
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    eprintln!("connection error: {}", e);
                 }
-            }
-            Err(err) => {
-                logger.write_fatal_error(
-                    "CreatingPosrgress".to_string(),
-                    format!("Invalid connection string. {:?}", err),
+
+                logger_spawned.write_fatal_error(
+                    "Potgress background".to_string(),
+                    format!("Exist connection loop"),
                     None,
                 );
+
+                connected_spawned.store(true, Ordering::SeqCst);
+            });
+
+            while connected.load(Ordering::Relaxed) {
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
+        }
+        Err(err) => {
+            logger.write_fatal_error(
+                "CreatingPosrgress".to_string(),
+                format!("Invalid connection string. {:?}", err),
+                None,
+            );
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
+}
+
+async fn create_and_start_with_tls(
+    connection_string: String,
+    shared_connection: &Arc<RwLock<Option<PostgresConnection>>>,
+    logger: &Arc<dyn Logger + Sync + Send + 'static>,
+) {
+    let builder = SslConnector::builder(SslMethod::tls()).unwrap();
+
+    let connector = MakeTlsConnector::new(builder.build());
+
+    let result = tokio_postgres::connect(connection_string.as_str(), connector).await;
+
+    let logger_spawned = logger.clone();
+    match result {
+        Ok((client, connection)) => {
+            let connected = {
+                let mut write_access = shared_connection.write().await;
+                let postgress_connection = PostgresConnection::new(client, logger.clone());
+                let result = postgress_connection.connected.clone();
+                *write_access = Some(postgress_connection);
+                result
+            };
+
+            let connected_copy = connected.clone();
+
+            tokio::spawn(async move {
+                connected_copy.store(false, Ordering::SeqCst);
+                if let Err(e) = connection.await {
+                    eprintln!("connection error: {}", e);
+                }
+
+                logger_spawned.write_fatal_error(
+                    "Potgress background".to_string(),
+                    format!("Exist connection loop"),
+                    None,
+                );
+            });
+
+            while connected.load(Ordering::Relaxed) {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+        Err(err) => {
+            logger.write_fatal_error(
+                "CreatingPosrgress".to_string(),
+                format!("Invalid connection string. {:?}", err),
+                None,
+            );
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
     }
 }
