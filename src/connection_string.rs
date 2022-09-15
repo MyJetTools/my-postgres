@@ -35,7 +35,7 @@ impl<'s> ConnectionString<'s> {
         let mut password = None;
         let mut db_name = None;
         let mut host = None;
-        let port: u32 = 5432;
+        let mut port: u32 = 5432;
         let mut ssl_require = false;
 
         let mut pos = 0;
@@ -78,6 +78,14 @@ impl<'s> ConnectionString<'s> {
                         from: eq_pos + 1,
                         to: end_of_value,
                     });
+                }
+
+                "port" => {
+                    let value = std::str::from_utf8(&conn_string[eq_pos + 1..end_of_value])
+                        .unwrap()
+                        .trim();
+
+                    port = value.parse::<u32>().unwrap();
                 }
 
                 "database" => {
@@ -399,7 +407,7 @@ mod test {
     #[test]
     fn test_parsing_semicolon_separated_connection_string() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
-            "Server=localhost;UserId=usr;Password=pswd;Database=payments;sslmode=require;",
+            "Server=localhost;UserId=usr;Password=pswd;Database=payments;sslmode=require;Port=5566",
         );
         let connection_string = ConnectionString::parse(conn_string_format);
 
@@ -418,7 +426,7 @@ mod test {
             connection_string.get_field_value(&connection_string.host)
         );
 
-        assert_eq!(5432, connection_string.port);
+        assert_eq!(5566, connection_string.port);
 
         assert_eq!(
             "payments",

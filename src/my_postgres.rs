@@ -310,6 +310,7 @@ async fn create_and_start_no_tls(
     }
 }
 
+#[cfg(feature = "with-tls")]
 async fn create_and_start_with_tls(
     connection_string: String,
     shared_connection: &Arc<RwLock<Option<PostgresConnection>>>,
