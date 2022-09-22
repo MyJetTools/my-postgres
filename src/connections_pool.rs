@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
+#[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
-use rust_extensions::{
-    objects_pool::{ObjectsPool, RentedObject},
-    Logger,
-};
+use rust_extensions::objects_pool::{ObjectsPool, RentedObject};
+#[cfg(feature = "with-logs-and-telemetry")]
+use rust_extensions::Logger;
+use std::sync::Arc;
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError,
@@ -14,6 +13,7 @@ use crate::{
 struct MyPostgresFactory {
     app_name: String,
     postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+    #[cfg(feature = "with-logs-and-telemetry")]
     logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
@@ -21,11 +21,12 @@ impl MyPostgresFactory {
     pub fn new(
         app_name: String,
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
-        logger: Arc<dyn Logger + Sync + Send + 'static>,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             postgres_settings,
             app_name,
+            #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
     }
@@ -37,6 +38,7 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<MyPostgres> for MyPostgre
         MyPostgres::new(
             self.app_name.clone(),
             self.postgres_settings.clone(),
+            #[cfg(feature = "with-logs-and-telemetry")]
             self.logger.clone(),
         )
         .await
@@ -52,7 +54,7 @@ impl ConnectionsPool {
         app_name: String,
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         max_pool_size: usize,
-        logger: Arc<dyn Logger + Sync + Send + 'static>,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             connections: ObjectsPool::new(
@@ -60,6 +62,7 @@ impl ConnectionsPool {
                 Arc::new(MyPostgresFactory::new(
                     app_name.clone(),
                     postgres_settings.clone(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )),
             ),
@@ -74,12 +77,17 @@ impl ConnectionsPool {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .get_count(select, params, telemetry_context)
+            .get_count(
+                select,
+                params,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -87,12 +95,17 @@ impl ConnectionsPool {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .query_single_row(select, params, telemetry_context)
+            .query_single_row(
+                select,
+                params,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -100,12 +113,17 @@ impl ConnectionsPool {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .query_rows(select, params, telemetry_context)
+            .query_rows(
+                select,
+                params,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -113,12 +131,17 @@ impl ConnectionsPool {
         &self,
         entity: &TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .insert_db_entity(entity, table_name, telemetry_context)
+            .insert_db_entity(
+                entity,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -126,12 +149,17 @@ impl ConnectionsPool {
         &self,
         entity: TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .insert_db_entity_if_not_exists(entity, table_name, telemetry_context)
+            .insert_db_entity_if_not_exists(
+                entity,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -139,12 +167,17 @@ impl ConnectionsPool {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .bulk_insert_db_entities(entities, table_name, telemetry_context)
+            .bulk_insert_db_entities(
+                entities,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -152,12 +185,17 @@ impl ConnectionsPool {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .bulk_insert_db_entities_if_not_exists(entities, table_name, telemetry_context)
+            .bulk_insert_db_entities_if_not_exists(
+                entities,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -165,12 +203,17 @@ impl ConnectionsPool {
         &self,
         entity: TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .update_db_entity(entity, table_name, telemetry_context)
+            .update_db_entity(
+                entity,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -179,12 +222,18 @@ impl ConnectionsPool {
         entities: Vec<TEntity>,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .bulk_insert_or_update_db_entity(entities, table_name, pk_name, telemetry_context)
+            .bulk_insert_or_update_db_entity(
+                entities,
+                table_name,
+                pk_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -193,12 +242,18 @@ impl ConnectionsPool {
         entity: TEntity,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .insert_or_update_db_entity(entity, table_name, pk_name, telemetry_context)
+            .insert_or_update_db_entity(
+                entity,
+                table_name,
+                pk_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 
@@ -206,12 +261,17 @@ impl ConnectionsPool {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
-            .bulk_delete(entities, table_name, telemetry_context)
+            .bulk_delete(
+                entities,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
             .await
     }
 }

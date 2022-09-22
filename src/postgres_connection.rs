@@ -1,10 +1,13 @@
-use std::{
-    collections::HashMap,
-    sync::{atomic::AtomicBool, Arc},
-};
-
+#[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
-use rust_extensions::{date_time::DateTimeAsMicroseconds, Logger};
+#[cfg(feature = "with-logs-and-telemetry")]
+use std::collections::HashMap;
+
+#[cfg(feature = "with-logs-and-telemetry")]
+use rust_extensions::date_time::DateTimeAsMicroseconds;
+#[cfg(feature = "with-logs-and-telemetry")]
+use rust_extensions::Logger;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, UpdateEntity,
@@ -12,6 +15,7 @@ use crate::{
 
 pub struct PostgresConnection {
     client: tokio_postgres::Client,
+    #[cfg(feature = "with-logs-and-telemetry")]
     logger: Arc<dyn Logger + Send + Sync + 'static>,
     pub connected: Arc<AtomicBool>,
 }
@@ -19,11 +23,12 @@ pub struct PostgresConnection {
 impl PostgresConnection {
     pub fn new(
         client: tokio_postgres::Client,
-        logger: Arc<dyn Logger + Send + Sync + 'static>,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         Self {
             client: client,
             connected: Arc::new(AtomicBool::new(true)),
+            #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
     }
@@ -41,11 +46,13 @@ impl PostgresConnection {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
         let result = self.client.query(&select, params).await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -80,11 +87,13 @@ impl PostgresConnection {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
         let result = self.client.query(&select, params).await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -117,12 +126,14 @@ impl PostgresConnection {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let result = self.client.query(&select, params).await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -151,8 +162,9 @@ impl PostgresConnection {
         &self,
         entity: &TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::insert::InsertBuilder::new();
@@ -164,6 +176,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -192,8 +205,9 @@ impl PostgresConnection {
         &self,
         entity: TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::insert::InsertBuilder::new();
@@ -205,6 +219,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -233,8 +248,9 @@ impl PostgresConnection {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
@@ -251,6 +267,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -279,8 +296,9 @@ impl PostgresConnection {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
@@ -297,6 +315,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -325,8 +344,9 @@ impl PostgresConnection {
         &self,
         entity: TEntity,
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::update::UpdateBuilder::new();
@@ -338,6 +358,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -367,8 +388,9 @@ impl PostgresConnection {
         entities: Vec<TEntity>,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
         let builder = self.client.build_transaction();
         let transaction = builder.start().await?;
@@ -382,6 +404,7 @@ impl PostgresConnection {
         }
         let result = transaction.commit().await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
@@ -416,8 +439,9 @@ impl PostgresConnection {
         entity: TEntity,
         table_name: &str,
         pk_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
         let mut sql_builder = crate::code_gens::insert_or_update::InsertOrUpdateBuilder::new();
         entity.populate(&mut sql_builder);
@@ -428,6 +452,7 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(result) => {
@@ -461,8 +486,9 @@ impl PostgresConnection {
         &self,
         entities: &[TEntity],
         table_name: &str,
-        telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
@@ -475,7 +501,7 @@ impl PostgresConnection {
             .client
             .execute(sql.as_str(), sql_builder.get_values_data())
             .await;
-
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(result) => {
@@ -505,11 +531,13 @@ impl PostgresConnection {
         Ok(())
     }
 
+    #[cfg(feature = "with-logs-and-telemetry")]
     fn handle_error(&self, _err: &tokio_postgres::Error) {
         self.disconnect();
     }
 }
 
+#[cfg(feature = "with-logs-and-telemetry")]
 async fn write_ok_telemetry(
     start: DateTimeAsMicroseconds,
     data: String,
@@ -532,6 +560,7 @@ async fn write_ok_telemetry(
         .await;
 }
 
+#[cfg(feature = "with-logs-and-telemetry")]
 async fn write_fail_telemetry(
     start: DateTimeAsMicroseconds,
     data: String,
@@ -544,10 +573,11 @@ async fn write_fail_telemetry(
 
     logger.write_error("SQL Request".to_string(), fail.to_string(), Some(ctx));
 
+    #[cfg(feature = "with-logs-and-telemetry")]
     if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
         return;
     }
-
+    #[cfg(feature = "with-logs-and-telemetry")]
     my_telemetry::TELEMETRY_INTERFACE
         .write_telemetry_event(TelemetryEvent {
             process_id: telemetry_context.process_id,
