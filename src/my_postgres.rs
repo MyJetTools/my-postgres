@@ -368,7 +368,7 @@ async fn create_and_start_no_tls(
                     None,
                 );
 
-                connected_spawned.store(true, Ordering::SeqCst);
+                connected_spawned.store(false, Ordering::SeqCst);
             });
 
             while connected.load(Ordering::Relaxed) {
@@ -417,7 +417,6 @@ async fn create_and_start_with_tls(
             let connected_copy = connected.clone();
 
             tokio::spawn(async move {
-                connected_copy.store(false, Ordering::SeqCst);
                 if let Err(e) = connection.await {
                     eprintln!("connection error: {}", e);
                 }
@@ -427,6 +426,8 @@ async fn create_and_start_with_tls(
                     format!("Exist connection loop"),
                     None,
                 );
+
+                connected_copy.store(false, Ordering::SeqCst);
             });
 
             while connected.load(Ordering::Relaxed) {
