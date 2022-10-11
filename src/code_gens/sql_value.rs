@@ -34,6 +34,7 @@ pub enum SqlValue<'s> {
     ISize(isize),
     USize(usize),
     DateTime(DateTimeAsMicroseconds),
+    DateTimeAsUnixMicroseconds(DateTimeAsMicroseconds),
 }
 
 impl<'s> SqlValue<'s> {
@@ -63,6 +64,9 @@ impl<'s> SqlValue<'s> {
             SqlValue::USize(value) => SqlValueAsString::String(format!("{}", value)),
             SqlValue::DateTime(value) => {
                 SqlValueAsString::String(format!("'{}'", value.to_rfc3339()))
+            }
+            SqlValue::DateTimeAsUnixMicroseconds(value) => {
+                SqlValueAsString::String(format!("'{}'", value.unix_microseconds))
             }
         }
     }
