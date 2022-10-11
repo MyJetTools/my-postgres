@@ -86,6 +86,28 @@ impl MyPostgres {
         }
     }
 
+    pub async fn execute_sql(
+        &self,
+        select: String,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<u64, MyPostgressError> {
+        let read_access = self.client.read().await;
+
+        if let Some(connection) = read_access.as_ref() {
+            connection
+                .execute_sql(
+                    select,
+                    params,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
+                .await
+        } else {
+            Err(MyPostgressError::NoConnection)
+        }
+    }
+
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         select: String,

@@ -201,6 +201,40 @@ impl PostgresConnection {
         Ok(())
     }
 
+    pub async fn execute_sql(
+        &self,
+        sql: String,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<u64, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let start = DateTimeAsMicroseconds::now();
+
+        let result = self.client.execute(&sql, params).await;
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        if let Some(telemetry_context) = &telemetry_context {
+            match &result {
+                Ok(result) => {
+                    write_ok_telemetry(start, sql, telemetry_context).await;
+                }
+                Err(err) => {
+                    self.handle_error(err);
+                    write_fail_telemetry(
+                        start,
+                        sql,
+                        format!("{:?}", err),
+                        telemetry_context,
+                        &self.logger,
+                    )
+                    .await;
+                }
+            }
+        }
+
+        Ok(result?)
+    }
+
     pub async fn insert_db_entity_if_not_exists<TEntity: InsertEntity>(
         &self,
         entity: TEntity,

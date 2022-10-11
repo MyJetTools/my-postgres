@@ -7,3 +7,4 @@
 * Postgres now can reconnect in a background
 * Telemetry and logs goes via feature
 * Datetime as Unix Microseconds mapping to field is supported
+* execute_sql is added

@@ -91,6 +91,25 @@ impl ConnectionsPool {
             .await
     }
 
+    pub async fn execute_sql(
+        &self,
+        select: String,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<u64, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
+        let write_access = connection.value.lock().await;
+
+        write_access
+            .execute_sql(
+                select,
+                params,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         select: String,
