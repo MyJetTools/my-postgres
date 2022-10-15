@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum MyPostgressError {
     NoConnection,
+    SingleRowRequestReturnedMultipleRows(usize),
     PostgresError(tokio_postgres::Error),
 }
 

@@ -9,6 +9,7 @@ edition = "2021"
 default = []
 with-tls = ["postgres-openssl", "openssl"]
 with-logs-and-telemetry = ["my-telemetry"]
+failed-sql-to-console = []
 
 [dependencies]
 postgres-openssl = { version = "*", optional = true }

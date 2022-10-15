@@ -91,7 +91,8 @@ impl PostgresConnection {
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
-        let result = self.client.query(&select, params).await;
+
+        let result = self.do_sql_with_single_row_result(&select, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
@@ -100,7 +101,6 @@ impl PostgresConnection {
                     write_ok_telemetry(start, select, telemetry_context).await;
                 }
                 Err(err) => {
-                    self.handle_error(err);
                     write_fail_telemetry(
                         start,
                         select,
@@ -113,13 +113,7 @@ impl PostgresConnection {
             }
         }
 
-        let rows = result?;
-
-        if let Some(row) = rows.get(0) {
-            Ok(Some(TEntity::from_db_row(row)))
-        } else {
-            Ok(None)
-        }
+        result
     }
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
@@ -215,7 +209,7 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
-                Ok(result) => {
+                Ok(_) => {
                     write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
@@ -284,9 +278,6 @@ impl PostgresConnection {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let start = DateTimeAsMicroseconds::now();
-
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
 
         for entity in entities {
@@ -296,32 +287,17 @@ impl PostgresConnection {
 
         let sql = sql_builder.build(table_name);
 
-        let result = self
-            .client
-            .execute(&sql, sql_builder.get_values_data())
-            .await;
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(_) => {
-                    write_ok_telemetry(start, sql, telemetry_context).await;
-                }
-                Err(err) => {
-                    self.handle_error(err);
-                    write_fail_telemetry(
-                        start,
-                        sql,
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
-                }
-            }
-        }
-
-        result?;
+        self.do_sql(
+            &sql,
+            sql_builder.get_values_data(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            format!("bulk_insert_db_entities into {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            false,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await?;
 
         Ok(())
     }
@@ -332,9 +308,6 @@ impl PostgresConnection {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let start = DateTimeAsMicroseconds::now();
-
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
 
         for entity in entities {
@@ -344,32 +317,17 @@ impl PostgresConnection {
 
         let sql = format!("{} ON CONFLICT DO NOTHING", sql_builder.build(table_name));
 
-        let result = self
-            .client
-            .execute(&sql, sql_builder.get_values_data())
-            .await;
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(_) => {
-                    write_ok_telemetry(start, sql, telemetry_context).await;
-                }
-                Err(err) => {
-                    self.handle_error(err);
-                    write_fail_telemetry(
-                        start,
-                        sql,
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
-                }
-            }
-        }
-
-        result?;
+        self.do_sql(
+            &sql,
+            sql_builder.get_values_data(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            format!("bulk_insert_db_entities_if_not_exists into {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            true,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await?;
 
         Ok(())
     }
@@ -475,43 +433,22 @@ impl PostgresConnection {
         pk_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let start = DateTimeAsMicroseconds::now();
         let mut sql_builder = crate::code_gens::insert_or_update::InsertOrUpdateBuilder::new();
         entity.populate(&mut sql_builder);
 
         let sql = sql_builder.build(table_name, pk_name);
-        let result = self
-            .client
-            .execute(&sql, sql_builder.get_values_data())
-            .await;
 
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(result) => {
-                    write_ok_telemetry(
-                        start,
-                        format!("InsertOrUpdate INTO {}. Result:{}", table_name, result),
-                        telemetry_context,
-                    )
-                    .await;
-                }
-                Err(err) => {
-                    self.handle_error(err);
-                    write_fail_telemetry(
-                        start,
-                        format!("InsertOrUpdate INTO {}", table_name),
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
-                }
-            }
-        }
-
-        result?;
+        self.do_sql(
+            &sql,
+            sql_builder.get_values_data(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            format!("InsertOrUpdate INTO {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            true,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await?;
 
         Ok(())
     }
@@ -565,9 +502,81 @@ impl PostgresConnection {
         Ok(())
     }
 
-    #[cfg(feature = "with-logs-and-telemetry")]
     fn handle_error(&self, _err: &tokio_postgres::Error) {
         self.disconnect();
+    }
+
+    async fn do_sql(
+        &self,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        #[cfg(feature = "with-logs-and-telemetry")] process_name: String,
+        #[cfg(feature = "with-logs-and-telemetry")] append_sql_to_fail_result: bool,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+    ) -> Result<u64, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let start = DateTimeAsMicroseconds::now();
+
+        let result = self.client.execute(sql, params).await;
+
+        if let Err(err) = &result {
+            self.handle_error(err);
+            #[cfg(feature = "failed-sql-to-console")]
+            println!("Failed sql: {}", sql);
+        }
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        if let Some(telemetry_context) = &telemetry_context {
+            match &result {
+                Ok(_) => {
+                    write_ok_telemetry(start, process_name, telemetry_context).await;
+                }
+                Err(err) => {
+                    write_fail_telemetry(
+                        start,
+                        process_name,
+                        if append_sql_to_fail_result {
+                            format!("Err: {:?}. Sql: {}", err, sql)
+                        } else {
+                            format!("Err: {:?}", err)
+                        },
+                        telemetry_context,
+                        &self.logger,
+                    )
+                    .await;
+                }
+            }
+        }
+
+        Ok(result?)
+    }
+
+    async fn do_sql_with_single_row_result<TEntity: SelectEntity + Send + Sync + 'static>(
+        &self,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<Option<TEntity>, MyPostgressError> {
+        let result = self.client.query(sql, params).await;
+        match result {
+            Ok(result) => {
+                if result.len() > 1 {
+                    Err(MyPostgressError::SingleRowRequestReturnedMultipleRows(
+                        result.len(),
+                    ))
+                } else if result.len() == 0 {
+                    Ok(None)
+                } else {
+                    let row = result.get(0).unwrap();
+                    Ok(Some(TEntity::from_db_row(&row)))
+                }
+            }
+            Err(err) => {
+                self.handle_error(&err);
+                #[cfg(feature = "failed-sql-to-console")]
+                println!("Failed sql: {}", sql);
+                Err(MyPostgressError::PostgresError(err))
+            }
+        }
     }
 }
 
