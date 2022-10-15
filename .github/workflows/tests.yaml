@@ -22,4 +22,7 @@ jobs:
         run: cargo build --features with-tls
 
       - name: Build with-telemetry          
-        run: cargo build --features with-logs-and-telemetry        
+        run: cargo build --features with-logs-and-telemetry      
+
+      - name: Build failed-sql-to-console          
+        run: cargo build --features failed-sql-to-console           
