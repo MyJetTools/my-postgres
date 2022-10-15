@@ -10,8 +10,7 @@ use rust_extensions::Logger;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{
-    connection_string::format, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError,
-    SelectEntity, UpdateEntity,
+    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, UpdateEntity,
 };
 
 pub struct PostgresConnection {
