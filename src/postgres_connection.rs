@@ -10,7 +10,8 @@ use rust_extensions::Logger;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, UpdateEntity,
+    connection_string::format, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError,
+    SelectEntity, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -44,25 +45,26 @@ impl PostgresConnection {
 
     pub async fn get_count(
         &self,
-        select: String,
+        sql: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
-        let result = self.client.query(&select, params).await;
+        let result = self.client.query(&sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, select.to_string(), telemetry_context).await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        select,
+                        "get_count".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err).into(),
                         telemetry_context,
                         &self.logger,
@@ -85,25 +87,26 @@ impl PostgresConnection {
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: String,
+        sql: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.do_sql_with_single_row_result(&select, params).await;
+        let result = self.do_sql_with_single_row_result(&sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, select, telemetry_context).await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        select,
+                        "query_single_row".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -118,26 +121,27 @@ impl PostgresConnection {
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: String,
+        sql: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.client.query(&select, params).await;
+        let result = self.client.query(&sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, select, telemetry_context).await;
+                    write_ok_telemetry(start, sql, telemetry_context).await;
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        select.to_string(),
+                        "query_rows".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -178,9 +182,10 @@ impl PostgresConnection {
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        sql,
+                        "insert_db_entity".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -214,9 +219,10 @@ impl PostgresConnection {
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        sql,
+                        "execute_sql".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -255,9 +261,10 @@ impl PostgresConnection {
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        sql,
+                        "insert_db_entity_if_not_exists".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -358,9 +365,10 @@ impl PostgresConnection {
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        sql,
+                        "update_db_entity".to_string(),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -402,16 +410,17 @@ impl PostgresConnection {
                 Ok(_) => {
                     write_ok_telemetry(
                         start,
-                        format!("BulkInsertOrUpdate INTO {}", table_name),
+                        format!("bulk_insert_or_update_db_entity INTO {}", table_name),
                         telemetry_context,
                     )
                     .await;
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
-                        format!("BulkInsertOrUpdate INTO {}", table_name),
+                        format("bulk_insert_or_update_db_entity {}", table_name),
+                        None,
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -485,9 +494,10 @@ impl PostgresConnection {
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
                         format!("BulkDelete {}", table_name),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
@@ -532,14 +542,15 @@ impl PostgresConnection {
                     write_ok_telemetry(start, process_name, telemetry_context).await;
                 }
                 Err(err) => {
-                    write_fail_telemetry(
+                    write_fail_telemetry_and_log(
                         start,
                         process_name,
                         if append_sql_to_fail_result {
-                            format!("Err: {:?}. Sql: {}", err, sql)
+                            Some(sql)
                         } else {
-                            format!("Err: {:?}", err)
+                            None
                         },
+                        format!("Err: {:?}", err),
                         telemetry_context,
                         &self.logger,
                     )
@@ -604,29 +615,33 @@ async fn write_ok_telemetry(
 }
 
 #[cfg(feature = "with-logs-and-telemetry")]
-async fn write_fail_telemetry(
+async fn write_fail_telemetry_and_log(
     start: DateTimeAsMicroseconds,
-    data: String,
+    process: String,
+    sql: Option<&str>,
     fail: String,
     telemetry_context: &MyTelemetryContext,
     logger: &Arc<dyn Logger + Send + Sync + 'static>,
 ) {
-    let mut ctx = HashMap::new();
-    ctx.insert("SQL".to_string(), data.to_string());
+    let ctx = if let Some(sql) = sql {
+        let mut ctx = HashMap::new();
+        ctx.insert("sql".to_string(), sql.to_string());
+        Some(ctx)
+    } else {
+        None
+    };
 
-    logger.write_error("SQL Request".to_string(), fail.to_string(), Some(ctx));
+    logger.write_error(process.to_string(), fail.to_string(), ctx);
 
-    #[cfg(feature = "with-logs-and-telemetry")]
     if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
         return;
     }
-    #[cfg(feature = "with-logs-and-telemetry")]
     my_telemetry::TELEMETRY_INTERFACE
         .write_telemetry_event(TelemetryEvent {
             process_id: telemetry_context.process_id,
             started: start.unix_microseconds,
             finished: DateTimeAsMicroseconds::now().unix_microseconds,
-            data,
+            data: process,
             success: None,
             fail: Some(fail),
             ip: None,
