@@ -3,6 +3,7 @@ pub enum MyPostgressError {
     NoConnection,
     SingleRowRequestReturnedMultipleRows(usize),
     PostgresError(tokio_postgres::Error),
+    Other(String),
 }
 
 impl From<tokio_postgres::Error> for MyPostgressError {

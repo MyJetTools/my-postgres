@@ -285,7 +285,9 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         if entities.is_empty() {
-            panic!("bulk_insert_db_entities: Not entities to insert");
+            return Err(MyPostgressError::Other(
+                "bulk_insert_db_entities: Not entities to execute".to_string(),
+            ));
         }
 
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
@@ -318,6 +320,12 @@ impl PostgresConnection {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            return Err(MyPostgressError::Other(
+                "bulk_insert_db_entities_if_not_exists: Not entities to execute".to_string(),
+            ));
+        }
+
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
 
         for entity in entities {
@@ -471,6 +479,12 @@ impl PostgresConnection {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            return Err(MyPostgressError::Other(
+                "bulk_delete: Not entities to execute".to_string(),
+            ));
+        }
+
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
