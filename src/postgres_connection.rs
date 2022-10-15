@@ -285,6 +285,10 @@ impl PostgresConnection {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            panic!("bulk_insert_db_entities: Not entities to insert");
+        }
+
         let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
 
         for entity in entities {

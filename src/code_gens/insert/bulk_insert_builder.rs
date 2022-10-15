@@ -22,7 +22,7 @@ impl<'s> BulkInsertBuilder<'s> {
         }
     }
 
-    pub fn append_field(&mut self, field_name: &str) {
+    pub fn add_field(&mut self, field_name: &str) {
         self.fields.add(field_name)
     }
 
@@ -36,7 +36,7 @@ impl<'s> BulkInsertBuilder<'s> {
         self.values.push(old_value);
     }
 
-    pub fn append_value(&mut self, sql_value: SqlValue<'s>) {
+    fn add_value(&mut self, sql_value: SqlValue<'s>) {
         let sql_value = self.numbered_params.add_or_get(sql_value);
         self.current_value.add_sql_value(&sql_value);
     }
@@ -72,14 +72,38 @@ impl<'s> BulkInsertBuilder<'s> {
     pub fn get_values_data(&mut self) -> &'s [&(dyn tokio_postgres::types::ToSql + Sync)] {
         self.numbered_params.build_params()
     }
+
+    fn append_field_and_value(&mut self, field_name: &str, value: SqlValue<'s>) {
+        if self.line_no == 1 {
+            self.add_field(field_name);
+        }
+
+        self.add_value(value);
+    }
 }
 
 impl<'s> InsertCodeGen<'s> for BulkInsertBuilder<'s> {
     fn append_field(&mut self, field_name: &str, value: SqlValue<'s>) {
-        if self.line_no == 1 {
-            self.append_field(field_name);
-        }
+        self.append_field_and_value(field_name, value);
+    }
+}
 
-        self.append_value(value);
+#[cfg(test)]
+mod tests {
+    use crate::code_gens::{insert::InsertCodeGen, SqlValue};
+
+    use super::BulkInsertBuilder;
+
+    #[test]
+    fn general_test() {
+        let mut builder = BulkInsertBuilder::new();
+
+        builder.start_new_value_line();
+        builder.append_field_and_value("Field1", SqlValue::String("1"));
+        builder.append_field("Field2", SqlValue::String("2"));
+
+        let sql = builder.build("test_table");
+
+        assert_eq!("INSERT INTO test_table (Field1,Field2) VALUES ($1,$2)", sql)
     }
 }
