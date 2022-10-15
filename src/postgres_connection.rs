@@ -422,7 +422,7 @@ impl PostgresConnection {
                     self.handle_error(err);
                     write_fail_telemetry_and_log(
                         start,
-                        format("bulk_insert_or_update_db_entity {}", table_name),
+                        format!("bulk_insert_or_update_db_entity {}", table_name),
                         None,
                         format!("{:?}", err),
                         telemetry_context,
