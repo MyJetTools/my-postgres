@@ -4,6 +4,7 @@ use my_telemetry::MyTelemetryContext;
 use openssl::ssl::{SslConnector, SslMethod};
 #[cfg(feature = "with-tls")]
 use postgres_openssl::MakeTlsConnector;
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use std::{
@@ -411,8 +412,10 @@ impl MyPostgres {
 
         if timeout_result.is_err() {
             println!(
-                "query_rows {} is timeouted after {:?}",
-                sql, self.sql_request_timeout
+                "{}: query_rows {} is timeouted after {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                sql,
+                self.sql_request_timeout
             );
             Err(MyPostgressError::Timeouted(self.sql_request_timeout))
         } else {
@@ -493,7 +496,10 @@ async fn create_and_start_no_tls(
     match result {
         Ok((client, connection)) => {
             #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!("Postgres SQL Connection is closed");
+            println!(
+                "{}: Postgres SQL Connection is closed",
+                DateTimeAsMicroseconds::now().to_rfc3339()
+            );
 
             let connected = {
                 let mut write_access = shared_connection.write().await;
@@ -511,7 +517,11 @@ async fn create_and_start_no_tls(
 
             tokio::spawn(async move {
                 if let Err(e) = connection.await {
-                    eprintln!("connection error: {}", e);
+                    eprintln!(
+                        "{}: connection error: {}",
+                        DateTimeAsMicroseconds::now().to_rfc3339(),
+                        e
+                    );
                 }
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger_spawned.write_fatal_error(
@@ -529,7 +539,11 @@ async fn create_and_start_no_tls(
         }
         Err(err) => {
             #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!("Postgres SQL Connection is closed with Err: {:?}", err);
+            println!(
+                "{}: Postgres SQL Connection is closed with Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                err
+            );
 
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.write_fatal_error(
@@ -573,7 +587,11 @@ async fn create_and_start_with_tls(
 
             tokio::spawn(async move {
                 if let Err(e) = connection.await {
-                    eprintln!("connection error: {}", e);
+                    eprintln!(
+                        "{}: connection error: {}",
+                        DateTimeAsMicroseconds::now().to_rfc3339,
+                        e
+                    );
                 }
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger_spawned.write_fatal_error(

@@ -1,5 +1,6 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::{MyTelemetryContext, TelemetryEvent};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use std::collections::HashMap;
 
@@ -552,7 +553,11 @@ impl PostgresConnection {
         if let Err(err) = &result {
             self.handle_error(err);
             #[cfg(feature = "failed-sql-to-console")]
-            println!("Failed sql: {}", sql);
+            println!(
+                "{}: Failed sql: {}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                sql
+            );
         }
 
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -604,7 +609,11 @@ impl PostgresConnection {
             Err(err) => {
                 self.handle_error(&err);
                 #[cfg(feature = "failed-sql-to-console")]
-                println!("Failed sql: {}", sql);
+                println!(
+                    "{}: Failed sql: {}",
+                    DateTimeAsMicroseconds::now().to_rfc3339(),
+                    sql
+                );
                 Err(MyPostgressError::PostgresError(err))
             }
         }
