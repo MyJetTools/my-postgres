@@ -5,8 +5,6 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 use std::collections::HashMap;
 
 #[cfg(feature = "with-logs-and-telemetry")]
-use rust_extensions::date_time::DateTimeAsMicroseconds;
-#[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use std::sync::{atomic::AtomicBool, Arc};
 
