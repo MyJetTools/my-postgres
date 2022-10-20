@@ -491,14 +491,13 @@ async fn create_and_start_no_tls(
 ) {
     let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    let logger_spawned = logger.clone();
+    let connected_date_time = DateTimeAsMicroseconds::now();
+
     match result {
         Ok((client, connection)) => {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
-                "{}: Postgres SQL Connection is closed",
-                DateTimeAsMicroseconds::now().to_rfc3339()
+                "{}: Postgres SQL Connection is estabiled",
+                connected_date_time.to_rfc3339()
             );
 
             let connected = {
@@ -515,20 +514,34 @@ async fn create_and_start_no_tls(
 
             let connected_spawned = connected.clone();
 
+            #[cfg(feature = "with-logs-and-telemetry")]
+            let logger_spawned = logger.clone();
+
             tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    eprintln!(
-                        "{}: connection error: {}",
-                        DateTimeAsMicroseconds::now().to_rfc3339(),
-                        e
-                    );
+                match connection.await {
+                    Ok(_) => {
+                        println!(
+                            "{}: Connection estabilshed at {} is closed.",
+                            DateTimeAsMicroseconds::now().to_rfc3339(),
+                            connected_date_time.to_rfc3339(),
+                        );
+                    }
+                    Err(err) => {
+                        println!(
+                            "{}: Connection estabilshed at {} is closed with error: {}",
+                            DateTimeAsMicroseconds::now().to_rfc3339(),
+                            connected_date_time.to_rfc3339(),
+                            err
+                        );
+
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        logger_spawned.write_fatal_error(
+                            "Potgress background".to_string(),
+                            format!("Exist connection loop"),
+                            None,
+                        );
+                    }
                 }
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger_spawned.write_fatal_error(
-                    "Potgress background".to_string(),
-                    format!("Exist connection loop"),
-                    None,
-                );
 
                 connected_spawned.store(false, Ordering::SeqCst);
             });
