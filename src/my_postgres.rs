@@ -589,7 +589,7 @@ async fn create_and_start_with_tls(
                 if let Err(e) = connection.await {
                     eprintln!(
                         "{}: connection error: {}",
-                        DateTimeAsMicroseconds::now().to_rfc3339,
+                        DateTimeAsMicroseconds::now().to_rfc3339(),
                         e
                     );
                 }
