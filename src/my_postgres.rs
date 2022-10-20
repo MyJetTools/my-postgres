@@ -20,6 +20,7 @@ use crate::{
 
 pub struct MyPostgres {
     client: Arc<RwLock<Option<PostgresConnection>>>,
+    timeout: Duration,
 }
 
 impl MyPostgres {
@@ -39,6 +40,7 @@ impl MyPostgres {
 
         Self {
             client: shared_connection,
+            timeout: Duration::from_secs(30),
         }
     }
 
@@ -110,24 +112,44 @@ impl MyPostgres {
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        select: String,
+        sql: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
-        let read_access = self.client.read().await;
+        let result = {
+            let read_access = self.client.read().await;
 
-        if let Some(connection) = read_access.as_ref() {
-            connection
-                .query_rows(
-                    select,
+            if let Some(connection) = read_access.as_ref() {
+                let execution = connection.query_rows(
+                    sql.as_str(),
                     params,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
-                )
-                .await
-        } else {
-            Err(MyPostgressError::NoConnection)
+                );
+
+                let timeout_result = tokio::time::timeout(self.timeout, execution).await;
+
+                if timeout_result.is_err() {
+                    println!("query_rows {} is timeouted after {:?}", sql, self.timeout);
+                    Err(MyPostgressError::Timeouted(self.timeout))
+                } else {
+                    timeout_result.unwrap()
+                }
+            } else {
+                Err(MyPostgressError::NoConnection)
+            }
+        };
+
+        if let Err(err) = &result {
+            if let MyPostgressError::Timeouted(_) = err {
+                let mut write_access = self.client.write().await;
+                if let Some(client) = write_access.take() {
+                    client.disconnect();
+                }
+            }
         }
+
+        result
     }
 
     pub async fn insert_db_entity<TEntity: InsertEntity>(

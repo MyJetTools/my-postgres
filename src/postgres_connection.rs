@@ -120,27 +120,27 @@ impl PostgresConnection {
 
     pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        sql: String,
+        sql: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.client.query(&sql, params).await;
+        let result = self.client.query(sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, sql, telemetry_context).await;
+                    write_ok_telemetry(start, sql.to_string(), telemetry_context).await;
                 }
                 Err(err) => {
                     self.handle_error(err);
                     write_fail_telemetry_and_log(
                         start,
                         "query_rows".to_string(),
-                        Some(sql.as_str()),
+                        Some(sql),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,
