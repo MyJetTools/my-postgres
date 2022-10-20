@@ -19,6 +19,7 @@ pub struct PostgresConnection {
     #[cfg(feature = "with-logs-and-telemetry")]
     logger: Arc<dyn Logger + Send + Sync + 'static>,
     pub connected: Arc<AtomicBool>,
+    pub created: DateTimeAsMicroseconds,
 }
 
 impl PostgresConnection {
@@ -31,6 +32,7 @@ impl PostgresConnection {
             connected: Arc::new(AtomicBool::new(true)),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
+            created: DateTimeAsMicroseconds::now(),
         }
     }
 
@@ -175,6 +177,16 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
@@ -255,6 +267,16 @@ impl PostgresConnection {
             .execute(&sql, sql_builder.get_values_data())
             .await;
 
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
@@ -303,17 +325,30 @@ impl PostgresConnection {
 
         let sql = sql_builder.build(table_name);
 
-        self.do_sql(
-            &sql,
-            sql_builder.get_values_data(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            process_name,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            false,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            telemetry_context,
-        )
-        .await?;
+        let result = self
+            .do_sql(
+                &sql,
+                sql_builder.get_values_data(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                false,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await;
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        result?;
 
         Ok(())
     }
@@ -340,17 +375,30 @@ impl PostgresConnection {
 
         let sql = format!("{} ON CONFLICT DO NOTHING", sql_builder.build(table_name));
 
-        self.do_sql(
-            &sql,
-            sql_builder.get_values_data(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            process_name,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            true,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            telemetry_context,
-        )
-        .await?;
+        let result = self
+            .do_sql(
+                &sql,
+                sql_builder.get_values_data(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                true,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await;
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        result?;
 
         Ok(())
     }
@@ -393,6 +441,16 @@ impl PostgresConnection {
                     .await;
                 }
             }
+        }
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
         }
 
         result?;
@@ -443,6 +501,16 @@ impl PostgresConnection {
             }
         }
 
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
         result?;
 
         Ok(())
@@ -461,17 +529,30 @@ impl PostgresConnection {
 
         let sql = sql_builder.build(table_name, pk_name);
 
-        self.do_sql(
-            &sql,
-            sql_builder.get_values_data(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            process_name,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            true,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            telemetry_context,
-        )
-        .await?;
+        let result = self
+            .do_sql(
+                &sql,
+                sql_builder.get_values_data(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                true,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await;
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        result?;
 
         Ok(())
     }
@@ -526,6 +607,16 @@ impl PostgresConnection {
                     .await;
                 }
             }
+        }
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
         }
 
         result?;
