@@ -19,7 +19,8 @@ impl<'s> SqlValueAsString<'s> {
 #[derive(Debug, Clone)]
 pub enum SqlValue<'s> {
     ByIndex(u32),
-    String(&'s str),
+    Str(&'s str),
+    String(String),
     Bool(bool),
     I8(i8),
     U8(u8),
@@ -41,6 +42,7 @@ impl<'s> SqlValue<'s> {
     pub fn as_sql_value_to_injext(&self) -> SqlValueAsString {
         match self {
             SqlValue::ByIndex(value) => SqlValueAsString::String(format!("${}", value)),
+            SqlValue::Str(value) => SqlValueAsString::Str(value),
             SqlValue::String(value) => SqlValueAsString::Str(value),
             SqlValue::Bool(value) => {
                 if *value {

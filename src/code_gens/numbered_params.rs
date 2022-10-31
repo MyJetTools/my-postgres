@@ -20,7 +20,17 @@ impl<'s> NumberedParams<'s> {
     }
 
     pub fn add_or_get(&mut self, sql_value: SqlValue<'s>) -> SqlValue<'s> {
-        match sql_value {
+        match &sql_value {
+            SqlValue::Str(value) => {
+                if !self.params.contains_key(*value) {
+                    let result = self.param_no;
+                    self.params.insert(value.to_string(), result);
+                    self.param_no += 1;
+                    return SqlValue::ByIndex(result);
+                }
+
+                return SqlValue::ByIndex(*self.params.get(*value).unwrap());
+            }
             SqlValue::String(value) => {
                 if !self.params.contains_key(value) {
                     let result = self.param_no;

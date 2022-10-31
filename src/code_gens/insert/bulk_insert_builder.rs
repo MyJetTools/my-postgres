@@ -99,8 +99,8 @@ mod tests {
         let mut builder = BulkInsertBuilder::new();
 
         builder.start_new_value_line();
-        builder.append_field_and_value("Field1", SqlValue::String("1"));
-        builder.append_field("Field2", SqlValue::String("2"));
+        builder.append_field_and_value("Field1", SqlValue::Str("1"));
+        builder.append_field("Field2", SqlValue::Str("2"));
 
         let sql = builder.build("test_table");
 
