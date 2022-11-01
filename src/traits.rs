@@ -4,6 +4,7 @@ use crate::code_gens::{
 
 pub trait SelectEntity {
     fn from_db_row(row: &tokio_postgres::Row) -> Self;
+    fn get_select_fields() -> &'static str;
 }
 
 pub trait InsertEntity {
