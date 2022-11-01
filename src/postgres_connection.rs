@@ -87,20 +87,24 @@ impl PostgresConnection {
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        sql: String,
+        sql: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.do_sql_with_single_row_result(&sql, params).await;
+        let sql = crate::sql_formatter::format_sql(sql, || TEntity::get_select_fields());
+
+        let result = self
+            .do_sql_with_single_row_result(sql.as_str(), params)
+            .await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, sql, telemetry_context).await;
+                    write_ok_telemetry(start, sql.as_str().to_string(), telemetry_context).await;
                 }
                 Err(err) => {
                     write_fail_telemetry_and_log(
@@ -128,20 +132,22 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let result = self.client.query(sql, params).await;
+        let sql = crate::sql_formatter::format_sql(sql, || TEntity::get_select_fields());
+
+        let result = self.client.query(sql.as_str(), params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, sql.to_string(), telemetry_context).await;
+                    write_ok_telemetry(start, sql.as_str().to_string(), telemetry_context).await;
                 }
                 Err(err) => {
                     self.handle_error(err);
                     write_fail_telemetry_and_log(
                         start,
                         "query_rows".to_string(),
-                        Some(sql),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         telemetry_context,
                         &self.logger,

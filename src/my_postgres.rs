@@ -88,7 +88,7 @@ impl MyPostgres {
         if let Some(connection) = read_access.as_ref() {
             connection
                 .query_single_row(
-                    select,
+                    select.as_str(),
                     params,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,

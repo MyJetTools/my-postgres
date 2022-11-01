@@ -1,20 +1,8 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
+
+use crate::SqlValueAsString;
 const TRUE: &'static str = "true";
 const FALSE: &'static str = "false";
-
-pub enum SqlValueAsString<'s> {
-    String(String),
-    Str(&'s str),
-}
-
-impl<'s> SqlValueAsString<'s> {
-    pub fn as_str(&self) -> &str {
-        match self {
-            SqlValueAsString::String(value) => value.as_str(),
-            SqlValueAsString::Str(value) => value,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum SqlValue<'s> {
