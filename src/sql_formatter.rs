@@ -13,9 +13,9 @@ pub fn format_sql<'src, TGetInject: Fn() -> &'static str>(
 }
 
 fn split_sql<'s>(sql: &'s str) -> Option<(&'s str, &'s str)> {
-    let star = sql.find('*')?;
+    let star = sql.find(" * ")?;
 
-    Some((&sql[..star], &sql[star + 1..]))
+    Some((&sql[..star + 1], &sql[star + 2..]))
 }
 
 #[cfg(test)]
@@ -27,5 +27,12 @@ mod tests {
         let sql = "SELECT * FROM table";
         let result = format_sql(sql, || "id, name");
         assert_eq!(result.as_str(), "SELECT id, name FROM table");
+    }
+
+    #[test]
+    fn test_format_sql_case_2() {
+        let sql = "SELECT Count(*) FROM table";
+        let result = format_sql(sql, || "id, name");
+        assert_eq!(result.as_str(), "SELECT Count(*) FROM table");
     }
 }
