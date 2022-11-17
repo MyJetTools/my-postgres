@@ -307,6 +307,57 @@ impl PostgresConnection {
         Ok(())
     }
 
+    #[cfg(feature = "with-logs-and-telemetry")]
+    pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
+        &self,
+        entities: &[(TEntity, Option<MyTelemetryContext>)],
+        table_name: &str,
+        process_name: &str,
+    ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            return Err(MyPostgressError::Other(
+                "bulk_insert_db_entities: Not entities to execute".to_string(),
+            ));
+        }
+
+        let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
+
+        for entity in entities {
+            sql_builder.start_new_value_line();
+            entity.0.populate(&mut sql_builder);
+        }
+
+        let sql = sql_builder.build(table_name);
+
+        let result = self
+            .do_sql(
+                &sql,
+                sql_builder.get_values_data(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                false,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                entities.into_iter().map(|x| x.1),
+            )
+            .await;
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        result?;
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
         &self,
         entities: &[TEntity],
@@ -357,6 +408,57 @@ impl PostgresConnection {
         Ok(())
     }
 
+    #[cfg(feature = "with-logs-and-telemetry")]
+    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
+        &self,
+        entities: &[(TEntity, Option<MyTelemetryContext>)],
+        table_name: &str,
+        process_name: &str,
+    ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            return Err(MyPostgressError::Other(
+                "bulk_insert_db_entities_if_not_exists: Not entities to execute".to_string(),
+            ));
+        }
+
+        let mut sql_builder = crate::code_gens::insert::BulkInsertBuilder::new();
+
+        for entity in entities {
+            sql_builder.start_new_value_line();
+            entity.0.populate(&mut sql_builder);
+        }
+
+        let sql = format!("{} ON CONFLICT DO NOTHING", sql_builder.build(table_name));
+
+        let result = self
+            .do_sql(
+                &sql,
+                sql_builder.get_values_data(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                true,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                entities.into_iter().map(|itm| itm.1),
+            )
+            .await;
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &result {
+            println!(
+                "{}: {} Err: {:?}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        result?;
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
         &self,
         entities: &[TEntity],
@@ -462,16 +564,62 @@ impl PostgresConnection {
         Ok(())
     }
 
+    #[cfg(feature = "with-logs-and-telemetry")]
+    pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
+        &mut self,
+        entities: &[(TEntity, Option<MyTelemetryContext>)],
+        table_name: &str,
+        pk_name: &str,
+        process_name: &str,
+    ) -> Result<(), MyPostgressError> {
+        let start = DateTimeAsMicroseconds::now();
+        let builder = self.client.build_transaction();
+        let transaction = builder.start().await?;
+        for entity in entities {
+            let mut sql_builder = crate::code_gens::insert_or_update::InsertOrUpdateBuilder::new();
+            entity.0.populate(&mut sql_builder);
+            let sql = sql_builder.build(table_name, pk_name);
+            transaction
+                .execute(sql.as_str(), sql_builder.get_values_data())
+                .await?;
+        }
+        let result = transaction.commit().await;
+
+        for entity in entities {
+            if let Some(telemetry_context) = &entity.1 {
+                match &result {
+                    Ok(_) => {
+                        write_ok_telemetry(start, process_name.to_string(), telemetry_context)
+                            .await;
+                    }
+                    Err(err) => {
+                        self.handle_error(err);
+                        write_fail_telemetry_and_log(
+                            start,
+                            process_name.to_string(),
+                            None,
+                            format!("{:?}", err),
+                            telemetry_context,
+                            &self.logger,
+                        )
+                        .await;
+                    }
+                }
+            }
+        }
+        result?;
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &mut self,
         entities: Vec<TEntity>,
         table_name: &str,
         pk_name: &str,
         process_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let start = DateTimeAsMicroseconds::now();
         let builder = self.client.build_transaction();
         let transaction = builder.start().await?;
         for entity in entities {
@@ -484,28 +632,6 @@ impl PostgresConnection {
         }
         let result = transaction.commit().await;
 
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(_) => {
-                    write_ok_telemetry(start, process_name.to_string(), telemetry_context).await;
-                }
-                Err(err) => {
-                    self.handle_error(err);
-                    write_fail_telemetry_and_log(
-                        start,
-                        process_name.to_string(),
-                        None,
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
-                }
-            }
-        }
-
-        #[cfg(not(feature = "with-logs-and-telemetry"))]
         if let Err(err) = &result {
             println!(
                 "{}: {} Err: {:?}",
@@ -533,6 +659,7 @@ impl PostgresConnection {
 
         let sql = sql_builder.build(table_name, pk_name);
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         let result = self
             .do_sql(
                 &sql,
@@ -541,32 +668,46 @@ impl PostgresConnection {
                 process_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 true,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
+                [telemetry_context].into_iter(),
             )
             .await;
 
         #[cfg(not(feature = "with-logs-and-telemetry"))]
-        if let Err(err) = &result {
-            println!(
-                "{}: {} Err: {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                process_name,
-                err
-            );
-        }
+        let result = {
+            let result = self
+                .do_sql(
+                    &sql,
+                    sql_builder.get_values_data(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    process_name,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    true,
+                )
+                .await;
+
+            if let Err(err) = &result {
+                println!(
+                    "{}: {} Err: {:?}",
+                    DateTimeAsMicroseconds::now().to_rfc3339(),
+                    process_name,
+                    err
+                );
+            }
+
+            result
+        };
 
         result?;
 
         Ok(())
     }
 
+    #[cfg(feature = "with-logs-and-telemetry")]
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
-        entities: &[TEntity],
+        entities: &[(TEntity, Option<MyTelemetryContext>)],
         table_name: &str,
         process_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         if entities.is_empty() {
             return Err(MyPostgressError::Other(
@@ -574,8 +715,63 @@ impl PostgresConnection {
             ));
         }
 
-        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
+
+        let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
+        for entity in entities {
+            sql_builder.add_new_line();
+            entity.0.populate(&mut sql_builder);
+        }
+        let sql = sql_builder.build(table_name);
+        let result = self
+            .client
+            .execute(sql.as_str(), sql_builder.get_values_data())
+            .await;
+
+        for entity in entities {
+            if let Some(telemetry_context) = &entity.1 {
+                match &result {
+                    Ok(result) => {
+                        write_ok_telemetry(
+                            start,
+                            format!("{}. Result: {}", process_name, result),
+                            telemetry_context,
+                        )
+                        .await;
+                    }
+                    Err(err) => {
+                        self.handle_error(err);
+                        write_fail_telemetry_and_log(
+                            start,
+                            process_name.to_string(),
+                            Some(sql.as_str()),
+                            format!("{:?}", err),
+                            telemetry_context,
+                            &self.logger,
+                        )
+                        .await;
+                    }
+                }
+            }
+        }
+
+        result?;
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    pub async fn bulk_delete<TEntity: DeleteEntity>(
+        &self,
+        entities: &[TEntity],
+        table_name: &str,
+        process_name: &str,
+    ) -> Result<(), MyPostgressError> {
+        if entities.is_empty() {
+            return Err(MyPostgressError::Other(
+                "bulk_delete: Not entities to execute".to_string(),
+            ));
+        }
 
         let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
         for entity in entities {
@@ -587,33 +783,7 @@ impl PostgresConnection {
             .client
             .execute(sql.as_str(), sql_builder.get_values_data())
             .await;
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(result) => {
-                    write_ok_telemetry(
-                        start,
-                        format!("{}. Result: {}", process_name, result),
-                        telemetry_context,
-                    )
-                    .await;
-                }
-                Err(err) => {
-                    self.handle_error(err);
-                    write_fail_telemetry_and_log(
-                        start,
-                        process_name.to_string(),
-                        Some(sql.as_str()),
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
-                }
-            }
-        }
 
-        #[cfg(not(feature = "with-logs-and-telemetry"))]
         if let Err(err) = &result {
             println!(
                 "{}: {} Err: {:?}",
@@ -632,15 +802,15 @@ impl PostgresConnection {
         self.disconnect();
     }
 
-    async fn do_sql(
+    #[cfg(feature = "with-logs-and-telemetry")]
+    async fn do_sql<TTelemetries: Iterator<Item = Option<MyTelemetryContext>>>(
         &self,
         sql: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        #[cfg(feature = "with-logs-and-telemetry")] process_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] append_sql_to_fail_result: bool,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        process_name: &str,
+        append_sql_to_fail_result: bool,
+        telemetries: TTelemetries,
     ) -> Result<u64, MyPostgressError> {
-        #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
         let result = self.client.execute(sql, params).await;
@@ -655,28 +825,51 @@ impl PostgresConnection {
             );
         }
 
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(_) => {
-                    write_ok_telemetry(start, process_name.to_string(), telemetry_context).await;
-                }
-                Err(err) => {
-                    write_fail_telemetry_and_log(
-                        start,
-                        process_name.to_string(),
-                        if append_sql_to_fail_result {
-                            Some(sql)
-                        } else {
-                            None
-                        },
-                        format!("Err: {:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
+        for telemetry_context in telemetries {
+            if let Some(telemetry_context) = &telemetry_context {
+                match &result {
+                    Ok(_) => {
+                        write_ok_telemetry(start, process_name.to_string(), telemetry_context)
+                            .await;
+                    }
+                    Err(err) => {
+                        write_fail_telemetry_and_log(
+                            start,
+                            process_name.to_string(),
+                            if append_sql_to_fail_result {
+                                Some(sql)
+                            } else {
+                                None
+                            },
+                            format!("Err: {:?}", err),
+                            telemetry_context,
+                            &self.logger,
+                        )
+                        .await;
+                    }
                 }
             }
+        }
+
+        Ok(result?)
+    }
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    async fn do_sql(
+        &self,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<u64, MyPostgressError> {
+        let result = self.client.execute(sql, params).await;
+
+        if let Err(err) = &result {
+            self.handle_error(err);
+            #[cfg(feature = "failed-sql-to-console")]
+            println!(
+                "{}: Failed sql: {}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                sql
+            );
         }
 
         Ok(result?)
