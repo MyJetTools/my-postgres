@@ -615,7 +615,7 @@ impl PostgresConnection {
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &mut self,
-        entities: Vec<TEntity>,
+        entities: &[TEntity],
         table_name: &str,
         pk_name: &str,
         process_name: &str,
