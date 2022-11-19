@@ -92,7 +92,9 @@ impl PostgresConnection {
     >(
         &self,
         sql: &TToSqlString,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
+            &[MyTelemetryContext],
+        >,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
@@ -108,21 +110,30 @@ impl PostgresConnection {
         };
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
+        if let Some(telemetry_contexts) = telemetry_contexts {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, sql.as_str().to_string(), telemetry_context).await;
+                    for telemetry_context in telemetry_contexts {
+                        write_ok_telemetry(
+                            start,
+                            sql_string.as_str().to_string(),
+                            telemetry_context,
+                        )
+                        .await;
+                    }
                 }
                 Err(err) => {
-                    write_fail_telemetry_and_log(
-                        start,
-                        "query_single_row".to_string(),
-                        Some(sql.as_str()),
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
+                    for telemetry_context in telemetry_contexts {
+                        write_fail_telemetry_and_log(
+                            start,
+                            "query_single_row".to_string(),
+                            Some(sql_string.as_str()),
+                            format!("{:?}", err),
+                            telemetry_context,
+                            &self.logger,
+                        )
+                        .await;
+                    }
                 }
             }
         }
@@ -136,7 +147,9 @@ impl PostgresConnection {
     >(
         &self,
         sql: &TToSqlString,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
+            &[MyTelemetryContext],
+        >,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
@@ -148,22 +161,27 @@ impl PostgresConnection {
         };
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
+        if let Some(telemetry_contexts) = telemetry_contexts {
             match &result {
                 Ok(_) => {
-                    write_ok_telemetry(start, sql.as_str().to_string(), telemetry_context).await;
+                    for telemetry_context in telemetry_contexts {
+                        write_ok_telemetry(start, sql.as_sql().to_string(), telemetry_context)
+                            .await;
+                    }
                 }
                 Err(err) => {
                     self.handle_error(err);
-                    write_fail_telemetry_and_log(
-                        start,
-                        "query_rows".to_string(),
-                        Some(sql.as_str()),
-                        format!("{:?}", err),
-                        telemetry_context,
-                        &self.logger,
-                    )
-                    .await;
+                    for telemetry_context in telemetry_contexts {
+                        write_fail_telemetry_and_log(
+                            start,
+                            "query_rows".to_string(),
+                            Some(sql.as_sql().as_str()),
+                            format!("{:?}", err),
+                            telemetry_context,
+                            &self.logger,
+                        )
+                        .await;
+                    }
                 }
             }
         }
