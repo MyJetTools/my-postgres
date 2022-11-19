@@ -59,7 +59,7 @@ impl<'s, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity> for BulkSelectB
         StrOrString::crate_as_string(self.build_sql(TSelectEntity::get_select_fields()))
     }
 
-    fn get_params_data(&self) -> Option<&Vec<&(dyn tokio_postgres::types::ToSql + Sync)>> {
+    fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
         Some(&self.params)
     }
 }

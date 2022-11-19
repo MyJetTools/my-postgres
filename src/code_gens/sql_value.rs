@@ -1,6 +1,5 @@
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
-use crate::SqlValueAsString;
 const TRUE: &'static str = "true";
 const FALSE: &'static str = "false";
 
@@ -27,36 +26,36 @@ pub enum SqlValue<'s> {
 }
 
 impl<'s> SqlValue<'s> {
-    pub fn as_sql_value_to_injext(&self) -> SqlValueAsString {
+    pub fn as_sql_value_to_injext(&self) -> StrOrString {
         match self {
-            SqlValue::ByIndex(value) => SqlValueAsString::String(format!("${}", value)),
-            SqlValue::Str(value) => SqlValueAsString::Str(value),
-            SqlValue::String(value) => SqlValueAsString::Str(value),
+            SqlValue::ByIndex(value) => StrOrString::crate_as_string(format!("${}", value)),
+            SqlValue::Str(value) => StrOrString::crate_as_str(value),
+            SqlValue::String(value) => StrOrString::crate_as_str(value),
             SqlValue::Bool(value) => {
                 if *value {
-                    SqlValueAsString::Str(TRUE)
+                    StrOrString::crate_as_str(TRUE)
                 } else {
-                    SqlValueAsString::Str(FALSE)
+                    StrOrString::crate_as_str(FALSE)
                 }
             }
 
-            SqlValue::I8(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::U8(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::I16(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::U16(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::I32(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::U32(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::I64(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::U64(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::F32(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::F64(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::ISize(value) => SqlValueAsString::String(format!("{}", value)),
-            SqlValue::USize(value) => SqlValueAsString::String(format!("{}", value)),
+            SqlValue::I8(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::U8(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::I16(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::U16(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::I32(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::U32(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::I64(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::U64(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::F32(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::F64(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::ISize(value) => StrOrString::crate_as_string(format!("{}", value)),
+            SqlValue::USize(value) => StrOrString::crate_as_string(format!("{}", value)),
             SqlValue::DateTime(value) => {
-                SqlValueAsString::String(format!("'{}'", value.to_rfc3339()))
+                StrOrString::crate_as_string(format!("'{}'", value.to_rfc3339()))
             }
             SqlValue::DateTimeAsUnixMicroseconds(value) => {
-                SqlValueAsString::String(format!("'{}'", value.unix_microseconds))
+                StrOrString::crate_as_string(format!("'{}'", value.unix_microseconds))
             }
         }
     }
