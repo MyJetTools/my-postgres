@@ -8,14 +8,14 @@ pub struct SqlWithParams<'s> {
 }
 
 pub trait WithSqlParams<'s> {
-    fn with_params(
+    fn inject_sql_params_data(
         &'s self,
         params: &'s [&'s (dyn tokio_postgres::types::ToSql + Sync)],
     ) -> SqlWithParams;
 }
 
 impl<'s> WithSqlParams<'s> for String {
-    fn with_params(
+    fn inject_sql_params_data(
         &'s self,
         params: &'s [&'s (dyn tokio_postgres::types::ToSql + Sync)],
     ) -> SqlWithParams {
@@ -24,7 +24,7 @@ impl<'s> WithSqlParams<'s> for String {
 }
 
 impl<'s> WithSqlParams<'s> for &'s str {
-    fn with_params(
+    fn inject_sql_params_data(
         &'s self,
         params: &'s [&'s (dyn tokio_postgres::types::ToSql + Sync)],
     ) -> SqlWithParams {
