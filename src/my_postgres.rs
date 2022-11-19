@@ -17,7 +17,7 @@ use tokio_postgres::NoTls;
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, PostgresConnection,
-    PostgressSettings, SelectEntity, UpdateEntity,
+    PostgressSettings, SelectEntity, ToSqlString, UpdateEntity,
 };
 
 pub struct MyPostgres {
@@ -77,10 +77,13 @@ impl MyPostgres {
         self.handle_error(result).await
     }
 
-    pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_single_row<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &TToSqlString,
+
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let read_access = self.client.read().await;
@@ -88,8 +91,7 @@ impl MyPostgres {
         if let Some(connection) = read_access.as_ref() {
             connection
                 .query_single_row(
-                    select.as_str(),
-                    params,
+                    sql,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -126,10 +128,13 @@ impl MyPostgres {
         self.handle_error(result).await
     }
 
-    pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_rows<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        sql: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &TToSqlString,
+
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let result = {
@@ -137,13 +142,12 @@ impl MyPostgres {
 
             if let Some(connection) = read_access.as_ref() {
                 let execution = connection.query_rows(
-                    sql.as_str(),
-                    params,
+                    sql,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 );
 
-                self.execute_request_with_timeout(sql.as_str(), execution)
+                self.execute_request_with_timeout(sql.as_sql().as_str(), execution)
                     .await
             } else {
                 Err(MyPostgressError::NoConnection)

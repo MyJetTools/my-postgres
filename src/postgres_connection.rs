@@ -9,7 +9,8 @@ use rust_extensions::Logger;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, UpdateEntity,
+    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, ToSqlString,
+    UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -85,20 +86,26 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_single_row<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &TToSqlString,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let sql = crate::sql_formatter::format_sql(sql, || TEntity::get_select_fields());
+        let sql_string = sql.as_sql();
 
-        let result = self
-            .do_sql_with_single_row_result(sql.as_str(), params)
-            .await;
+        let result = if let Some(params) = sql.get_params_data() {
+            self.do_sql_with_single_row_result(sql_string.as_str(), params)
+                .await
+        } else {
+            self.do_sql_with_single_row_result(sql_string.as_str(), &[])
+                .await
+        };
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {
@@ -123,18 +130,24 @@ impl PostgresConnection {
         result
     }
 
-    pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_rows<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &TToSqlString,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
 
-        let sql = crate::sql_formatter::format_sql(sql, || TEntity::get_select_fields());
+        let sql_string = sql.as_sql();
 
-        let result = self.client.query(sql.as_str(), params).await;
+        let result = if let Some(params) = sql.get_params_data() {
+            self.client.query(sql_string.as_str(), params).await
+        } else {
+            self.client.query(sql_string.as_str(), &[]).await
+        };
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = &telemetry_context {

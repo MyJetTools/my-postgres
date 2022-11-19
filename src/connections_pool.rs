@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError,
-    PostgressSettings, SelectEntity, UpdateEntity,
+    PostgressSettings, SelectEntity, ToSqlString, UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -110,10 +110,13 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_single_row<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        select: &TToSqlString,
+
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -121,17 +124,18 @@ impl ConnectionsPool {
         write_access
             .query_single_row(
                 select,
-                params,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
             .await
     }
 
-    pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
+    pub async fn query_rows<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TToSqlString: ToSqlString<TEntity>,
+    >(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        select: &TToSqlString,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -139,7 +143,6 @@ impl ConnectionsPool {
         write_access
             .query_rows(
                 select,
-                params,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
