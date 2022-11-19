@@ -116,20 +116,10 @@ impl ConnectionsPool {
     >(
         &self,
         select: &TToSqlString,
-
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
-        write_access
-            .query_single_row(
-                select,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_contexts,
-            )
-            .await
+        write_access.query_single_row(select).await
     }
 
     pub async fn query_rows<
@@ -138,19 +128,10 @@ impl ConnectionsPool {
     >(
         &self,
         select: &TToSqlString,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
-        write_access
-            .query_rows(
-                select,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_contexts,
-            )
-            .await
+        write_access.query_rows(select).await
     }
 
     pub async fn insert_db_entity<TEntity: InsertEntity>(

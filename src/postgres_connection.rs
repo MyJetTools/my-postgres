@@ -92,9 +92,6 @@ impl PostgresConnection {
     >(
         &self,
         sql: &TToSqlString,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
@@ -110,7 +107,7 @@ impl PostgresConnection {
         };
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_contexts) = telemetry_contexts {
+        if let Some(telemetry_contexts) = sql.get_telemetry() {
             match &result {
                 Ok(_) => {
                     for telemetry_context in telemetry_contexts {
@@ -147,9 +144,6 @@ impl PostgresConnection {
     >(
         &self,
         sql: &TToSqlString,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let start = DateTimeAsMicroseconds::now();
@@ -161,7 +155,7 @@ impl PostgresConnection {
         };
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_contexts) = telemetry_contexts {
+        if let Some(telemetry_contexts) = sql.get_telemetry() {
             match &result {
                 Ok(_) => {
                     for telemetry_context in telemetry_contexts {

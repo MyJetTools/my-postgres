@@ -83,21 +83,11 @@ impl MyPostgres {
     >(
         &self,
         sql: &TToSqlString,
-
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let read_access = self.client.read().await;
 
         if let Some(connection) = read_access.as_ref() {
-            connection
-                .query_single_row(
-                    sql,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_contexts,
-                )
-                .await
+            connection.query_single_row(sql).await
         } else {
             Err(MyPostgressError::NoConnection)
         }
@@ -136,20 +126,12 @@ impl MyPostgres {
     >(
         &self,
         sql: &TToSqlString,
-
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_contexts: Option<
-            &[MyTelemetryContext],
-        >,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let result = {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
-                let execution = connection.query_rows(
-                    sql,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_contexts,
-                );
+                let execution = connection.query_rows(sql);
 
                 self.execute_request_with_timeout(sql.as_sql().as_str(), execution)
                     .await
