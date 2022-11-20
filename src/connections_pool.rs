@@ -280,15 +280,19 @@ impl ConnectionsPool {
 
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
-        #[cfg(feature = "with-logs-and-telemetry")] entities: &[(
-            TEntity,
-            Option<MyTelemetryContext>,
-        )],
-        #[cfg(not(feature = "with-logs-and-telemetry"))] entities: &[TEntity],
+        entities: &[TEntity],
         table_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
-        write_access.bulk_delete(entities, table_name).await
+        write_access
+            .bulk_delete(
+                entities,
+                table_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 }

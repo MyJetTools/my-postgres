@@ -374,19 +374,23 @@ impl MyPostgres {
 
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
-        #[cfg(feature = "with-logs-and-telemetry")] entities: &[(
-            TEntity,
-            Option<MyTelemetryContext>,
-        )],
-        #[cfg(not(feature = "with-logs-and-telemetry"))] entities: &[TEntity],
+        entities: &[TEntity],
         table_name: &str,
+
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("bulk_delete from table {}", table_name);
         let result = {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
-                let execution = connection.bulk_delete(entities, table_name, &process_name);
+                let execution = connection.bulk_delete(
+                    entities,
+                    table_name,
+                    &process_name,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                );
 
                 self.execute_request_with_timeout(process_name.as_str(), execution)
                     .await

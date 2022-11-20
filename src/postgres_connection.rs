@@ -698,12 +698,12 @@ impl PostgresConnection {
         Ok(())
     }
 
-    #[cfg(feature = "with-logs-and-telemetry")]
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
-        entities: &[(TEntity, Option<MyTelemetryContext>)],
+        entities: &[TEntity],
         table_name: &str,
         process_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         if entities.is_empty() {
             return Err(MyPostgressError::Other(
@@ -716,65 +716,6 @@ impl PostgresConnection {
         let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
         for entity in entities {
             sql_builder.add_new_line();
-            entity.0.populate(&mut sql_builder);
-        }
-        let sql = sql_builder.build(table_name);
-        let result = self
-            .client
-            .execute(sql.as_str(), sql_builder.get_values_data())
-            .await;
-
-        for entity in entities {
-            if let Some(telemetry_context) = &entity.1 {
-                match &result {
-                    Ok(result) => {
-                        my_telemetry::TELEMETRY_INTERFACE
-                            .write_success(
-                                telemetry_context,
-                                started,
-                                format!("{}. Result: {}", process_name, result),
-                                "Ok".to_string(),
-                                None,
-                            )
-                            .await;
-                    }
-                    Err(err) => {
-                        self.handle_error(err);
-                        write_fail_telemetry_and_log(
-                            started,
-                            process_name.to_string(),
-                            Some(sql.as_str()),
-                            format!("{:?}", err),
-                            telemetry_context,
-                            &self.logger,
-                        )
-                        .await;
-                    }
-                }
-            }
-        }
-
-        result?;
-
-        Ok(())
-    }
-
-    #[cfg(not(feature = "with-logs-and-telemetry"))]
-    pub async fn bulk_delete<TEntity: DeleteEntity>(
-        &self,
-        entities: &[TEntity],
-        table_name: &str,
-        process_name: &str,
-    ) -> Result<(), MyPostgressError> {
-        if entities.is_empty() {
-            return Err(MyPostgressError::Other(
-                "bulk_delete: Not entities to execute".to_string(),
-            ));
-        }
-
-        let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
-        for entity in entities {
-            sql_builder.add_new_line();
             entity.populate(&mut sql_builder);
         }
         let sql = sql_builder.build(table_name);
@@ -783,6 +724,7 @@ impl PostgresConnection {
             .execute(sql.as_str(), sql_builder.get_values_data())
             .await;
 
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
         if let Err(err) = &result {
             println!(
                 "{}: {} Err: {:?}",
@@ -790,6 +732,34 @@ impl PostgresConnection {
                 process_name,
                 err
             );
+        }
+
+        if let Some(telemetry_context) = telemetry_context {
+            match &result {
+                Ok(result) => {
+                    my_telemetry::TELEMETRY_INTERFACE
+                        .write_success(
+                            telemetry_context,
+                            started,
+                            format!("{}. Result: {}", process_name, result),
+                            "Ok".to_string(),
+                            None,
+                        )
+                        .await;
+                }
+                Err(err) => {
+                    self.handle_error(err);
+                    write_fail_telemetry_and_log(
+                        started,
+                        process_name.to_string(),
+                        Some(sql.as_str()),
+                        format!("{:?}", err),
+                        telemetry_context,
+                        &self.logger,
+                    )
+                    .await;
+                }
+            }
         }
 
         result?;
