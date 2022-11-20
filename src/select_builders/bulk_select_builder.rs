@@ -7,8 +7,6 @@ pub struct BulkSelectBuilder<'s> {
     lines: Vec<String>,
     params: Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
     table_name: &'s str,
-    #[cfg(feature = "with-logs-and-telemetry")]
-    pub my_telemetry: Option<Vec<my_telemetry::MyTelemetryContext>>,
 }
 
 impl<'s> BulkSelectBuilder<'s> {
@@ -18,31 +16,18 @@ impl<'s> BulkSelectBuilder<'s> {
             lines: Vec::new(),
             params: Vec::new(),
             table_name,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            my_telemetry: None,
         }
     }
     pub fn append_line(
         &mut self,
         where_condition: &str,
         params: &[&'s (dyn tokio_postgres::types::ToSql + Sync)],
-        #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: Option<
-            my_telemetry::MyTelemetryContext,
-        >,
     ) {
         let where_condition =
             replace_params(where_condition, params.len(), self.params_delta).unwrap();
         self.lines.push(where_condition);
 
         self.params.extend(params);
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(my_telemetry) = my_telemetry {
-            if self.my_telemetry.is_none() {
-                self.my_telemetry = Some(Vec::new());
-            }
-            self.my_telemetry.as_mut().unwrap().push(my_telemetry);
-        }
 
         self.params_delta += params.len();
     }
@@ -76,15 +61,6 @@ impl<'s, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity> for BulkSelectB
 
     fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
         Some(&self.params)
-    }
-
-    #[cfg(feature = "with-logs-and-telemetry")]
-    fn get_telemetry(&self) -> Option<&[my_telemetry::MyTelemetryContext]> {
-        if let Some(result) = &self.my_telemetry {
-            Some(result.as_slice())
-        } else {
-            None
-        }
     }
 }
 

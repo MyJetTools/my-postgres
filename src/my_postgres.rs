@@ -55,7 +55,7 @@ impl MyPostgres {
         &self,
         select: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
         let result = {
             let read_access = self.client.read().await;
@@ -83,11 +83,18 @@ impl MyPostgres {
     >(
         &self,
         sql: &TToSqlString,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let read_access = self.client.read().await;
 
         if let Some(connection) = read_access.as_ref() {
-            connection.query_single_row(sql).await
+            connection
+                .query_single_row(
+                    sql,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
+                .await
         } else {
             Err(MyPostgressError::NoConnection)
         }
@@ -97,7 +104,7 @@ impl MyPostgres {
         &self,
         sql: String,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgressError> {
         let result = {
             let read_access = self.client.read().await;
@@ -126,12 +133,17 @@ impl MyPostgres {
     >(
         &self,
         sql: &TToSqlString,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let result = {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
-                let execution = connection.query_rows(sql);
+                let execution = connection.query_rows(
+                    sql,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                );
 
                 self.execute_request_with_timeout(sql.as_sql().as_str(), execution)
                     .await
@@ -147,7 +159,7 @@ impl MyPostgres {
         &self,
         entity: &TEntity,
         table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name: String = format!("insert_db_entity into table {}", table_name);
         let result = {
@@ -176,7 +188,7 @@ impl MyPostgres {
         &self,
         entity: TEntity,
         table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
         let result = {
@@ -203,12 +215,9 @@ impl MyPostgres {
 
     pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
         &self,
-        #[cfg(feature = "with-logs-and-telemetry")] entities: &[(
-            TEntity,
-            Option<MyTelemetryContext>,
-        )],
-        #[cfg(not(feature = "with-logs-and-telemetry"))] entities: &[TEntity],
+        entities: &[TEntity],
         table_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
@@ -216,8 +225,13 @@ impl MyPostgres {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
-                let execution =
-                    connection.bulk_insert_db_entities(entities, table_name, process_name.as_str());
+                let execution = connection.bulk_insert_db_entities(
+                    entities,
+                    table_name,
+                    process_name.as_str(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                );
 
                 self.execute_request_with_timeout(process_name.as_str(), execution)
                     .await
@@ -231,12 +245,9 @@ impl MyPostgres {
 
     pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
         &self,
-        #[cfg(feature = "with-logs-and-telemetry")] entities: &[(
-            TEntity,
-            Option<MyTelemetryContext>,
-        )],
-        #[cfg(not(feature = "with-logs-and-telemetry"))] entities: &[TEntity],
+        entities: &[TEntity],
         table_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!(
             "bulk_insert_db_entities_if_not_exists into table {}",
@@ -249,7 +260,9 @@ impl MyPostgres {
                 let execution = connection.bulk_insert_db_entities_if_not_exists(
                     entities,
                     table_name,
-                    &process_name,
+                    process_name.as_str(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
                 );
 
                 self.execute_request_with_timeout(process_name.as_str(), execution)
@@ -266,7 +279,7 @@ impl MyPostgres {
         &self,
         entity: TEntity,
         table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("update_db_entity into table {}", table_name);
         let result = {
@@ -276,7 +289,7 @@ impl MyPostgres {
                 let execution = connection.update_db_entity(
                     entity,
                     table_name,
-                    &process_name,
+                    process_name.as_str(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 );
@@ -293,13 +306,10 @@ impl MyPostgres {
 
     pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &self,
-        #[cfg(feature = "with-logs-and-telemetry")] entities: &[(
-            TEntity,
-            Option<MyTelemetryContext>,
-        )],
-        #[cfg(not(feature = "with-logs-and-telemetry"))] entities: &[TEntity],
+        entities: &[TEntity],
         table_name: &str,
         pk_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!(
             "bulk_insert_or_update_db_entity into table {} {} entities",
@@ -315,7 +325,9 @@ impl MyPostgres {
                     entities,
                     table_name,
                     pk_name,
-                    &process_name,
+                    process_name.as_str(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
                 );
 
                 self.execute_request_with_timeout(process_name.as_str(), execution)
@@ -333,7 +345,7 @@ impl MyPostgres {
         entity: TEntity,
         table_name: &str,
         pk_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
@@ -345,7 +357,7 @@ impl MyPostgres {
                     entity,
                     table_name,
                     pk_name,
-                    &process_name,
+                    process_name.as_str(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 );
@@ -391,7 +403,7 @@ impl MyPostgres {
         TFuture: Future<Output = Result<TResult, MyPostgressError>>,
     >(
         &self,
-        sql: &str,
+        process_name: &str,
         execution: TFuture,
     ) -> Result<TResult, MyPostgressError> {
         let timeout_result: Result<Result<TResult, MyPostgressError>, Elapsed> =
@@ -401,7 +413,7 @@ impl MyPostgres {
             println!(
                 "{}: query_rows {} is timeouted after {:?}",
                 DateTimeAsMicroseconds::now().to_rfc3339(),
-                sql,
+                process_name,
                 self.sql_request_timeout
             );
             Err(MyPostgressError::Timeouted(self.sql_request_timeout))
