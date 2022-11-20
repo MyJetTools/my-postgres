@@ -42,7 +42,7 @@ impl<'s> BulkSelectBuilder<'s> {
             }
             result.push_str("SELECT ");
             result.push_str(line_no.to_string().as_str());
-            result.push_str("\"line_id\", ");
+            result.push_str("::int \"line_no\", ");
             result.push_str(select_part);
             result.push_str(" FROM ");
             result.push_str(self.table_name);
