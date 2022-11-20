@@ -6,7 +6,7 @@ pub struct BulkSelectBuilder<'s> {
     params_delta: usize,
     lines: Vec<String>,
     params: Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-    table_name: &'s str,
+    pub table_name: &'s str,
 }
 
 impl<'s> BulkSelectBuilder<'s> {
@@ -32,15 +32,17 @@ impl<'s> BulkSelectBuilder<'s> {
         self.params_delta += params.len();
     }
 
-    fn build_sql(&'s self, select_part: &str) -> String {
+    pub fn build_sql(&'s self, select_part: &str) -> String {
         let mut result = String::new();
 
         let mut line_no = 0;
         for line in &self.lines {
             if line_no > 0 {
-                result.push_str("UNION\n");
+                result.push_str("UNION ALL\n");
             }
             result.push_str("SELECT ");
+            result.push_str(line_no.to_string().as_str());
+            result.push_str("\"line_id\", ");
             result.push_str(select_part);
             result.push_str(" FROM ");
             result.push_str(self.table_name);
@@ -51,6 +53,10 @@ impl<'s> BulkSelectBuilder<'s> {
         }
 
         result
+    }
+
+    pub fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
+        Some(&self.params)
     }
 }
 

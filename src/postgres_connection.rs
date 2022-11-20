@@ -6,11 +6,14 @@ use std::collections::HashMap;
 
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{
+    collections::BTreeMap,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError, SelectEntity, ToSqlString,
-    UpdateEntity,
+    BulkSelectBuilder, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError,
+    SelectEntity, ToSqlString, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -191,6 +194,81 @@ impl PostgresConnection {
         let result = result?;
 
         let result = result.iter().map(|itm| TEntity::from_db_row(itm)).collect();
+        Ok(result)
+    }
+
+    pub async fn bulk_query_rows<
+        's,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TGetIndex: Fn(&TEntity) -> i32,
+    >(
+        &self,
+        sql_builder: &BulkSelectBuilder<'s>,
+        get_index: TGetIndex,
+        process_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+    ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let started = DateTimeAsMicroseconds::now();
+
+        let sql = sql_builder.build_sql(TEntity::get_select_fields());
+
+        let db_rows_result = if let Some(params) = sql_builder.get_params_data() {
+            self.client.query(sql.as_str(), params).await
+        } else {
+            self.client.query(sql.as_str(), &[]).await
+        };
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        if let Err(err) = &db_rows_result {
+            println!(
+                "{}: {} Err: {}",
+                DateTimeAsMicroseconds::now().to_rfc3339(),
+                process_name,
+                err
+            );
+        }
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        if let Some(ctx) = ctx {
+            match &db_rows_result {
+                Ok(_) => {
+                    my_telemetry::TELEMETRY_INTERFACE
+                        .write_success(
+                            ctx,
+                            started,
+                            process_name.to_string(),
+                            "Ok".to_string(),
+                            None,
+                        )
+                        .await;
+                }
+
+                Err(err) => {
+                    self.handle_error(err);
+
+                    write_fail_telemetry_and_log(
+                        started,
+                        "query_rows".to_string(),
+                        Some(process_name),
+                        format!("{:?}", err),
+                        ctx,
+                        &self.logger,
+                    )
+                    .await;
+                }
+            }
+        }
+        let db_rows = db_rows_result?;
+
+        let mut result = BTreeMap::new();
+
+        for row in &db_rows {
+            let entity = TEntity::from_db_row(row);
+            let index = get_index(&entity);
+            result.insert(index, entity);
+        }
+
         Ok(result)
     }
 
@@ -710,7 +788,7 @@ impl PostgresConnection {
                 "bulk_delete: Not entities to execute".to_string(),
             ));
         }
-
+        #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
         let mut sql_builder = crate::code_gens::delete::BulkDeleteBuilder::new();
@@ -733,7 +811,7 @@ impl PostgresConnection {
                 err
             );
         }
-
+        #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(telemetry_context) = telemetry_context {
             match &result {
                 Ok(result) => {

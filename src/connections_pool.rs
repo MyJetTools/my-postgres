@@ -3,11 +3,11 @@ use my_telemetry::MyTelemetryContext;
 use rust_extensions::objects_pool::{ObjectsPool, RentedObject};
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
-    DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres, MyPostgressError,
-    PostgressSettings, SelectEntity, ToSqlString, UpdateEntity,
+    BulkSelectBuilder, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres,
+    MyPostgressError, PostgressSettings, SelectEntity, ToSqlString, UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -144,6 +144,29 @@ impl ConnectionsPool {
                 select,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn bulk_query_rows<
+        's,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TGetIndex: Fn(&TEntity) -> i32,
+    >(
+        &self,
+        sql_builder: &BulkSelectBuilder<'s>,
+        get_index: TGetIndex,
+        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+    ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
+        let write_access = connection.value.lock().await;
+
+        write_access
+            .bulk_query_rows(
+                sql_builder,
+                get_index,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                ctx,
             )
             .await
     }
