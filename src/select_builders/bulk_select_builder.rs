@@ -52,6 +52,8 @@ impl<'s> BulkSelectBuilder<'s> {
             line_no += 1;
         }
 
+        println!("SQL: {}", result);
+
         result
     }
 
