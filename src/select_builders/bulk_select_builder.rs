@@ -3,41 +3,30 @@ use rust_extensions::StrOrString;
 use crate::{SelectEntity, ToSqlString};
 
 pub struct BulkSelectBuilder<'s, TIn> {
-    params_delta: usize,
-    pub lines: Vec<(String, TIn)>,
+    pub input_params: Vec<TIn>,
+
     params: Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
     pub table_name: &'s str,
+    where_line: &'s str,
 }
 
 impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
-    pub fn new(table_name: &'s str) -> Self {
+    pub fn new(table_name: &'s str, where_line: &'s str, input_params: Vec<TIn>) -> Self {
         Self {
-            params_delta: 0,
-            lines: Vec::new(),
             params: Vec::new(),
             table_name,
+            input_params,
+            where_line,
         }
-    }
-    pub fn append_line(
-        &mut self,
-        where_condition: &str,
-        params: &'s [&'s (dyn tokio_postgres::types::ToSql + Sync)],
-        in_model: TIn,
-    ) {
-        let where_condition =
-            replace_params(where_condition, params.len(), self.params_delta).unwrap();
-        self.lines.push((where_condition, in_model));
-
-        self.params.extend(params);
-
-        self.params_delta += params.len();
     }
 
     pub fn build_sql(&'s self, select_part: &str) -> String {
         let mut result = String::new();
 
         let mut line_no = 0;
-        for (line, _) in &self.lines {
+        let params_amount = get_params_amount(&self.where_line);
+
+        for no in 0..self.input_params.len() {
             if line_no > 0 {
                 result.push_str("UNION ALL\n");
             }
@@ -48,7 +37,15 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
             result.push_str(" FROM ");
             result.push_str(self.table_name);
             result.push_str(" WHERE ");
-            result.push_str(line);
+
+            if let Some(params_amount) = params_amount {
+                let line =
+                    replace_params(self.where_line, params_amount, no * params_amount).unwrap();
+                result.push_str(line.as_str());
+            } else {
+                result.push_str(self.where_line);
+            }
+
             result.push('\n');
             line_no += 1;
         }
@@ -56,8 +53,23 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
         result
     }
 
-    pub fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
-        Some(&self.params)
+    pub fn get_params_data<
+        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
+    >(
+        &'s self,
+        mapper: TMap,
+    ) -> Option<Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>> {
+        let params_amount = get_params_amount(self.where_line)?;
+
+        let mut result = Vec::new();
+
+        for in_param in &self.input_params {
+            for no in 1..params_amount + 1 {
+                result.push(mapper(in_param, no));
+            }
+        }
+
+        Some(result)
     }
 }
 
@@ -71,6 +83,64 @@ impl<'s, TIn, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity>
     fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
         Some(&self.params)
     }
+}
+
+fn get_params_amount(src: &str) -> Option<usize> {
+    let mut result = None;
+
+    let mut param_started = None;
+
+    let bytes = src.as_bytes();
+
+    for i in 0..bytes.len() {
+        let b = bytes[i];
+
+        if let Some(params_started) = param_started {
+            if b >= b'0' && b <= b'9' {
+                continue;
+            } else {
+                let param_no = &src[params_started + 1..i];
+                let param_no = param_no.parse::<usize>().unwrap();
+
+                match &mut result {
+                    Some(result) => {
+                        if *result < param_no {
+                            *result = param_no;
+                        }
+                    }
+                    None => {
+                        result = Some(param_no);
+                    }
+                }
+
+                param_started = None;
+                continue;
+            }
+        }
+
+        if b == b'$' {
+            param_started = Some(i);
+            continue;
+        }
+    }
+
+    if let Some(params_started) = param_started {
+        let param_no = &src[params_started + 1..bytes.len()];
+        let param_no = param_no.parse::<usize>().unwrap();
+
+        match &mut result {
+            Some(result) => {
+                if *result < param_no {
+                    *result = param_no;
+                }
+            }
+            None => {
+                result = Some(param_no);
+            }
+        }
+    }
+
+    result
 }
 
 fn replace_params(
@@ -171,10 +241,22 @@ mod tests {
 
     #[test]
     fn test_build_sql() {
-        let mut bulk_select = BulkSelectBuilder::new("test");
+        struct Param {
+            q1: &'static str,
+            q2: &'static str,
+        }
 
-        bulk_select.append_line("id = $1 AND name = $2", &[&"1", &"2"], ());
-        bulk_select.append_line("id = $1 AND name = $2", &[&"3", &"4"], ());
+        let params = vec![Param { q1: "1", q2: "2" }, Param { q1: "3", q2: "4" }];
+
+        let bulk_select = BulkSelectBuilder::new("test", "id = $1 AND name = $2", params);
+
+        let a = bulk_select.get_params_data(|p, no| match no {
+            1 => &p.q1,
+            2 => &p.q2,
+            _ => panic!("Unexpected param no"),
+        });
+
+        println!("{:?}", a);
 
         let result = bulk_select.build_sql("*");
         println!("{}", result);

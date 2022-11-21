@@ -3,7 +3,7 @@ use my_telemetry::MyTelemetryContext;
 use rust_extensions::objects_pool::{ObjectsPool, RentedObject};
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     BulkSelectBuilder, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgres,
@@ -148,29 +148,6 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn bulk_query_rows<
-        's,
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TGetIndex: Fn(&TEntity) -> i32,
-    >(
-        &self,
-        sql_builder: &BulkSelectBuilder<'s, ()>,
-        get_index: TGetIndex,
-        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
-    ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
-        let connection = self.get_postgres_client().await;
-        let write_access = connection.value.lock().await;
-
-        write_access
-            .bulk_query_rows(
-                sql_builder,
-                get_index,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                ctx,
-            )
-            .await
-    }
-
     pub async fn bulk_query_rows_with_transformation<
         's,
         TIn,
@@ -178,11 +155,13 @@ impl ConnectionsPool {
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
+        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
         transform: TTransform,
+        map: TMap,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -193,6 +172,7 @@ impl ConnectionsPool {
                 sql_builder,
                 get_index,
                 transform,
+                map,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
             )

@@ -202,11 +202,13 @@ impl PostgresConnection {
         TIn,
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
+        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
         process_name: &str,
+        map: TMap,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -214,8 +216,8 @@ impl PostgresConnection {
 
         let sql = sql_builder.build_sql(TEntity::get_select_fields());
 
-        let db_rows_result = if let Some(params) = sql_builder.get_params_data() {
-            self.client.query(sql.as_str(), params).await
+        let db_rows_result = if let Some(params) = sql_builder.get_params_data(map) {
+            self.client.query(sql.as_str(), &params).await
         } else {
             self.client.query(sql.as_str(), &[]).await
         };
@@ -280,12 +282,14 @@ impl PostgresConnection {
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
+        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
         transform: TTransform,
         process_name: &str,
+        map: TMap,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let mut db_rows = self
@@ -293,14 +297,15 @@ impl PostgresConnection {
                 sql_builder,
                 get_index,
                 process_name,
+                map,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
             )
             .await?;
 
-        let mut result = Vec::with_capacity(sql_builder.lines.len());
+        let mut result = Vec::with_capacity(sql_builder.input_params.len());
         let mut line_no = 0;
-        for (_, in_model) in &sql_builder.lines {
+        for in_model in &sql_builder.input_params {
             let db_row = db_rows.remove(&line_no);
 
             let out = transform(in_model, db_row);
