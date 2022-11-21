@@ -2,7 +2,7 @@ use crate::code_gens::{
     insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
 };
 
-pub trait BulkSelectInputData {
+pub trait SqlWhereData {
     fn where_line() -> &'static str;
     fn get_param_value(&self, no: usize) -> &(dyn tokio_postgres::types::ToSql + Sync);
 }

@@ -6,9 +6,9 @@ use rust_extensions::Logger;
 use std::sync::Arc;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
-    InsertOrUpdateEntity, MyPostgres, MyPostgressError, PostgressSettings, SelectEntity,
-    ToSqlString, UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
+    MyPostgres, MyPostgressError, PostgressSettings, SelectEntity, SqlWhereData, ToSqlString,
+    UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -151,7 +151,7 @@ impl ConnectionsPool {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: BulkSelectInputData + Send + Sync + 'static,
+        TIn: SqlWhereData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,

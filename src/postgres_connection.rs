@@ -12,8 +12,8 @@ use std::{
 };
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
-    InsertOrUpdateEntity, MyPostgressError, SelectEntity, ToSqlString, UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
+    MyPostgressError, SelectEntity, SqlWhereData, ToSqlString, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -199,7 +199,7 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows<
         's,
-        TIn: BulkSelectInputData + Send + Sync + 'static,
+        TIn: SqlWhereData + Send + Sync + 'static,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
     >(
         &self,
@@ -273,7 +273,7 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: BulkSelectInputData + Send + Sync + 'static,
+        TIn: SqlWhereData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,

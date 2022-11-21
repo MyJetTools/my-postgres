@@ -16,8 +16,8 @@ use tokio::{sync::RwLock, time::error::Elapsed};
 use tokio_postgres::NoTls;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
-    InsertOrUpdateEntity, MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity,
+    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
+    MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity, SqlWhereData,
     ToSqlString, UpdateEntity,
 };
 
@@ -158,7 +158,7 @@ impl MyPostgres {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: BulkSelectInputData + Send + Sync + 'static,
+        TIn: SqlWhereData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,

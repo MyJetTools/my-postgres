@@ -1,11 +1,11 @@
-use crate::BulkSelectInputData;
+use crate::SqlWhereData;
 
-pub struct BulkSelectBuilder<'s, TIn: BulkSelectInputData> {
+pub struct BulkSelectBuilder<'s, TIn: SqlWhereData> {
     pub input_params: Vec<TIn>,
     pub table_name: &'s str,
 }
 
-impl<'s, TIn: BulkSelectInputData> BulkSelectBuilder<'s, TIn> {
+impl<'s, TIn: SqlWhereData> BulkSelectBuilder<'s, TIn> {
     pub fn new(table_name: &'s str, input_params: Vec<TIn>) -> Self {
         Self {
             table_name,
@@ -188,7 +188,7 @@ fn replace_params(
 #[cfg(test)]
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
-    use crate::{BulkSelectBuilder, BulkSelectInputData};
+    use crate::{BulkSelectBuilder, SqlWhereData};
 
     #[test]
     fn test_replace_with_no_delta() {
@@ -224,7 +224,7 @@ mod tests {
             q2: &'static str,
         }
 
-        impl BulkSelectInputData for Param {
+        impl SqlWhereData for Param {
             fn where_line() -> &'static str {
                 "id = $1 AND name = $2"
             }
