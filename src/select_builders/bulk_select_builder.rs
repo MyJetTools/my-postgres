@@ -1,11 +1,5 @@
-use rust_extensions::StrOrString;
-
-use crate::{SelectEntity, ToSqlString};
-
 pub struct BulkSelectBuilder<'s, TIn> {
     pub input_params: Vec<TIn>,
-
-    params: Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
     pub table_name: &'s str,
     where_line: &'s str,
 }
@@ -13,7 +7,6 @@ pub struct BulkSelectBuilder<'s, TIn> {
 impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
     pub fn new(table_name: &'s str, where_line: &'s str, input_params: Vec<TIn>) -> Self {
         Self {
-            params: Vec::new(),
             table_name,
             input_params,
             where_line,
@@ -70,18 +63,6 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
         }
 
         Some(result)
-    }
-}
-
-impl<'s, TIn, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity>
-    for BulkSelectBuilder<'s, TIn>
-{
-    fn as_sql(&self) -> StrOrString {
-        StrOrString::crate_as_string(self.build_sql(TSelectEntity::get_select_fields()))
-    }
-
-    fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
-        Some(&self.params)
     }
 }
 

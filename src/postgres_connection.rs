@@ -12,8 +12,8 @@ use std::{
 };
 
 use crate::{
-    BulkSelectBuilder, DeleteEntity, InsertEntity, InsertOrUpdateEntity, MyPostgressError,
-    SelectEntity, ToSqlString, UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
+    MyPostgressError, SelectEntity, ToSqlString, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -200,13 +200,11 @@ impl PostgresConnection {
     pub async fn bulk_query_rows<
         's,
         TIn,
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TGetIndex: Fn(&TEntity) -> i32,
+        TEntity: BulkSelectEntity + Send + Sync + 'static,
         TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
-        get_index: TGetIndex,
         process_name: &str,
         map: TMap,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
@@ -268,7 +266,7 @@ impl PostgresConnection {
 
         for row in &db_rows {
             let entity = TEntity::from_db_row(row);
-            let index = get_index(&entity);
+            let index = entity.get_line_no();
             result.insert(index, entity);
         }
 
@@ -279,14 +277,12 @@ impl PostgresConnection {
         's,
         TIn,
         TOut,
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TGetIndex: Fn(&TEntity) -> i32,
+        TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
         TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
-        get_index: TGetIndex,
         transform: TTransform,
         process_name: &str,
         map: TMap,
@@ -295,7 +291,6 @@ impl PostgresConnection {
         let mut db_rows = self
             .bulk_query_rows(
                 sql_builder,
-                get_index,
                 process_name,
                 map,
                 #[cfg(feature = "with-logs-and-telemetry")]
