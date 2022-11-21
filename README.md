@@ -1,10 +1,6 @@
-### 0.2.2
-* TLS Supported;
-* ADO Type of connection string is supported
-* Supported semicolon separated connection string
+### Postgres Usage
+Please check Wiki: https://github.com/MyJetTools/my-postgres/wiki
 
-### 0.2.3
-* Postgres now can reconnect in a background
-* Telemetry and logs goes via feature
-* Datetime as Unix Microseconds mapping to field is supported
-* execute_sql is added
+
+### DTO Macros
+Please check Wiki: https://github.com/MyJetTools/my-postgres-macros/wiki
