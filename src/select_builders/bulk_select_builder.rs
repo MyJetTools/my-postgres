@@ -26,7 +26,6 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
             if line_no > 0 {
                 sql.push_str("UNION ALL\n");
             }
-            line_no += 1;
 
             sql.push_str("SELECT ");
             sql.push_str(line_no.to_string().as_str());
@@ -60,6 +59,8 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
                         sql.push_str(params.len().to_string().as_str());
                     }
                 }
+
+                line_no += 1;
             }
 
             sql.push('\n');
