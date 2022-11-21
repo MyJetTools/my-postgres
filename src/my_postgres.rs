@@ -162,13 +162,13 @@ impl MyPostgres {
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
+        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
-        transform: TTransform,
         map: TMap,
+        transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);

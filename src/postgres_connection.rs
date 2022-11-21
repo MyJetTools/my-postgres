@@ -202,7 +202,7 @@ impl PostgresConnection {
         TIn,
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
-        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
+        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
@@ -282,7 +282,7 @@ impl PostgresConnection {
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
+        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,

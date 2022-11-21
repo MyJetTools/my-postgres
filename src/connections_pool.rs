@@ -155,13 +155,13 @@ impl ConnectionsPool {
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
+        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
-        transform: TTransform,
         map: TMap,
+        transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -171,8 +171,8 @@ impl ConnectionsPool {
             .bulk_query_rows_with_transformation(
                 sql_builder,
                 get_index,
-                transform,
                 map,
+                transform,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
             )
