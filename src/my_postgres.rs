@@ -146,7 +146,9 @@ impl MyPostgres {
                     telemetry_context,
                 );
 
-                self.execute_request_with_timeout(sql.as_sql().as_str(), execution)
+                let (sql, _) = sql.as_sql();
+
+                self.execute_request_with_timeout(sql.as_str(), execution)
                     .await
             } else {
                 Err(MyPostgressError::NoConnection)

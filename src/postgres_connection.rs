@@ -103,9 +103,9 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let sql_string = sql.as_sql();
+        let (sql_string, params) = sql.as_sql();
 
-        let result = if let Some(params) = sql.get_params_data() {
+        let result = if let Some(params) = params {
             self.do_sql_with_single_row_result(sql_string.as_str(), params)
                 .await
         } else {
@@ -155,10 +155,12 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let result = if let Some(params) = sql.get_params_data() {
-            self.client.query(sql.as_sql().as_str(), params).await
+        let (sql, params) = sql.as_sql();
+
+        let result = if let Some(params) = params {
+            self.client.query(sql.as_str(), params).await
         } else {
-            self.client.query(sql.as_sql().as_str(), &[]).await
+            self.client.query(sql.as_str(), &[]).await
         };
 
         #[cfg(feature = "with-logs-and-telemetry")]

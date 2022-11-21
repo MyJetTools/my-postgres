@@ -33,13 +33,16 @@ impl<'s> WithSqlParams<'s> for &'s str {
 }
 
 impl<'s, TEntity: SelectEntity> ToSqlString<TEntity> for SqlWithParams<'s> {
-    fn as_sql(&self) -> StrOrString {
-        crate::sql_formatter::format_sql(StrOrString::crate_as_str(self.sql), || {
+    fn as_sql(
+        &self,
+    ) -> (
+        StrOrString,
+        Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
+    ) {
+        let result = crate::sql_formatter::format_sql(StrOrString::crate_as_str(self.sql), || {
             TEntity::get_select_fields()
-        })
-    }
+        });
 
-    fn get_params_data(&self) -> Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]> {
-        Some(self.params)
+        (result, Some(self.params))
     }
 }
