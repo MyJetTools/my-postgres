@@ -121,7 +121,7 @@ impl PostgresConnection {
                         .write_success(
                             ctx,
                             started,
-                            sql.as_sql().as_str().to_string(),
+                            sql_string.as_str().to_string(),
                             "Ok".to_string(),
                             None,
                         )
@@ -171,7 +171,7 @@ impl PostgresConnection {
                         .write_success(
                             ctx,
                             started,
-                            sql.as_sql().as_str().to_string(),
+                            sql.as_str().to_string(),
                             "Ok".to_string(),
                             None,
                         )
@@ -184,7 +184,7 @@ impl PostgresConnection {
                     write_fail_telemetry_and_log(
                         started,
                         "query_rows".to_string(),
-                        Some(sql.as_sql().as_str()),
+                        Some(sql.as_str()),
                         format!("{:?}", err),
                         ctx,
                         &self.logger,
