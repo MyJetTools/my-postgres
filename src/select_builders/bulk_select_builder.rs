@@ -21,7 +21,7 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
     pub fn append_line(
         &mut self,
         where_condition: &str,
-        params: &[&'s (dyn tokio_postgres::types::ToSql + Sync)],
+        params: &'s [&'s (dyn tokio_postgres::types::ToSql + Sync)],
         in_model: TIn,
     ) {
         let where_condition =
