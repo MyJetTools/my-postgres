@@ -41,21 +41,22 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
                 }
 
                 match input_param.get_field_value(i) {
-                    InputDataValue::AsString { name, value } => {
+                    InputDataValue::AsString { name, op, value } => {
                         sql.push_str(name);
-                        sql.push_str(" = '");
+                        sql.push_str(op);
                         sql.push_str(value.as_str());
                         sql.push_str("'");
                     }
-                    InputDataValue::AsNonString { name, value } => {
+                    InputDataValue::AsNonString { name, op, value } => {
                         sql.push_str(name);
-                        sql.push_str(" = ");
+                        sql.push_str(op);
                         sql.push_str(value.as_str());
                     }
-                    InputDataValue::AsSqlValue { name, value } => {
+                    InputDataValue::AsSqlValue { name, op, value } => {
                         params.push(value);
                         sql.push_str(name);
-                        sql.push_str(" = $");
+                        sql.push_str(op);
+                        sql.push_str("$");
                         sql.push_str(params.len().to_string().as_str());
                     }
                 }
@@ -93,15 +94,18 @@ mod tests {
                 match no {
                     0 => InputDataValue::AsSqlValue {
                         name: "q1",
+                        op: " = ",
                         value: &self.q1,
                     },
 
                     1 => InputDataValue::AsSqlValue {
                         name: "q2",
+                        op: " = ",
                         value: &self.q2,
                     },
                     2 => InputDataValue::AsSqlValue {
                         name: "q3",
+                        op: " = ",
                         value: &self.q3,
                     },
                     _ => panic!("Unexpected param no: {}", no),
