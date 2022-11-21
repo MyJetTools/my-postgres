@@ -41,9 +41,6 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
             line_no += 1;
         }
 
-        println!("sql: {}", sql);
-        println!("params: {:?}", params);
-
         (sql, params)
     }
 }
