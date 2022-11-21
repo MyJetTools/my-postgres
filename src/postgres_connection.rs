@@ -289,7 +289,13 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let mut db_rows = self
-            .bulk_query_rows(sql_builder, get_index, process_name)
+            .bulk_query_rows(
+                sql_builder,
+                get_index,
+                process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                ctx,
+            )
             .await?;
 
         let mut result = Vec::with_capacity(sql_builder.lines.len());
