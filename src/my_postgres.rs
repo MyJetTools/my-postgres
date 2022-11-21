@@ -381,7 +381,7 @@ impl MyPostgres {
 
     pub async fn insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &self,
-        entity: TEntity,
+        entity: &TEntity,
         table_name: &str,
         pk_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,

@@ -756,7 +756,7 @@ impl PostgresConnection {
 
     pub async fn insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &self,
-        entity: TEntity,
+        entity: &TEntity,
         table_name: &str,
         pk_name: &str,
         process_name: &str,
