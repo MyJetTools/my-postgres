@@ -154,7 +154,7 @@ impl ConnectionsPool {
         TGetIndex: Fn(&TEntity) -> i32,
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s>,
+        sql_builder: &BulkSelectBuilder<'s, ()>,
         get_index: TGetIndex,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
@@ -165,6 +165,34 @@ impl ConnectionsPool {
             .bulk_query_rows(
                 sql_builder,
                 get_index,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                ctx,
+            )
+            .await
+    }
+
+    pub async fn bulk_query_rows_with_transformation<
+        's,
+        TIn,
+        TOut,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TGetIndex: Fn(&TEntity) -> i32,
+        TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
+    >(
+        &self,
+        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        get_index: TGetIndex,
+        transform: TTransform,
+        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TOut>, MyPostgressError> {
+        let connection = self.get_postgres_client().await;
+        let write_access = connection.value.lock().await;
+
+        write_access
+            .bulk_query_rows_with_transformation(
+                sql_builder,
+                get_index,
+                transform,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
             )

@@ -162,7 +162,7 @@ impl MyPostgres {
         TGetIndex: Fn(&TEntity) -> i32,
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s>,
+        sql_builder: &BulkSelectBuilder<'s, ()>,
         get_index: TGetIndex,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
@@ -175,6 +175,45 @@ impl MyPostgres {
                 let execution = connection.bulk_query_rows(
                     sql_builder,
                     get_index,
+                    process_name.as_str(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    ctx,
+                );
+
+                self.execute_request_with_timeout(process_name.as_str(), execution)
+                    .await
+            } else {
+                Err(MyPostgressError::NoConnection)
+            }
+        };
+
+        self.handle_error(result).await
+    }
+
+    pub async fn bulk_query_rows_with_transformation<
+        's,
+        TIn,
+        TOut,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TGetIndex: Fn(&TEntity) -> i32,
+        TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
+    >(
+        &self,
+        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        get_index: TGetIndex,
+        transform: TTransform,
+        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TOut>, MyPostgressError> {
+        let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
+
+        let result = {
+            let read_access = self.client.read().await;
+
+            if let Some(connection) = read_access.as_ref() {
+                let execution = connection.bulk_query_rows_with_transformation(
+                    sql_builder,
+                    get_index,
+                    transform,
                     process_name.as_str(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,

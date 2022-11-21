@@ -199,11 +199,12 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows<
         's,
+        TIn,
         TEntity: SelectEntity + Send + Sync + 'static,
         TGetIndex: Fn(&TEntity) -> i32,
     >(
         &self,
-        sql_builder: &BulkSelectBuilder<'s>,
+        sql_builder: &BulkSelectBuilder<'s, TIn>,
         get_index: TGetIndex,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
@@ -267,6 +268,39 @@ impl PostgresConnection {
             let entity = TEntity::from_db_row(row);
             let index = get_index(&entity);
             result.insert(index, entity);
+        }
+
+        Ok(result)
+    }
+
+    pub async fn bulk_query_rows_with_transformation<
+        's,
+        TIn,
+        TOut,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TGetIndex: Fn(&TEntity) -> i32,
+        TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
+    >(
+        &self,
+        sql_builder: &BulkSelectBuilder<'s, TIn>,
+        get_index: TGetIndex,
+        transform: TTransform,
+        process_name: &str,
+        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TOut>, MyPostgressError> {
+        let mut db_rows = self
+            .bulk_query_rows(sql_builder, get_index, process_name)
+            .await?;
+
+        let mut result = Vec::with_capacity(sql_builder.lines.len());
+        let mut line_no = 0;
+        for (_, in_model) in &sql_builder.lines {
+            let db_row = db_rows.remove(&line_no);
+
+            let out = transform(in_model, db_row);
+            result.push(out);
+
+            line_no += 1;
         }
 
         Ok(result)

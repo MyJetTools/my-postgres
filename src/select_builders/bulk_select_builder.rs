@@ -2,14 +2,14 @@ use rust_extensions::StrOrString;
 
 use crate::{SelectEntity, ToSqlString};
 
-pub struct BulkSelectBuilder<'s> {
+pub struct BulkSelectBuilder<'s, TIn> {
     params_delta: usize,
-    lines: Vec<String>,
+    pub lines: Vec<(String, TIn)>,
     params: Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
     pub table_name: &'s str,
 }
 
-impl<'s> BulkSelectBuilder<'s> {
+impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
     pub fn new(table_name: &'s str) -> Self {
         Self {
             params_delta: 0,
@@ -22,10 +22,11 @@ impl<'s> BulkSelectBuilder<'s> {
         &mut self,
         where_condition: &str,
         params: &[&'s (dyn tokio_postgres::types::ToSql + Sync)],
+        in_model: TIn,
     ) {
         let where_condition =
             replace_params(where_condition, params.len(), self.params_delta).unwrap();
-        self.lines.push(where_condition);
+        self.lines.push((where_condition, in_model));
 
         self.params.extend(params);
 
@@ -36,7 +37,7 @@ impl<'s> BulkSelectBuilder<'s> {
         let mut result = String::new();
 
         let mut line_no = 0;
-        for line in &self.lines {
+        for (line, _) in &self.lines {
             if line_no > 0 {
                 result.push_str("UNION ALL\n");
             }
@@ -52,8 +53,6 @@ impl<'s> BulkSelectBuilder<'s> {
             line_no += 1;
         }
 
-        println!("SQL: {}", result);
-
         result
     }
 
@@ -62,7 +61,9 @@ impl<'s> BulkSelectBuilder<'s> {
     }
 }
 
-impl<'s, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity> for BulkSelectBuilder<'s> {
+impl<'s, TIn, TSelectEntity: SelectEntity> ToSqlString<TSelectEntity>
+    for BulkSelectBuilder<'s, TIn>
+{
     fn as_sql(&self) -> StrOrString {
         StrOrString::crate_as_string(self.build_sql(TSelectEntity::get_select_fields()))
     }
@@ -172,8 +173,8 @@ mod tests {
     fn test_build_sql() {
         let mut bulk_select = BulkSelectBuilder::new("test");
 
-        bulk_select.append_line("id = $1 AND name = $2", &[&"1", &"2"]);
-        bulk_select.append_line("id = $1 AND name = $2", &[&"3", &"4"]);
+        bulk_select.append_line("id = $1 AND name = $2", &[&"1", &"2"], ());
+        bulk_select.append_line("id = $1 AND name = $2", &[&"3", &"4"], ());
 
         let result = bulk_select.build_sql("*");
         println!("{}", result);
