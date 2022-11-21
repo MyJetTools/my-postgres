@@ -2,9 +2,9 @@ use crate::code_gens::{
     insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
 };
 
-pub trait SqlWhereData {
-    fn where_line() -> &'static str;
-    fn get_param_value(&self, no: usize) -> &(dyn tokio_postgres::types::ToSql + Sync);
+pub trait SqlWhereData<'s> {
+    fn get_field_value(&'s self, no: usize) -> crate::InputDataValue<'s>;
+    fn get_max_fields_amount() -> usize;
 }
 
 pub trait BulkSelectEntity {

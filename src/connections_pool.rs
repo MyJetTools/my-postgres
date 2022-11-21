@@ -151,7 +151,7 @@ impl ConnectionsPool {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: SqlWhereData + Send + Sync + 'static,
+        TIn: SqlWhereData<'s> + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,

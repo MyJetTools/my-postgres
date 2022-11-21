@@ -199,7 +199,7 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows<
         's,
-        TIn: SqlWhereData + Send + Sync + 'static,
+        TIn: SqlWhereData<'s> + Send + Sync + 'static,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
     >(
         &self,
@@ -210,13 +210,9 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let sql = sql_builder.build_sql(TEntity::get_select_fields());
+        let (sql, params) = sql_builder.build_sql(TEntity::get_select_fields());
 
-        let db_rows_result = if let Some(params) = sql_builder.get_params_data() {
-            self.client.query(sql.as_str(), &params).await
-        } else {
-            self.client.query(sql.as_str(), &[]).await
-        };
+        let db_rows_result = self.client.query(sql.as_str(), &params).await;
 
         #[cfg(not(feature = "with-logs-and-telemetry"))]
         if let Err(err) = &db_rows_result {
@@ -273,7 +269,7 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: SqlWhereData + Send + Sync + 'static,
+        TIn: SqlWhereData<'s> + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,

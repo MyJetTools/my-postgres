@@ -1,11 +1,11 @@
-use crate::SqlWhereData;
+use crate::{InputDataValue, SqlWhereData};
 
-pub struct BulkSelectBuilder<'s, TIn: SqlWhereData> {
+pub struct BulkSelectBuilder<'s, TIn: SqlWhereData<'s>> {
     pub input_params: Vec<TIn>,
     pub table_name: &'s str,
 }
 
-impl<'s, TIn: SqlWhereData> BulkSelectBuilder<'s, TIn> {
+impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
     pub fn new(table_name: &'s str, input_params: Vec<TIn>) -> Self {
         Self {
             table_name,
@@ -13,236 +13,119 @@ impl<'s, TIn: SqlWhereData> BulkSelectBuilder<'s, TIn> {
         }
     }
 
-    pub fn build_sql(&'s self, select_part: &str) -> String {
-        let mut result = String::new();
+    pub fn build_sql(
+        &'s self,
+        select_part: &str,
+    ) -> (String, Vec<&(dyn tokio_postgres::types::ToSql + Sync)>) {
+        let mut sql = String::new();
+        let mut params = Vec::new();
 
         let mut line_no = 0;
 
-        let where_line = TIn::where_line();
-        let params_amount = get_params_amount(where_line);
-
-        for no in 0..self.input_params.len() {
+        for input_param in &self.input_params {
             if line_no > 0 {
-                result.push_str("UNION ALL\n");
+                sql.push_str("UNION ALL\n");
             }
-            result.push_str("SELECT ");
-            result.push_str(line_no.to_string().as_str());
-            result.push_str("::int as line_no, ");
-            result.push_str(select_part);
-            result.push_str(" FROM ");
-            result.push_str(self.table_name);
-            result.push_str(" WHERE ");
+            line_no += 1;
 
-            if let Some(params_amount) = params_amount {
-                let line = replace_params(where_line, params_amount, no * params_amount).unwrap();
-                result.push_str(line.as_str());
-            } else {
-                result.push_str(where_line);
+            sql.push_str("SELECT ");
+            sql.push_str(line_no.to_string().as_str());
+            sql.push_str("::int as line_no, ");
+            sql.push_str(select_part);
+            sql.push_str(" FROM ");
+            sql.push_str(self.table_name);
+            sql.push_str(" WHERE ");
+
+            for i in 0..TIn::get_max_fields_amount() {
+                if i > 0 {
+                    sql.push_str(" AND ");
+                }
+
+                match input_param.get_field_value(i) {
+                    InputDataValue::AsString { name, value } => {
+                        sql.push_str(name);
+                        sql.push_str(" = '");
+                        sql.push_str(value.as_str());
+                        sql.push_str("'");
+                    }
+                    InputDataValue::AsNonString { name, value } => {
+                        sql.push_str(name);
+                        sql.push_str(" = ");
+                        sql.push_str(value.as_str());
+                    }
+                    InputDataValue::AsSqlValue { name, value } => {
+                        params.push(value);
+                        sql.push_str(name);
+                        sql.push_str(" = $");
+                        sql.push_str(params.len().to_string().as_str());
+                    }
+                }
             }
 
-            result.push('\n');
+            sql.push('\n');
             line_no += 1;
         }
 
-        result
+        (sql, params)
     }
-
-    pub fn get_params_data(&'s self) -> Option<Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>> {
-        let where_line = TIn::where_line();
-        let params_amount = get_params_amount(where_line)?;
-
-        let mut result = Vec::new();
-
-        for in_param in &self.input_params {
-            for no in 1..params_amount + 1 {
-                result.push(in_param.get_param_value(no));
-            }
-        }
-
-        Some(result)
-    }
-}
-
-fn get_params_amount(src: &str) -> Option<usize> {
-    let mut result = None;
-
-    let mut param_started = None;
-
-    let bytes = src.as_bytes();
-
-    for i in 0..bytes.len() {
-        let b = bytes[i];
-
-        if let Some(params_started) = param_started {
-            if b >= b'0' && b <= b'9' {
-                continue;
-            } else {
-                let param_no = &src[params_started + 1..i];
-                let param_no = param_no.parse::<usize>().unwrap();
-
-                match &mut result {
-                    Some(result) => {
-                        if *result < param_no {
-                            *result = param_no;
-                        }
-                    }
-                    None => {
-                        result = Some(param_no);
-                    }
-                }
-
-                param_started = None;
-                continue;
-            }
-        }
-
-        if b == b'$' {
-            param_started = Some(i);
-            continue;
-        }
-    }
-
-    if let Some(params_started) = param_started {
-        let param_no = &src[params_started + 1..bytes.len()];
-        let param_no = param_no.parse::<usize>().unwrap();
-
-        match &mut result {
-            Some(result) => {
-                if *result < param_no {
-                    *result = param_no;
-                }
-            }
-            None => {
-                result = Some(param_no);
-            }
-        }
-    }
-
-    result
-}
-
-fn replace_params(
-    where_condition: &str,
-    params_amount: usize,
-    param_no_delta: usize,
-) -> Result<String, String> {
-    if params_amount == 0 || param_no_delta == 0 {
-        return Ok(where_condition.to_string());
-    }
-
-    let bytes = where_condition.as_bytes();
-
-    let mut result = String::new();
-
-    let mut param_started = None;
-
-    for i in 0..where_condition.len() {
-        let b = bytes[i];
-
-        if let Some(params_started) = param_started {
-            if b >= b'0' && b <= b'9' {
-                continue;
-            } else {
-                let param_no = &where_condition[params_started + 1..i];
-                let param_no = param_no.parse::<usize>().unwrap();
-
-                if param_no > params_amount {
-                    let err = format!(
-                        "Max params amount is: {}. But found param no ${} in line {}",
-                        params_amount, param_no, where_condition
-                    );
-
-                    return Err(err);
-                }
-                result.push_str(&format!("${}", param_no + param_no_delta));
-                result.push(b as char);
-                param_started = None;
-                continue;
-            }
-        }
-
-        if b == b'$' {
-            param_started = Some(i);
-            continue;
-        }
-
-        result.push(b as char);
-    }
-
-    if let Some(params_started) = param_started {
-        let param_no = &where_condition[params_started + 1..bytes.len()];
-        let param_no = param_no.parse::<usize>().unwrap();
-        if param_no > params_amount {
-            let err = format!(
-                "Max params amount is: {}. But found param no ${} in line {}",
-                params_amount, param_no, where_condition
-            );
-            return Err(err);
-        }
-        result.push_str(&format!("${}", param_no + param_no_delta));
-    }
-
-    Ok(result)
 }
 
 #[cfg(test)]
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
-    use crate::{BulkSelectBuilder, SqlWhereData};
 
-    #[test]
-    fn test_replace_with_no_delta() {
-        let where_condition = "id = $1 AND name = $2";
-
-        let result = super::replace_params(where_condition, 2, 0).unwrap();
-
-        assert_eq!(result, where_condition);
-    }
-
-    #[test]
-    fn bug_with_replace_with_param_amounts() {
-        let where_condition = "id = $1 AND name = $2";
-
-        let result = super::replace_params(where_condition, 1, 1);
-
-        assert_eq!(result.is_err(), true);
-    }
-
-    #[test]
-    fn test_replace_with_delta_1() {
-        let where_condition = "id = $1 AND name = $2";
-
-        let result = super::replace_params(where_condition, 2, 1).unwrap();
-
-        assert_eq!(result, "id = $2 AND name = $3");
-    }
+    use crate::{BulkSelectBuilder, InputDataValue, SqlWhereData};
 
     #[test]
     fn test_build_sql() {
         struct Param {
-            q1: &'static str,
-            q2: &'static str,
+            q1: String,
+            q2: String,
+            q3: i64,
         }
 
-        impl SqlWhereData for Param {
-            fn where_line() -> &'static str {
-                "id = $1 AND name = $2"
-            }
-
-            fn get_param_value(&self, no: usize) -> &(dyn tokio_postgres::types::ToSql + Sync) {
+        impl<'s> SqlWhereData<'s> for Param {
+            fn get_field_value(&self, no: usize) -> InputDataValue {
                 match no {
-                    1 => &self.q1,
-                    2 => &self.q2,
-                    _ => panic!("Unexpected param no"),
+                    0 => InputDataValue::AsSqlValue {
+                        name: "q1",
+                        value: &self.q1,
+                    },
+
+                    1 => InputDataValue::AsSqlValue {
+                        name: "q2",
+                        value: &self.q2,
+                    },
+                    2 => InputDataValue::AsSqlValue {
+                        name: "q3",
+                        value: &self.q3,
+                    },
+                    _ => panic!("Unexpected param no: {}", no),
                 }
             }
+
+            fn get_max_fields_amount() -> usize {
+                3
+            }
         }
 
-        let params = vec![Param { q1: "1", q2: "2" }, Param { q1: "3", q2: "4" }];
+        let params = vec![
+            Param {
+                q1: "1".to_string(),
+                q2: "2".to_string(),
+                q3: 30,
+            },
+            Param {
+                q1: "3".to_string(),
+                q2: "4".to_string(),
+                q3: 40,
+            },
+        ];
 
         let bulk_select = BulkSelectBuilder::new("test", params);
 
-        let result = bulk_select.build_sql("*");
+        let (result, values) = bulk_select.build_sql("*");
         println!("{}", result);
+        println!("{:?}", values);
     }
 }
