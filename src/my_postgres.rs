@@ -16,9 +16,9 @@ use tokio::{sync::RwLock, time::error::Elapsed};
 use tokio_postgres::NoTls;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity, ToSqlString,
-    UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
+    InsertOrUpdateEntity, MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity,
+    ToSqlString, UpdateEntity,
 };
 
 pub struct MyPostgres {
@@ -158,15 +158,13 @@ impl MyPostgres {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn,
+        TIn: BulkSelectInputData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
-        map: TMap,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
@@ -180,7 +178,6 @@ impl MyPostgres {
                     sql_builder,
                     transform,
                     process_name.as_str(),
-                    map,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,
                 );

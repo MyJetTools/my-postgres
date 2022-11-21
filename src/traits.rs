@@ -2,6 +2,11 @@ use crate::code_gens::{
     insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
 };
 
+pub trait BulkSelectInputData {
+    fn where_line() -> &'static str;
+    fn get_param_value(&self, no: usize) -> &(dyn tokio_postgres::types::ToSql + Sync);
+}
+
 pub trait BulkSelectEntity {
     fn from_db_row(row: &tokio_postgres::Row) -> Self;
     fn get_select_fields() -> &'static str;

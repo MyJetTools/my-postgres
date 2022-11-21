@@ -12,8 +12,8 @@ use std::{
 };
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgressError, SelectEntity, ToSqlString, UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
+    InsertOrUpdateEntity, MyPostgressError, SelectEntity, ToSqlString, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -199,14 +199,12 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows<
         's,
-        TIn,
+        TIn: BulkSelectInputData + Send + Sync + 'static,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
-        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         process_name: &str,
-        map: TMap,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<BTreeMap<i32, TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -214,7 +212,7 @@ impl PostgresConnection {
 
         let sql = sql_builder.build_sql(TEntity::get_select_fields());
 
-        let db_rows_result = if let Some(params) = sql_builder.get_params_data(map) {
+        let db_rows_result = if let Some(params) = sql_builder.get_params_data() {
             self.client.query(sql.as_str(), &params).await
         } else {
             self.client.query(sql.as_str(), &[]).await
@@ -275,24 +273,22 @@ impl PostgresConnection {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn,
+        TIn: BulkSelectInputData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         transform: TTransform,
         process_name: &str,
-        map: TMap,
+
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let mut db_rows = self
             .bulk_query_rows(
                 sql_builder,
                 process_name,
-                map,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
             )

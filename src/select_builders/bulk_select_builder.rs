@@ -1,15 +1,15 @@
-pub struct BulkSelectBuilder<'s, TIn> {
+use crate::BulkSelectInputData;
+
+pub struct BulkSelectBuilder<'s, TIn: BulkSelectInputData> {
     pub input_params: Vec<TIn>,
     pub table_name: &'s str,
-    where_line: &'s str,
 }
 
-impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
-    pub fn new(table_name: &'s str, where_line: &'s str, input_params: Vec<TIn>) -> Self {
+impl<'s, TIn: BulkSelectInputData> BulkSelectBuilder<'s, TIn> {
+    pub fn new(table_name: &'s str, input_params: Vec<TIn>) -> Self {
         Self {
             table_name,
             input_params,
-            where_line,
         }
     }
 
@@ -17,7 +17,9 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
         let mut result = String::new();
 
         let mut line_no = 0;
-        let params_amount = get_params_amount(&self.where_line);
+
+        let where_line = TIn::where_line();
+        let params_amount = get_params_amount(where_line);
 
         for no in 0..self.input_params.len() {
             if line_no > 0 {
@@ -32,11 +34,10 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
             result.push_str(" WHERE ");
 
             if let Some(params_amount) = params_amount {
-                let line =
-                    replace_params(self.where_line, params_amount, no * params_amount).unwrap();
+                let line = replace_params(where_line, params_amount, no * params_amount).unwrap();
                 result.push_str(line.as_str());
             } else {
-                result.push_str(self.where_line);
+                result.push_str(where_line);
             }
 
             result.push('\n');
@@ -46,19 +47,15 @@ impl<'s, TIn> BulkSelectBuilder<'s, TIn> {
         result
     }
 
-    pub fn get_params_data<
-        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
-    >(
-        &'s self,
-        mapper: TMap,
-    ) -> Option<Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>> {
-        let params_amount = get_params_amount(self.where_line)?;
+    pub fn get_params_data(&'s self) -> Option<Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>> {
+        let where_line = TIn::where_line();
+        let params_amount = get_params_amount(where_line)?;
 
         let mut result = Vec::new();
 
         for in_param in &self.input_params {
             for no in 1..params_amount + 1 {
-                result.push(mapper(in_param, no));
+                result.push(in_param.get_param_value(no));
             }
         }
 
@@ -191,7 +188,7 @@ fn replace_params(
 #[cfg(test)]
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
-    use crate::BulkSelectBuilder;
+    use crate::{BulkSelectBuilder, BulkSelectInputData};
 
     #[test]
     fn test_replace_with_no_delta() {
@@ -227,17 +224,23 @@ mod tests {
             q2: &'static str,
         }
 
+        impl BulkSelectInputData for Param {
+            fn where_line() -> &'static str {
+                "id = $1 AND name = $2"
+            }
+
+            fn get_param_value(&self, no: usize) -> &(dyn tokio_postgres::types::ToSql + Sync) {
+                match no {
+                    1 => &self.q1,
+                    2 => &self.q2,
+                    _ => panic!("Unexpected param no"),
+                }
+            }
+        }
+
         let params = vec![Param { q1: "1", q2: "2" }, Param { q1: "3", q2: "4" }];
 
-        let bulk_select = BulkSelectBuilder::new("test", "id = $1 AND name = $2", params);
-
-        let a = bulk_select.get_params_data(|p, no| match no {
-            1 => &p.q1,
-            2 => &p.q2,
-            _ => panic!("Unexpected param no"),
-        });
-
-        println!("{:?}", a);
+        let bulk_select = BulkSelectBuilder::new("test", params);
 
         let result = bulk_select.build_sql("*");
         println!("{}", result);

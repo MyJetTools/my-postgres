@@ -6,8 +6,9 @@ use rust_extensions::Logger;
 use std::sync::Arc;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgres, MyPostgressError, PostgressSettings, SelectEntity, ToSqlString, UpdateEntity,
+    BulkSelectBuilder, BulkSelectEntity, BulkSelectInputData, DeleteEntity, InsertEntity,
+    InsertOrUpdateEntity, MyPostgres, MyPostgressError, PostgressSettings, SelectEntity,
+    ToSqlString, UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -150,16 +151,14 @@ impl ConnectionsPool {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn,
+        TIn: BulkSelectInputData + Send + Sync + 'static,
         TOut,
         TEntity: BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
-        TMap: Fn(&'s TIn, usize) -> &'s (dyn tokio_postgres::types::ToSql + Sync),
     >(
         &self,
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
 
-        map: TMap,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
@@ -169,7 +168,6 @@ impl ConnectionsPool {
         write_access
             .bulk_query_rows_with_transformation(
                 sql_builder,
-                map,
                 transform,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 ctx,
