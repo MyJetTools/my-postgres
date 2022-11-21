@@ -13,7 +13,7 @@ use std::{
 
 use crate::{
     BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgressError, SelectEntity, SqlWhereData, ToSqlString, UpdateEntity,
+    MyPostgressError, SelectEntity, SqlWhereData, UpdateEntity,
 };
 
 pub struct PostgresConnection {
@@ -49,20 +49,21 @@ impl PostgresConnection {
 
     pub async fn get_count(
         &self,
-        sql: String,
+        sql: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
-        let result = self.client.query(&sql, params).await;
+
+        let result = self.client.query(sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(ctx) = &telemetry_context {
             match &result {
                 Ok(_) => {
                     my_telemetry::TELEMETRY_INTERFACE
-                        .write_success(ctx, started, sql, "Ok".to_string(), None)
+                        .write_success(ctx, started, sql.to_string(), "Ok".to_string(), None)
                         .await;
                 }
 
@@ -71,7 +72,7 @@ impl PostgresConnection {
                     write_fail_telemetry_and_log(
                         started,
                         "get_count".to_string(),
-                        Some(sql.as_str()),
+                        Some(sql),
                         format!("{:?}", err).into(),
                         ctx,
                         &self.logger,
@@ -92,46 +93,30 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn query_single_row<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
-    >(
+    pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        sql: &TToSqlString,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let (sql_string, params) = sql.as_sql();
-
-        let result = if let Some(params) = params {
-            self.do_sql_with_single_row_result(sql_string.as_str(), params)
-                .await
-        } else {
-            self.do_sql_with_single_row_result(sql_string.as_str(), &[])
-                .await
-        };
+        let result = self.do_sql_with_single_row_result(sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(ctx) = ctx {
             match &result {
                 Ok(_) => {
                     my_telemetry::TELEMETRY_INTERFACE
-                        .write_success(
-                            ctx,
-                            started,
-                            sql_string.as_str().to_string(),
-                            "Ok".to_string(),
-                            None,
-                        )
+                        .write_success(ctx, started, sql.to_string(), "Ok".to_string(), None)
                         .await;
                 }
                 Err(err) => {
                     write_fail_telemetry_and_log(
                         started,
                         "query_single_row".to_string(),
-                        Some(sql_string.as_str()),
+                        Some(sql),
                         format!("{:?}", err),
                         ctx,
                         &self.logger,
@@ -144,37 +129,23 @@ impl PostgresConnection {
         result
     }
 
-    pub async fn query_rows<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
-    >(
+    pub async fn query_rows<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
-        sql: &TToSqlString,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let (sql, params) = sql.as_sql();
-
-        let result = if let Some(params) = params {
-            self.client.query(sql.as_str(), params).await
-        } else {
-            self.client.query(sql.as_str(), &[]).await
-        };
+        let result = self.client.query(sql, params).await;
 
         #[cfg(feature = "with-logs-and-telemetry")]
         if let Some(ctx) = ctx {
             match &result {
                 Ok(_) => {
                     my_telemetry::TELEMETRY_INTERFACE
-                        .write_success(
-                            ctx,
-                            started,
-                            sql.as_str().to_string(),
-                            "Ok".to_string(),
-                            None,
-                        )
+                        .write_success(ctx, started, sql.to_string(), "Ok".to_string(), None)
                         .await;
                 }
 
@@ -184,7 +155,7 @@ impl PostgresConnection {
                     write_fail_telemetry_and_log(
                         started,
                         "query_rows".to_string(),
-                        Some(sql.as_str()),
+                        Some(sql),
                         format!("{:?}", err),
                         ctx,
                         &self.logger,
@@ -410,6 +381,53 @@ impl PostgresConnection {
         }
 
         Ok(result?)
+    }
+
+    pub async fn execute_sql_as_vec<TEntity: SelectEntity + Send + Sync + 'static>(
+        &self,
+        sql: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TEntity>, MyPostgressError> {
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let started = DateTimeAsMicroseconds::now();
+
+        let result = self.client.query(sql, params).await;
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        if let Some(telemetry_context) = &telemetry_context {
+            match &result {
+                Ok(_) => {
+                    my_telemetry::TELEMETRY_INTERFACE
+                        .write_success(
+                            telemetry_context,
+                            started,
+                            sql.to_string(),
+                            "Ok".to_string(),
+                            None,
+                        )
+                        .await;
+                }
+                Err(err) => {
+                    self.handle_error(err);
+                    write_fail_telemetry_and_log(
+                        started,
+                        "execute_sql".to_string(),
+                        Some(sql),
+                        format!("{:?}", err),
+                        telemetry_context,
+                        &self.logger,
+                    )
+                    .await;
+                }
+            }
+        }
+
+        let result = result?;
+
+        let result = result.iter().map(|itm| TEntity::from_db_row(itm)).collect();
+
+        Ok(result)
     }
 
     pub async fn insert_db_entity_if_not_exists<TEntity: InsertEntity>(
@@ -999,16 +1017,4 @@ async fn write_fail_telemetry_and_log(
     my_telemetry::TELEMETRY_INTERFACE
         .write_fail(telemetry_context, started, process, fail, None)
         .await;
-
-    /*
-    TelemetryEvent {
-            process_id: telemetry_context.process_id,
-            started: start.unix_microseconds,
-            finished: DateTimeAsMicroseconds::now().unix_microseconds,
-            data: process,
-            success: None,
-            fail: Some(fail),
-            ip: None,
-        }
-     */
 }

@@ -74,28 +74,27 @@ impl ConnectionsPool {
         self.connections.get_element().await
     }
 
-    pub async fn get_count(
+    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>>(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .get_count(
-                select,
-                params,
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
             .await
     }
 
-    pub async fn execute_sql(
+    pub async fn execute_sql<ToSql: ToSqlString>(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -103,8 +102,7 @@ impl ConnectionsPool {
 
         write_access
             .execute_sql(
-                select,
-                params,
+                sql,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -112,18 +110,21 @@ impl ConnectionsPool {
     }
 
     pub async fn query_single_row<
+        's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
+        TWhereModel: SqlWhereData<'s>,
     >(
         &self,
-        select: &TToSqlString,
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .query_single_row(
-                select,
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -131,18 +132,21 @@ impl ConnectionsPool {
     }
 
     pub async fn query_rows<
+        's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
+        TWhereModel: SqlWhereData<'s>,
     >(
         &self,
-        select: &TToSqlString,
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .query_rows(
-                select,
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )

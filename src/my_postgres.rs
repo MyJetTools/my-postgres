@@ -52,20 +52,29 @@ impl MyPostgres {
         self
     }
 
-    pub async fn get_count(
+    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>>(
         &self,
-        select: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<i64>, MyPostgressError> {
+        let mut sql = String::new();
+
+        let mut params = Vec::new();
+        sql.push_str("SELECT COUNT(*)::bigint FROM ");
+        sql.push_str(table_name);
+        sql.push_str(" WHERE ");
+
+        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+
         let result = {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
                 connection
                     .get_count(
-                        select,
-                        params,
+                        sql.as_str(),
+                        &params,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -79,19 +88,31 @@ impl MyPostgres {
     }
 
     pub async fn query_single_row<
+        's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
+        TWhereModel: SqlWhereData<'s>,
     >(
         &self,
-        sql: &TToSqlString,
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
+        let mut sql = String::new();
+
+        let mut params = Vec::new();
+        sql.push_str("SELECT COUNT(*)::bigint FROM ");
+        sql.push_str(table_name);
+        sql.push_str(" WHERE ");
+
+        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+
         let read_access = self.client.read().await;
 
         if let Some(connection) = read_access.as_ref() {
             connection
                 .query_single_row(
-                    sql,
+                    sql.as_str(),
+                    &params,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -101,22 +122,72 @@ impl MyPostgres {
         }
     }
 
-    pub async fn execute_sql(
+    pub async fn execute_sql<ToSql: ToSqlString>(
         &self,
-        sql: String,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgressError> {
         let result = {
             let read_access = self.client.read().await;
 
+            let (sql, params) = sql.as_sql();
+
             if let Some(connection) = read_access.as_ref() {
-                let execution = connection.execute_sql(
-                    sql.as_str(),
-                    params,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
+                let execution = if let Some(params) = params {
+                    connection.execute_sql(
+                        sql.as_str(),
+                        params,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                } else {
+                    connection.execute_sql(
+                        sql.as_str(),
+                        &[],
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                };
+
+                self.execute_request_with_timeout(sql.as_str(), execution)
+                    .await
+            } else {
+                Err(MyPostgressError::NoConnection)
+            }
+        };
+
+        self.handle_error(result).await
+    }
+
+    pub async fn execute_sql_as_vec<
+        ToSql: ToSqlString,
+        TEntity: SelectEntity + Send + Sync + 'static,
+    >(
+        &self,
+        sql: &ToSql,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TEntity>, MyPostgressError> {
+        let result = {
+            let read_access = self.client.read().await;
+
+            let (sql, params) = sql.as_sql();
+
+            if let Some(connection) = read_access.as_ref() {
+                let execution = if let Some(params) = params {
+                    connection.execute_sql_as_vec(
+                        sql.as_str(),
+                        params,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                } else {
+                    connection.execute_sql_as_vec(
+                        sql.as_str(),
+                        &[],
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                };
 
                 self.execute_request_with_timeout(sql.as_str(), execution)
                     .await
@@ -129,24 +200,34 @@ impl MyPostgres {
     }
 
     pub async fn query_rows<
+        's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TToSqlString: ToSqlString<TEntity>,
+        TWhereModel: SqlWhereData<'s>,
     >(
         &self,
-        sql: &TToSqlString,
+        table_name: &str,
+        where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
+        let mut sql = String::new();
+
+        let mut params = Vec::new();
+        sql.push_str("SELECT COUNT(*)::bigint FROM ");
+        sql.push_str(table_name);
+        sql.push_str(" WHERE ");
+
+        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+
         let result = {
             let read_access = self.client.read().await;
 
             if let Some(connection) = read_access.as_ref() {
                 let execution = connection.query_rows(
-                    sql,
+                    sql.as_str(),
+                    params.as_slice(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 );
-
-                let (sql, _) = sql.as_sql();
 
                 self.execute_request_with_timeout(sql.as_str(), execution)
                     .await

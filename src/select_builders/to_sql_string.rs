@@ -1,8 +1,6 @@
 use rust_extensions::StrOrString;
 
-use crate::SelectEntity;
-
-pub trait ToSqlString<TEntity: SelectEntity> {
+pub trait ToSqlString {
     fn as_sql(
         &self,
     ) -> (
@@ -11,32 +9,24 @@ pub trait ToSqlString<TEntity: SelectEntity> {
     );
 }
 
-impl<TEntity: SelectEntity> ToSqlString<TEntity> for String {
+impl ToSqlString for String {
     fn as_sql(
         &self,
     ) -> (
         StrOrString,
         Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
     ) {
-        let result = crate::sql_formatter::format_sql(StrOrString::crate_as_str(self), || {
-            TEntity::get_select_fields()
-        });
-
-        (result, None)
+        (StrOrString::crate_as_str(self), None)
     }
 }
 
-impl<'s, TEntity: SelectEntity> ToSqlString<TEntity> for &'s str {
+impl<'s> ToSqlString for &'s str {
     fn as_sql(
         &self,
     ) -> (
         StrOrString,
         Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
     ) {
-        let result = crate::sql_formatter::format_sql(StrOrString::crate_as_str(self), || {
-            TEntity::get_select_fields()
-        });
-
-        (result, None)
+        (StrOrString::crate_as_str(self), None)
     }
 }

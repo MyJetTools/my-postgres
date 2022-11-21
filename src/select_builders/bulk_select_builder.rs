@@ -1,4 +1,4 @@
-use crate::{InputDataValue, SqlWhereData};
+use crate::SqlWhereData;
 
 pub struct BulkSelectBuilder<'s, TIn: SqlWhereData<'s>> {
     pub input_params: Vec<TIn>,
@@ -35,34 +35,7 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
             sql.push_str(self.table_name);
             sql.push_str(" WHERE ");
 
-            for i in 0..TIn::get_max_fields_amount() {
-                if i > 0 {
-                    sql.push_str(" AND ");
-                }
-
-                match input_param.get_field_value(i) {
-                    InputDataValue::AsString { name, op, value } => {
-                        sql.push_str(name);
-                        sql.push_str(op);
-                        sql.push_str(value.as_str());
-                        sql.push_str("'");
-                    }
-                    InputDataValue::AsNonString { name, op, value } => {
-                        sql.push_str(name);
-                        sql.push_str(op);
-                        sql.push_str(value.as_str());
-                    }
-                    InputDataValue::AsSqlValue { name, op, value } => {
-                        params.push(value);
-                        sql.push_str(name);
-                        sql.push_str(op);
-                        sql.push_str("$");
-                        sql.push_str(params.len().to_string().as_str());
-                    }
-                }
-
-                line_no += 1;
-            }
+            super::where_builder::build_where(&mut sql, input_param, &mut params);
 
             sql.push('\n');
             line_no += 1;
