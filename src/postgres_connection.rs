@@ -900,7 +900,7 @@ impl PostgresConnection {
             println!(
                 "{}: Failed sql: {}",
                 DateTimeAsMicroseconds::now().to_rfc3339(),
-                process_name
+                sql
             );
         }
 
