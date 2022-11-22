@@ -16,9 +16,9 @@ use tokio::{sync::RwLock, time::error::Elapsed};
 use tokio_postgres::NoTls;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity, SqlWhereData,
-    ToSqlString, UpdateEntity,
+    count_result::CountResult, BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity,
+    InsertOrUpdateEntity, MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity,
+    SqlWhereData, ToSqlString, UpdateEntity,
 };
 
 pub struct MyPostgres {
@@ -52,16 +52,19 @@ impl MyPostgres {
         self
     }
 
-    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>>(
+    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<i64>, MyPostgressError> {
+    ) -> Result<Option<TResult>, MyPostgressError> {
         let mut sql = String::new();
 
         let mut params = Vec::new();
-        sql.push_str("SELECT COUNT(*)::bigint FROM ");
+        sql.push_str("SELECT COUNT(*)::");
+        sql.push_str(TResult::get_postgres_type());
+
+        sql.push_str(" FROM ");
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
@@ -84,7 +87,15 @@ impl MyPostgres {
             }
         };
 
-        self.handle_error(result).await
+        let result = self.handle_error(result).await?;
+
+        match result.get(0) {
+            Some(row) => {
+                let result: TResult = TResult::from_db_row(row);
+                Ok(Some(result))
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn query_single_row<

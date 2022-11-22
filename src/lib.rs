@@ -1,6 +1,7 @@
 pub mod code_gens;
 mod connection_string;
 mod connections_pool;
+mod count_result;
 mod error;
 mod input_data_value;
 mod my_postgres;

@@ -6,9 +6,9 @@ use rust_extensions::Logger;
 use std::sync::Arc;
 
 use crate::{
-    BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity, InsertOrUpdateEntity,
-    MyPostgres, MyPostgressError, PostgressSettings, SelectEntity, SqlWhereData, ToSqlString,
-    UpdateEntity,
+    count_result::CountResult, BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity,
+    InsertOrUpdateEntity, MyPostgres, MyPostgressError, PostgressSettings, SelectEntity,
+    SqlWhereData, ToSqlString, UpdateEntity,
 };
 
 struct MyPostgresFactory {
@@ -74,12 +74,12 @@ impl ConnectionsPool {
         self.connections.get_element().await
     }
 
-    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>>(
+    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<i64>, MyPostgressError> {
+    ) -> Result<Option<TResult>, MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access

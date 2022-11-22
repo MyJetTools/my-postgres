@@ -3,6 +3,7 @@ use my_telemetry::MyTelemetryContext;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use std::collections::HashMap;
+use tokio_postgres::Row;
 
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
@@ -52,7 +53,7 @@ impl PostgresConnection {
         sql: &str,
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<i64>, MyPostgressError> {
+    ) -> Result<Vec<Row>, MyPostgressError> {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
@@ -82,15 +83,7 @@ impl PostgresConnection {
             }
         }
 
-        let rows = result?;
-
-        match rows.get(0) {
-            Some(row) => {
-                let result: i64 = row.get(0);
-                Ok(Some(result))
-            }
-            None => Ok(None),
-        }
+        return Ok(result?);
     }
 
     pub async fn query_single_row<TEntity: SelectEntity + Send + Sync + 'static>(
