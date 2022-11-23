@@ -11,3 +11,15 @@ pub enum SqlWhereValue<'s> {
         values: Vec<&'s dyn SqlWhereValueWriter<'s>>,
     },
 }
+
+impl<'s> SqlWhereValue<'s> {
+    pub fn to_in_operator<T: SqlWhereValueWriter<'s>>(name: &'static str, src: &'s Vec<T>) -> Self {
+        let mut values: Vec<&'s dyn SqlWhereValueWriter<'s>> = Vec::new();
+
+        for itm in src {
+            values.push(itm);
+        }
+
+        Self::AsInOperator { name, values }
+    }
+}
