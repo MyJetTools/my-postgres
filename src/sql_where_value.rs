@@ -15,21 +15,22 @@ pub enum SqlWhereValue<'s> {
 impl<'s> SqlWhereValue<'s> {
     pub fn to_in_operator<T: SqlValueWriter<'s>>(
         name: &'static str,
-        src: Option<&'s Vec<T>>,
+        src: &'s Option<Vec<T>>,
     ) -> Self {
-        if src.is_none() {
-            return Self::AsInOperator { name, values: None };
-        }
+        match src {
+            Some(src) => {
+                let mut values: Vec<&'s dyn SqlValueWriter<'s>> = Vec::new();
 
-        let mut values: Vec<&'s dyn SqlValueWriter<'s>> = Vec::new();
+                for itm in src {
+                    values.push(itm);
+                }
 
-        for itm in src.unwrap() {
-            values.push(itm);
-        }
-
-        Self::AsInOperator {
-            name,
-            values: Some(values),
+                Self::AsInOperator {
+                    name,
+                    values: Some(values),
+                }
+            }
+            None => Self::AsInOperator { name, values: None },
         }
     }
 }
