@@ -68,7 +68,7 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
 
         let result = {
             let read_access = self.client.read().await;
@@ -115,7 +115,7 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
 
         let read_access = self.client.read().await;
 
@@ -227,7 +227,7 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        crate::select_builders::build_where(&mut sql, where_model, &mut params);
+        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
 
         let result = {
             let read_access = self.client.read().await;
@@ -519,7 +519,7 @@ impl MyPostgres {
             sql.push_str(" WHERE ");
 
             let mut params = Vec::new();
-            crate::select_builders::build_where(&mut sql, where_model, &mut params);
+            crate::sql_where_builder::build(&mut sql, where_model, &mut params);
 
             if let Some(connection) = read_access.as_ref() {
                 let execution = connection.execute_sql(

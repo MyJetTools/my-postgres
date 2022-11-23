@@ -35,7 +35,7 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
             sql.push_str(self.table_name);
             sql.push_str(" WHERE ");
 
-            super::where_builder::build_where(&mut sql, input_param, &mut params);
+            crate::sql_where_builder::build(&mut sql, input_param, &mut params);
 
             sql.push('\n');
             line_no += 1;
@@ -49,7 +49,7 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
 
-    use crate::{BulkSelectBuilder, InputDataValue, SqlWhereData};
+    use crate::{BulkSelectBuilder, SqlWhereData, SqlWhereValue};
 
     #[test]
     fn test_build_sql() {
@@ -60,20 +60,20 @@ mod tests {
         }
 
         impl<'s> SqlWhereData<'s> for Param {
-            fn get_field_value(&self, no: usize) -> InputDataValue {
+            fn get_field_value(&'s self, no: usize) -> SqlWhereValue<'s> {
                 match no {
-                    0 => InputDataValue::AsSqlValue {
+                    0 => SqlWhereValue::AsValue {
                         name: "q1",
                         op: " = ",
                         value: &self.q1,
                     },
 
-                    1 => InputDataValue::AsSqlValue {
+                    1 => SqlWhereValue::AsValue {
                         name: "q2",
                         op: " = ",
                         value: &self.q2,
                     },
-                    2 => InputDataValue::AsSqlValue {
+                    2 => SqlWhereValue::AsValue {
                         name: "q3",
                         op: " = ",
                         value: &self.q3,

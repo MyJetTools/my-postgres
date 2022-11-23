@@ -1,9 +1,12 @@
-use crate::code_gens::{
-    insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
+use crate::{
+    code_gens::{
+        insert::InsertCodeGen, insert_or_update::InsertOrUpdateBuilder, update::UpdateBuilder,
+    },
+    SqlWhereValue,
 };
 
 pub trait SqlWhereData<'s> {
-    fn get_field_value(&'s self, no: usize) -> crate::InputDataValue<'s>;
+    fn get_field_value(&'s self, no: usize) -> SqlWhereValue<'s>;
     fn get_max_fields_amount() -> usize;
 }
 
