@@ -503,6 +503,44 @@ impl MyPostgres {
         self.handle_error(result).await
     }
 
+    pub async fn delete_db_entity<'s, TWhereModel: SqlWhereData<'s>>(
+        &self,
+        table_name: &str,
+        where_model: &'s TWhereModel,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<(), MyPostgressError> {
+        let result = {
+            let read_access = self.client.read().await;
+
+            let mut sql = String::new();
+
+            sql.push_str("DELETE FROM ");
+            sql.push_str(table_name);
+            sql.push_str(" WHERE ");
+
+            let mut params = Vec::new();
+            crate::select_builders::build_where(&mut sql, where_model, &mut params);
+
+            if let Some(connection) = read_access.as_ref() {
+                let execution = connection.execute_sql(
+                    sql.as_str(),
+                    params.as_slice(),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                );
+
+                self.execute_request_with_timeout(sql.as_str(), execution)
+                    .await
+            } else {
+                Err(MyPostgressError::NoConnection)
+            }
+        };
+
+        self.handle_error(result).await?;
+
+        Ok(())
+    }
+
     pub async fn bulk_delete<TEntity: DeleteEntity>(
         &self,
         entities: &[TEntity],

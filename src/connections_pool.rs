@@ -269,6 +269,25 @@ impl ConnectionsPool {
             .await
     }
 
+    pub async fn delete<'s, TWhereModel: SqlWhereData<'s>>(
+        &self,
+        table_name: &str,
+        where_model: &'s TWhereModel,
+
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<(), MyPostgressError> {
+        let connection = self.get_postgres_client().await;
+        let write_access = connection.value.lock().await;
+        write_access
+            .delete_db_entity(
+                table_name,
+                where_model,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
     pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
         &self,
         entities: &[TEntity],
