@@ -1,6 +1,6 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-pub trait SqlWhereValueWriter<'s> {
+pub trait SqlValueWriter<'s> {
     fn write(
         &'s self,
         sql: &mut String,
@@ -8,7 +8,7 @@ pub trait SqlWhereValueWriter<'s> {
     );
 }
 
-impl<'s> SqlWhereValueWriter<'s> for String {
+impl<'s> SqlValueWriter<'s> for String {
     fn write(
         &'s self,
         sql: &mut String,
@@ -20,7 +20,7 @@ impl<'s> SqlWhereValueWriter<'s> for String {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for &'s str {
+impl<'s> SqlValueWriter<'s> for &'s str {
     fn write(
         &'s self,
         sql: &mut String,
@@ -32,7 +32,7 @@ impl<'s> SqlWhereValueWriter<'s> for &'s str {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
+impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
     fn write(
         &'s self,
         sql: &mut String,
@@ -44,7 +44,7 @@ impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for bool {
+impl<'s> SqlValueWriter<'s> for bool {
     fn write(
         &'s self,
         sql: &mut String,
@@ -57,7 +57,7 @@ impl<'s> SqlWhereValueWriter<'s> for bool {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u8 {
+impl<'s> SqlValueWriter<'s> for u8 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -67,7 +67,7 @@ impl<'s> SqlWhereValueWriter<'s> for u8 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i8 {
+impl<'s> SqlValueWriter<'s> for i8 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -77,7 +77,7 @@ impl<'s> SqlWhereValueWriter<'s> for i8 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u16 {
+impl<'s> SqlValueWriter<'s> for u16 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -87,7 +87,7 @@ impl<'s> SqlWhereValueWriter<'s> for u16 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i16 {
+impl<'s> SqlValueWriter<'s> for i16 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -97,7 +97,7 @@ impl<'s> SqlWhereValueWriter<'s> for i16 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u32 {
+impl<'s> SqlValueWriter<'s> for u32 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -107,7 +107,7 @@ impl<'s> SqlWhereValueWriter<'s> for u32 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i32 {
+impl<'s> SqlValueWriter<'s> for i32 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -117,7 +117,7 @@ impl<'s> SqlWhereValueWriter<'s> for i32 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u64 {
+impl<'s> SqlValueWriter<'s> for u64 {
     fn write(
         &'s self,
         sql: &mut String,
@@ -127,7 +127,7 @@ impl<'s> SqlWhereValueWriter<'s> for u64 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i64 {
+impl<'s> SqlValueWriter<'s> for i64 {
     fn write(
         &'s self,
         sql: &mut String,

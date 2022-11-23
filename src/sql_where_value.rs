@@ -1,20 +1,20 @@
-use crate::sql_where_writer::SqlWhereValueWriter;
+use crate::sql_value_writer::SqlValueWriter;
 
 pub enum SqlWhereValue<'s> {
     AsValue {
         name: &'static str,
         op: &'static str,
-        value: &'s dyn SqlWhereValueWriter<'s>,
+        value: &'s dyn SqlValueWriter<'s>,
     },
     AsInOperator {
         name: &'static str,
-        values: Vec<&'s dyn SqlWhereValueWriter<'s>>,
+        values: Vec<&'s dyn SqlValueWriter<'s>>,
     },
 }
 
 impl<'s> SqlWhereValue<'s> {
-    pub fn to_in_operator<T: SqlWhereValueWriter<'s>>(name: &'static str, src: &'s Vec<T>) -> Self {
-        let mut values: Vec<&'s dyn SqlWhereValueWriter<'s>> = Vec::new();
+    pub fn to_in_operator<T: SqlValueWriter<'s>>(name: &'static str, src: &'s Vec<T>) -> Self {
+        let mut values: Vec<&'s dyn SqlValueWriter<'s>> = Vec::new();
 
         for itm in src {
             values.push(itm);

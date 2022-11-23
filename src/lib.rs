@@ -7,9 +7,9 @@ mod my_postgres;
 mod postgres_connection;
 mod postgres_settings;
 mod select_builders;
+mod sql_value_writer;
 mod sql_where_builder;
 mod sql_where_value;
-mod sql_where_writer;
 mod traits;
 pub use crate::my_postgres::*;
 pub use connections_pool::ConnectionsPool;
@@ -18,6 +18,6 @@ pub use postgres_connection::*;
 pub use postgres_settings::*;
 pub use select_builders::*;
 
+pub use sql_value_writer::*;
 pub use sql_where_value::*;
-pub use sql_where_writer::*;
 pub use traits::*;
