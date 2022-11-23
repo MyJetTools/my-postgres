@@ -12,11 +12,18 @@ pub fn build<'s, TWhereModel: SqlWhereData<'s>>(
 
         match where_model.get_field_value(i) {
             crate::SqlWhereValue::AsValue { name, op, value } => {
-                sql.push_str(name);
-                sql.push_str(op);
-                value.write(sql, params);
+                if let Some(value) = value {
+                    sql.push_str(name);
+                    sql.push_str(op);
+                    value.write(sql, params);
+                }
             }
             crate::SqlWhereValue::AsInOperator { name, values } => {
+                if values.is_none() {
+                    continue;
+                }
+
+                let values = values.unwrap();
                 if values.len() == 0 {
                     continue;
                 }

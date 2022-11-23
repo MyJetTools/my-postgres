@@ -65,18 +65,18 @@ mod tests {
                     0 => SqlWhereValue::AsValue {
                         name: "q1",
                         op: " = ",
-                        value: &self.q1,
+                        value: Some(&self.q1),
                     },
 
                     1 => SqlWhereValue::AsValue {
                         name: "q2",
                         op: " = ",
-                        value: &self.q2,
+                        value: Some(&self.q2),
                     },
                     2 => SqlWhereValue::AsValue {
                         name: "q3",
                         op: " = ",
-                        value: &self.q3,
+                        value: Some(&self.q3),
                     },
                     _ => panic!("Unexpected param no: {}", no),
                 }

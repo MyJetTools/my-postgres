@@ -4,11 +4,11 @@ pub enum SqlWhereValue<'s> {
     AsValue {
         name: &'static str,
         op: &'static str,
-        value: &'s dyn SqlValueWriter<'s>,
+        value: Option<&'s dyn SqlValueWriter<'s>>,
     },
     AsInOperator {
         name: &'static str,
-        values: Vec<&'s dyn SqlValueWriter<'s>>,
+        values: Option<Vec<&'s dyn SqlValueWriter<'s>>>,
     },
 }
 
@@ -20,6 +20,9 @@ impl<'s> SqlWhereValue<'s> {
             values.push(itm);
         }
 
-        Self::AsInOperator { name, values }
+        Self::AsInOperator {
+            name,
+            values: Some(values),
+        }
     }
 }
