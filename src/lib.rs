@@ -19,4 +19,5 @@ pub use postgres_settings::*;
 pub use select_builders::*;
 
 pub use sql_where_value::*;
+pub use sql_where_writer::*;
 pub use traits::*;
