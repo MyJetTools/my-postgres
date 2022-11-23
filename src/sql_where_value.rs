@@ -13,10 +13,17 @@ pub enum SqlWhereValue<'s> {
 }
 
 impl<'s> SqlWhereValue<'s> {
-    pub fn to_in_operator<T: SqlValueWriter<'s>>(name: &'static str, src: &'s Vec<T>) -> Self {
+    pub fn to_in_operator<T: SqlValueWriter<'s>>(
+        name: &'static str,
+        src: Option<&'s Vec<T>>,
+    ) -> Self {
+        if src.is_none() {
+            return Self::AsInOperator { name, values: None };
+        }
+
         let mut values: Vec<&'s dyn SqlValueWriter<'s>> = Vec::new();
 
-        for itm in src {
+        for itm in src.unwrap() {
             values.push(itm);
         }
 
