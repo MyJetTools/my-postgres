@@ -62,9 +62,19 @@ impl PostgresConnection {
 
         let execution = self.client.execute(sql, params);
 
-        let result =
-            execute_with_timeout(process_name, Some(sql), execution, self.sql_request_timeout)
-                .await;
+        let result = execute_with_timeout(
+            process_name,
+            Some(sql),
+            execution,
+            self.sql_request_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            &self.logger,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            started,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await;
 
         if result.is_err() {
             self.disconnect();
@@ -92,7 +102,19 @@ impl PostgresConnection {
             transaction.commit()
         };
 
-        execute_with_timeout(process_name, None, execution, self.sql_request_timeout).await?;
+        execute_with_timeout(
+            process_name,
+            None,
+            execution,
+            self.sql_request_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            &self.logger,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            started,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await?;
 
         Ok(())
     }
@@ -110,9 +132,19 @@ impl PostgresConnection {
 
         let execution = self.client.query(sql, params);
 
-        let result =
-            execute_with_timeout(process_name, Some(sql), execution, self.sql_request_timeout)
-                .await;
+        let result = execute_with_timeout(
+            process_name,
+            Some(sql),
+            execution,
+            self.sql_request_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            &self.logger,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            started,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await;
 
         if result.is_err() {
             self.disconnect();
@@ -132,6 +164,9 @@ async fn execute_with_timeout<
     sql: Option<&str>,
     execution: TFuture,
     sql_request_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Send + Sync + 'static>,
+    #[cfg(feature = "with-logs-and-telemetry")] started: DateTimeAsMicroseconds,
+    #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
 ) -> Result<TResult, MyPostgressError> {
     let timeout_result: Result<Result<TResult, tokio_postgres::Error>, Elapsed> =
         tokio::time::timeout(sql_request_timeout, execution).await;
@@ -174,14 +209,13 @@ async fn execute_with_timeout<
                     .await;
             }
             Err(err) => {
-                self.handle_error(err);
                 write_fail_telemetry_and_log(
                     started,
                     "execute_sql".to_string(),
                     Some(process_name),
                     format!("{:?}", err),
                     telemetry_context,
-                    &self.logger,
+                    logger,
                 )
                 .await;
             }
