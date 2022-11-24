@@ -1,16 +1,14 @@
-use crate::sql_value_writer::SqlValueWriter;
+use crate::{sql_value_writer::SqlValueWriter, SqlValue};
 
 pub enum SqlWhereValue<'s> {
-    Ignore,
-    Null(&'static str),
     AsValue {
         name: &'static str,
         op: &'static str,
-        value: Option<&'s dyn SqlValueWriter<'s>>,
+        value: SqlValue<'s>,
     },
     AsInOperator {
         name: &'static str,
-        values: Option<Vec<&'s dyn SqlValueWriter<'s>>>,
+        values: Option<Vec<SqlValue<'s>>>,
     },
 }
 
@@ -21,10 +19,13 @@ impl<'s> SqlWhereValue<'s> {
     ) -> Self {
         match src {
             Some(src) => {
-                let mut values: Vec<&'s dyn SqlValueWriter<'s>> = Vec::new();
+                let mut values: Vec<SqlValue<'s>> = Vec::new();
 
                 for itm in src {
-                    values.push(itm);
+                    values.push(SqlValue::Value {
+                        options: None,
+                        value: itm,
+                    });
                 }
 
                 Self::AsInOperator {
@@ -33,13 +34,6 @@ impl<'s> SqlWhereValue<'s> {
                 }
             }
             None => Self::AsInOperator { name, values: None },
-        }
-    }
-
-    pub fn is_ignore(&self) -> bool {
-        match self {
-            Self::Ignore => true,
-            _ => false,
         }
     }
 }

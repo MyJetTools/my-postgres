@@ -30,21 +30,26 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
         }
         result.push('(');
 
-        for no in 0..fields_amount {
-            if no > 0 {
-                result.push(',');
-            }
+        let mut written_no = 0;
 
+        for no in 0..fields_amount {
             match model.get_field_value(no) {
-                SqlValue::Ignore => {
-                    panic!("Ignore value is not allowed in bulk insert");
-                }
-                SqlValue::Value(value) => {
-                    if let Some(value) = value {
-                        value.write(&mut result, &mut params);
-                    } else {
-                        result.push_str("NULL");
+                SqlValue::Ignore => {}
+                SqlValue::Value { value, options } => {
+                    if written_no > 0 {
+                        result.push(',');
                     }
+
+                    written_no += 1;
+                    value.write(&mut result, &mut params, options.as_ref());
+                }
+                SqlValue::Null => {
+                    if written_no > 0 {
+                        result.push(',');
+                    }
+
+                    written_no += 1;
+                    result.push_str("NULL");
                 }
             }
         }

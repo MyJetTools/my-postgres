@@ -68,18 +68,27 @@ mod tests {
                     0 => SqlWhereValue::AsValue {
                         name: "q1",
                         op: " = ",
-                        value: Some(&self.q1),
+                        value: crate::SqlValue::Value {
+                            options: None,
+                            value: &self.q1,
+                        },
                     },
 
                     1 => SqlWhereValue::AsValue {
                         name: "q2",
                         op: " = ",
-                        value: Some(&self.q2),
+                        value: crate::SqlValue::Value {
+                            options: None,
+                            value: &self.q2,
+                        },
                     },
                     2 => SqlWhereValue::AsValue {
                         name: "q3",
                         op: " = ",
-                        value: Some(&self.q3),
+                        value: crate::SqlValue::Value {
+                            options: None,
+                            value: &self.q3,
+                        },
                     },
                     _ => panic!("Unexpected param no: {}", no),
                 }

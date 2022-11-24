@@ -1,6 +1,6 @@
-use crate::SqlValueWriter;
+use crate::SqlValue;
 
 pub struct SqlUpdateValue<'s> {
     pub name: &'static str,
-    pub value: Option<&'s dyn SqlValueWriter<'s>>,
+    pub value: SqlValue<'s>,
 }

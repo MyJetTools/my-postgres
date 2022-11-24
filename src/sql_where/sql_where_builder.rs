@@ -9,28 +9,25 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
     for field_no in 0..TSqlWhereModel::get_fields_amount() {
         let value = sql_where_model.get_field_value(field_no);
 
-        if value.is_ignore() {
-            continue;
-        }
-
         if i > 0 {
             sql.push_str(" AND ");
         }
-        i += 1;
 
         match value {
-            SqlWhereValue::Ignore => {}
-            SqlWhereValue::Null(name) => {
-                sql.push_str(name);
-                sql.push_str(" IS NULL");
-            }
-            SqlWhereValue::AsValue { name, op, value } => {
-                if let Some(value) = value {
+            SqlWhereValue::AsValue { name, op, value } => match value {
+                crate::SqlValue::Ignore => {}
+                crate::SqlValue::Null => {
+                    sql.push_str(name);
+                    sql.push_str(" IS NULL");
+                    i += 1;
+                }
+                crate::SqlValue::Value { options, value } => {
                     sql.push_str(name);
                     sql.push_str(op);
-                    value.write(sql, params);
+                    value.write(sql, params, options.as_ref());
+                    i += 1;
                 }
-            }
+            },
             SqlWhereValue::AsInOperator { name, values } => {
                 if values.is_none() {
                     continue;
@@ -42,9 +39,17 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                 }
 
                 if values.len() == 1 {
-                    sql.push_str(name);
-                    sql.push_str(" = ");
-                    values.get(0).unwrap().write(sql, params);
+                    match values.get(0).unwrap() {
+                        crate::SqlValue::Ignore => {}
+                        crate::SqlValue::Null => {}
+                        crate::SqlValue::Value { options, value } => {
+                            sql.push_str(name);
+                            sql.push_str(" = ");
+                            value.write(sql, params, options.as_ref());
+                            i += 1;
+                        }
+                    }
+
                     continue;
                 }
 
@@ -55,8 +60,15 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                     if no > 0 {
                         sql.push(',');
                     }
-                    no += 1;
-                    value.write(sql, params);
+
+                    match value {
+                        crate::SqlValue::Ignore => {}
+                        crate::SqlValue::Null => {}
+                        crate::SqlValue::Value { options, value } => {
+                            value.write(sql, params, options.as_ref());
+                            no += 1;
+                        }
+                    }
                 }
             }
         }

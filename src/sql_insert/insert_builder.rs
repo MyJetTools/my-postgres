@@ -23,39 +23,53 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     for field_no in 0..TSqlInsertModel::get_fields_amount() {
         let sql_value = insert_model.get_field_value(field_no);
 
-        match sql_value {
+        match &sql_value {
             SqlValue::Ignore => {}
-            SqlValue::Value(value) => {
+            SqlValue::Value {
+                value: _,
+                options: _,
+            } => {
                 if no > 0 {
                     result.push(',');
                 }
                 no += 1;
                 let field_name = TSqlInsertModel::get_field_name(field_no);
                 result.push_str(field_name);
-                values.push((value, field_name));
+                values.push((field_name, sql_value));
             }
+            SqlValue::Null => {}
         }
     }
     result.push_str(") VALUES (");
     no = 0;
-    for (value, field_name) in values {
-        if no > 0 {
-            result.push(',');
-        }
-        no += 1;
-        if let Some(value) = value {
-            let pos = result.len();
-            value.write(&mut result, params);
+    for (field_name, sql_value) in values {
+        match sql_value {
+            SqlValue::Ignore => {}
+            SqlValue::Null => {
+                if no > 0 {
+                    result.push(',');
+                }
+                no += 1;
 
-            if let Some(prms) = &mut params_with_index {
-                let param = &result[pos..];
+                result.push_str("NULL");
+            }
+            SqlValue::Value { options, value } => {
+                if no > 0 {
+                    result.push(',');
+                }
+                no += 1;
 
-                if param.starts_with('$') {
-                    prms.insert(field_name, params.len());
+                let pos = result.len();
+                value.write(&mut result, params, options.as_ref());
+
+                if let Some(prms) = &mut params_with_index {
+                    let param = &result[pos..];
+
+                    if param.starts_with('$') {
+                        prms.insert(field_name, params.len());
+                    }
                 }
             }
-        } else {
-            result.push_str("NULL");
         }
     }
 

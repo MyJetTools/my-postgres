@@ -47,10 +47,14 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
                 result.push_str(value.to_string().as_str());
             }
         } else {
-            if let Some(value) = update_data.value {
-                value.write(result, params);
-            } else {
-                result.push_str("NULL");
+            match update_data.value {
+                crate::SqlValue::Ignore => {}
+                crate::SqlValue::Null => {
+                    result.push_str("NULL");
+                }
+                crate::SqlValue::Value { options, value } => {
+                    value.write(result, params, options.as_ref());
+                }
             }
         }
     }
