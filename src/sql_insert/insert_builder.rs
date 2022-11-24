@@ -30,14 +30,15 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
                     result.push(',');
                 }
                 no += 1;
-                result.push_str(TSqlInsertModel::get_field_name(field_no));
-                values.push(value);
+                let field_name = TSqlInsertModel::get_field_name(field_no);
+                result.push_str(field_name);
+                values.push((value, field_name));
             }
         }
     }
     result.push_str(") VALUES (");
     no = 0;
-    for value in values {
+    for (value, field_name) in values {
         if no > 0 {
             result.push(',');
         }
@@ -50,7 +51,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
                 let param = &result[pos..];
 
                 if param.starts_with('$') {
-                    prms.insert(TSqlInsertModel::get_field_name(no), params.len());
+                    prms.insert(field_name, params.len());
                 }
             }
         } else {
