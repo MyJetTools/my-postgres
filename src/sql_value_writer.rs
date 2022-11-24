@@ -92,6 +92,26 @@ impl<'s> SqlValueWriter<'s> for u16 {
     }
 }
 
+impl<'s> SqlValueWriter<'s> for f32 {
+    fn write(
+        &'s self,
+        sql: &mut String,
+        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+    ) {
+        sql.push_str(self.to_string().as_str());
+    }
+}
+
+impl<'s> SqlValueWriter<'s> for f64 {
+    fn write(
+        &'s self,
+        sql: &mut String,
+        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+    ) {
+        sql.push_str(self.to_string().as_str());
+    }
+}
+
 impl<'s> SqlValueWriter<'s> for i16 {
     fn write(
         &'s self,
