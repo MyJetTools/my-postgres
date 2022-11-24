@@ -93,7 +93,7 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         #[cfg(feature = "debug-sql")]
-        println!("SQL: {}", sql);
+        println!("SQL: {:?}", sql_with_params);
 
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
