@@ -19,10 +19,9 @@ pub fn build_insert_or_update<'s, TSqlInsertModel: SqlInsertModel<'s> + SqlUpdat
 
     sql.push_str(primary_key_name);
 
-    sql.push_str(" DO UPDATE (");
+    sql.push_str(" DO UPDATE SET");
 
     crate::sql_update::build_update_part(&mut sql, &mut params, model, update_fields);
 
-    sql.push_str(" )");
     (sql, params)
 }
