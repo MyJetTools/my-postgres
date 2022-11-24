@@ -5,7 +5,7 @@ pub fn build_insert_if_not_exists<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     insert_model: &'s TSqlInsertModel,
     params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
 ) -> String {
-    let mut sql = super::build_insert(table_name, insert_model, params);
+    let (mut sql, _) = super::build_insert(table_name, insert_model, params, None);
     sql.push_str(" ON CONFLICT DO NOTHING");
     sql
 }

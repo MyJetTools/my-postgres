@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::SqlValue;
 
 use super::SqlInsertModel;
@@ -6,7 +8,8 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     table_name: &str,
     insert_model: &'s TSqlInsertModel,
     params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-) -> String {
+    mut params_with_index: Option<HashMap<&'static str, usize>>,
+) -> (String, Option<HashMap<&'static str, usize>>) {
     let mut result = String::new();
 
     result.push_str("INSERT ");
@@ -33,9 +36,23 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
         }
     }
     result.push_str(") VALUES (");
+    no = 0;
     for value in values {
+        if no > 0 {
+            result.push(',');
+        }
+        no += 1;
         if let Some(value) = value {
+            let pos = result.len();
             value.write(&mut result, params);
+
+            if let Some(prms) = &mut params_with_index {
+                let param = &result[pos..];
+
+                if param.starts_with('$') {
+                    prms.insert(TSqlInsertModel::get_field_name(no), params.len());
+                }
+            }
         } else {
             result.push_str("NULL");
         }
@@ -43,5 +60,5 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 
     result.push(')');
 
-    result
+    (result, params_with_index)
 }

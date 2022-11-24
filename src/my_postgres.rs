@@ -263,7 +263,7 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let mut params = Vec::new();
-        let sql = crate::sql_insert::build_insert(table_name, entity, &mut params);
+        let (sql, _) = crate::sql_insert::build_insert(table_name, entity, &mut params, None);
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
         let connection = self.get_connection().await?;
