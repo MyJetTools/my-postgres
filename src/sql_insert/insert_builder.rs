@@ -32,7 +32,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
             }
         }
     }
-
+    result.push_str(") VALUES (");
     for value in values {
         if let Some(value) = value {
             value.write(&mut result, params);
@@ -40,6 +40,8 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
             result.push_str("NULL");
         }
     }
+
+    result.push(')');
 
     result
 }

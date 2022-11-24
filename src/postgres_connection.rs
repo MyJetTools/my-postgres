@@ -79,11 +79,7 @@ impl PostgresConnection {
         )
         .await;
 
-        if result.is_err() {
-            self.disconnect();
-        }
-
-        Ok(result?)
+        Ok(self.handle_error(result)?)
     }
 
     pub async fn execute_bulk_sql(
@@ -108,7 +104,7 @@ impl PostgresConnection {
             transaction.commit()
         };
 
-        execute_with_timeout(
+        let result = execute_with_timeout(
             process_name,
             None,
             execution,
@@ -120,9 +116,9 @@ impl PostgresConnection {
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         )
-        .await?;
+        .await;
 
-        Ok(())
+        self.handle_error(result)
     }
 
     pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
@@ -155,13 +151,30 @@ impl PostgresConnection {
         )
         .await;
 
-        if result.is_err() {
-            self.disconnect();
-        }
-
-        let result = result?.iter().map(transform).collect();
+        let result = self.handle_error(result)?.iter().map(transform).collect();
 
         Ok(result)
+    }
+
+    fn handle_error<TResult>(
+        &self,
+        result: Result<TResult, MyPostgressError>,
+    ) -> Result<TResult, MyPostgressError> {
+        if let Err(err) = &result {
+            match err {
+                MyPostgressError::NoConnection => {}
+                MyPostgressError::SingleRowRequestReturnedMultipleRows(_) => {}
+                MyPostgressError::PostgresError(_) => {}
+                MyPostgressError::Other(_) => {
+                    self.disconnect();
+                }
+                MyPostgressError::Timeouted(_) => {
+                    self.disconnect();
+                }
+            }
+        }
+
+        result
     }
 }
 
