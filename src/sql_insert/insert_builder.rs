@@ -12,7 +12,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 ) -> (String, Option<HashMap<&'static str, usize>>) {
     let mut result = String::new();
 
-    result.push_str("INSERT ");
+    result.push_str("INSERT INTO ");
     result.push_str(table_name);
     result.push_str(" (");
 
