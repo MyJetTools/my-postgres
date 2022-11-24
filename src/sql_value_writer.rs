@@ -1,5 +1,10 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
+pub enum SqlValue<'s> {
+    Ignore,
+    Value(Option<&'s dyn SqlValueWriter<'s>>),
+}
+
 pub trait SqlValueWriter<'s> {
     fn write(
         &'s self,

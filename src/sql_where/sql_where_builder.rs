@@ -1,24 +1,37 @@
-use crate::SqlWhereData;
+use super::{SqlWhereModel, SqlWhereValue};
 
-pub fn build<'s, TWhereModel: SqlWhereData<'s>>(
+pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
     sql: &mut String,
-    where_model: &'s TWhereModel,
+    sql_where_model: &'s TSqlWhereModel,
     params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
 ) {
-    for i in 0..TWhereModel::get_max_fields_amount() {
+    let mut i = 0;
+    for field_no in 0..TSqlWhereModel::get_fields_amount() {
+        let value = sql_where_model.get_field_value(field_no);
+
+        if value.is_ignore() {
+            continue;
+        }
+
         if i > 0 {
             sql.push_str(" AND ");
         }
+        i += 1;
 
-        match where_model.get_field_value(i) {
-            crate::SqlWhereValue::AsValue { name, op, value } => {
+        match sql_where_model.get_field_value(i) {
+            SqlWhereValue::Ignore => {}
+            SqlWhereValue::Null(name) => {
+                sql.push_str(name);
+                sql.push_str(" IS NULL");
+            }
+            SqlWhereValue::AsValue { name, op, value } => {
                 if let Some(value) = value {
                     sql.push_str(name);
                     sql.push_str(op);
                     value.write(sql, params);
                 }
             }
-            crate::SqlWhereValue::AsInOperator { name, values } => {
+            SqlWhereValue::AsInOperator { name, values } => {
                 if values.is_none() {
                     continue;
                 }
@@ -46,6 +59,6 @@ pub fn build<'s, TWhereModel: SqlWhereData<'s>>(
                     value.write(sql, params);
                 }
             }
-        };
+        }
     }
 }

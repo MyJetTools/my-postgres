@@ -1,12 +1,12 @@
-use crate::SqlWhereData;
+use crate::sql_where::SqlWhereModel;
 
-pub struct BulkSelectBuilder<'s, TIn: SqlWhereData<'s>> {
-    pub input_params: Vec<TIn>,
+pub struct BulkSelectBuilder<'s, TWhereModel: SqlWhereModel<'s>> {
+    pub input_params: Vec<TWhereModel>,
     pub table_name: &'s str,
 }
 
-impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
-    pub fn new(table_name: &'s str, input_params: Vec<TIn>) -> Self {
+impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
+    pub fn new(table_name: &'s str, input_params: Vec<TWhereModel>) -> Self {
         Self {
             table_name,
             input_params,
@@ -16,7 +16,7 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
     pub fn build_sql(
         &'s self,
         select_part: &str,
-    ) -> (String, Vec<&(dyn tokio_postgres::types::ToSql + Sync)>) {
+    ) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
         let mut sql = String::new();
         let mut params = Vec::new();
 
@@ -35,7 +35,7 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
             sql.push_str(self.table_name);
             sql.push_str(" WHERE ");
 
-            crate::sql_where_builder::build(&mut sql, input_param, &mut params);
+            crate::sql_where::build(&mut sql, input_param, &mut params);
 
             sql.push('\n');
             line_no += 1;
@@ -49,7 +49,10 @@ impl<'s, TIn: SqlWhereData<'s>> BulkSelectBuilder<'s, TIn> {
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
 
-    use crate::{BulkSelectBuilder, SqlWhereData, SqlWhereValue};
+    use crate::{
+        sql_where::{SqlWhereModel, SqlWhereValue},
+        BulkSelectBuilder,
+    };
 
     #[test]
     fn test_build_sql() {
@@ -59,7 +62,7 @@ mod tests {
             q3: i64,
         }
 
-        impl<'s> SqlWhereData<'s> for Param {
+        impl<'s> SqlWhereModel<'s> for Param {
             fn get_field_value(&'s self, no: usize) -> SqlWhereValue<'s> {
                 match no {
                     0 => SqlWhereValue::AsValue {
@@ -82,7 +85,7 @@ mod tests {
                 }
             }
 
-            fn get_max_fields_amount() -> usize {
+            fn get_fields_amount() -> usize {
                 3
             }
         }

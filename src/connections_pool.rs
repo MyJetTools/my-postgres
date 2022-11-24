@@ -6,9 +6,9 @@ use rust_extensions::Logger;
 use std::sync::Arc;
 
 use crate::{
-    count_result::CountResult, BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity,
-    InsertOrUpdateEntity, MyPostgres, MyPostgressError, PostgressSettings, SelectEntity,
-    SqlWhereData, ToSqlString, UpdateEntity,
+    count_result::CountResult, sql_insert::SqlInsertModel, sql_update::SqlUpdateModel,
+    sql_where::SqlWhereModel, BulkSelectBuilder, BulkSelectEntity, MyPostgres, MyPostgressError,
+    PostgressSettings, SelectEntity, ToSqlString,
 };
 
 struct MyPostgresFactory {
@@ -74,7 +74,7 @@ impl ConnectionsPool {
         self.connections.get_element().await
     }
 
-    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>, TResult: CountResult>(
+    pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
@@ -112,7 +112,7 @@ impl ConnectionsPool {
     pub async fn query_single_row<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereData<'s>,
+        TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
         table_name: &str,
@@ -134,7 +134,7 @@ impl ConnectionsPool {
     pub async fn query_rows<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereData<'s>,
+        TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
         table_name: &str,
@@ -155,9 +155,9 @@ impl ConnectionsPool {
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: SqlWhereData<'s> + Send + Sync + 'static,
+        TIn: SqlWhereModel<'s> + Send + Sync + 'static,
         TOut,
-        TEntity: BulkSelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
     >(
         &self,
@@ -179,9 +179,9 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn insert_db_entity<TEntity: InsertEntity>(
+    pub async fn insert_db_entity<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entity: &TEntity,
+        entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
@@ -197,9 +197,9 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn insert_db_entity_if_not_exists<TEntity: InsertEntity>(
+    pub async fn insert_db_entity_if_not_exists<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entity: TEntity,
+        entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
@@ -215,9 +215,9 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
+    pub async fn bulk_insert_db_entities<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entities: &[TEntity],
+        entities: &'s [TEntity],
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
@@ -233,28 +233,28 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
+    pub async fn bulk_insert_db_entities_if_not_exists<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entities: &[TEntity],
         table_name: &str,
+        entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_db_entities_if_not_exists(
-                entities,
                 table_name,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
             .await
     }
 
-    pub async fn update_db_entity<TEntity: UpdateEntity>(
+    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel<'s> + SqlWhereModel<'s>>(
         &self,
-        entity: TEntity,
         table_name: &str,
+        entity: &'s TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
@@ -269,7 +269,7 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn delete<'s, TWhereModel: SqlWhereData<'s>>(
+    pub async fn delete<'s, TWhereModel: SqlWhereModel<'s>>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
@@ -288,49 +288,56 @@ impl ConnectionsPool {
             .await
     }
 
-    pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
+    pub async fn bulk_insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel<'s> + SqlUpdateModel<'s>,
+    >(
         &self,
-        entities: &[TEntity],
         table_name: &str,
         pk_name: &str,
+        entities: &'s [TEntity],
+
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .bulk_insert_or_update_db_entity(
-                entities,
                 table_name,
                 pk_name,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
             .await
     }
 
-    pub async fn insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
+    pub async fn insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel<'s> + SqlUpdateModel<'s>,
+    >(
         &self,
-        entity: &TEntity,
         table_name: &str,
         pk_name: &str,
+        entity: &'s TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let connection = self.get_postgres_client().await;
         let write_access = connection.value.lock().await;
         write_access
             .insert_or_update_db_entity(
-                entity,
                 table_name,
                 pk_name,
+                entity,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
             .await
     }
 
-    pub async fn bulk_delete<TEntity: DeleteEntity>(
+    pub async fn bulk_delete<'s, TEntity: SqlWhereModel<'s>>(
         &self,
-        entities: &[TEntity],
+        entities: &'s [TEntity],
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
@@ -338,8 +345,8 @@ impl ConnectionsPool {
         let write_access = connection.value.lock().await;
         write_access
             .bulk_delete(
-                entities,
                 table_name,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )

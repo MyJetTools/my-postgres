@@ -1,6 +1,8 @@
 use crate::sql_value_writer::SqlValueWriter;
 
 pub enum SqlWhereValue<'s> {
+    Ignore,
+    Null(&'static str),
     AsValue {
         name: &'static str,
         op: &'static str,
@@ -31,6 +33,13 @@ impl<'s> SqlWhereValue<'s> {
                 }
             }
             None => Self::AsInOperator { name, values: None },
+        }
+    }
+
+    pub fn is_ignore(&self) -> bool {
+        match self {
+            Self::Ignore => true,
+            _ => false,
         }
     }
 }

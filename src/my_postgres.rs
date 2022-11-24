@@ -8,22 +8,25 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use std::{
-    future::Future,
+    collections::BTreeMap,
     sync::{atomic::Ordering, Arc},
     time::Duration,
 };
-use tokio::{sync::RwLock, time::error::Elapsed};
+use tokio::sync::RwLock;
 use tokio_postgres::NoTls;
 
 use crate::{
-    count_result::CountResult, BulkSelectBuilder, BulkSelectEntity, DeleteEntity, InsertEntity,
-    InsertOrUpdateEntity, MyPostgressError, PostgresConnection, PostgressSettings, SelectEntity,
-    SqlWhereData, ToSqlString, UpdateEntity,
+    count_result::CountResult,
+    rented_connection::{RentedConnection, RentedConnectionMut},
+    sql_insert::SqlInsertModel,
+    sql_update::SqlUpdateModel,
+    sql_where::SqlWhereModel,
+    BulkSelectBuilder, BulkSelectEntity, MyPostgressError, PostgresConnection, PostgressSettings,
+    SelectEntity, ToSqlString,
 };
 
 pub struct MyPostgres {
     client: Arc<RwLock<Option<PostgresConnection>>>,
-    sql_request_timeout: Duration,
 }
 
 impl MyPostgres {
@@ -43,16 +46,18 @@ impl MyPostgres {
 
         Self {
             client: shared_connection,
-            sql_request_timeout: Duration::from_secs(5),
         }
     }
 
-    pub fn set_sql_request_timeout(mut self, timeout: Duration) -> Self {
-        self.sql_request_timeout = timeout;
-        self
+    async fn get_connection<'s>(&'s self) -> Result<RentedConnection<'s>, MyPostgressError> {
+        RentedConnection::new(self.client.read().await)
     }
 
-    pub async fn get_count<'s, TWhereModel: SqlWhereData<'s>, TResult: CountResult>(
+    async fn get_connection_mut<'s>(&'s self) -> Result<RentedConnectionMut<'s>, MyPostgressError> {
+        RentedConnectionMut::new(self.client.write().await)
+    }
+
+    pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
@@ -68,68 +73,57 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
+        crate::sql_where::build(&mut sql, where_model, &mut params);
 
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                connection
-                    .get_count(
-                        sql.as_str(),
-                        &params,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        let result = self.handle_error(result).await?;
-
-        match result.get(0) {
-            Some(row) => {
-                let result: TResult = TResult::from_db_row(row);
-                Ok(Some(result))
-            }
-            None => Ok(None),
+        let mut result = connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                &params,
+                sql.as_str(),
+                |row| TResult::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
+        if result.len() > 0 {
+            Ok(Some(result.remove(0)))
+        } else {
+            Ok(None)
         }
     }
 
     pub async fn query_single_row<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereData<'s>,
+        TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
-        let mut sql = String::new();
+        let (sql, params) =
+            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        let mut params = Vec::new();
-        sql.push_str("SELECT COUNT(*)::bigint FROM ");
-        sql.push_str(table_name);
-        sql.push_str(" WHERE ");
+        let connection = self.get_connection().await?;
 
-        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
+        let mut result = connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                &params,
+                sql.as_str(),
+                |row| TEntity::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-        let read_access = self.client.read().await;
-
-        if let Some(connection) = read_access.as_ref() {
-            connection
-                .query_single_row(
-                    sql.as_str(),
-                    &params,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                )
-                .await
+        if result.len() > 0 {
+            Ok(Some(result.remove(0)))
         } else {
-            Err(MyPostgressError::NoConnection)
+            Ok(None)
         }
     }
 
@@ -138,36 +132,25 @@ impl MyPostgres {
         sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgressError> {
-        let result = {
-            let read_access = self.client.read().await;
+        let (sql, params) = sql.as_sql();
 
-            let (sql, params) = sql.as_sql();
-
-            if let Some(connection) = read_access.as_ref() {
-                let execution = if let Some(params) = params {
-                    connection.execute_sql(
-                        sql.as_str(),
-                        params,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                } else {
-                    connection.execute_sql(
-                        sql.as_str(),
-                        &[],
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                };
-
-                self.execute_request_with_timeout(sql.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
+        let params = if let Some(params) = params {
+            params
+        } else {
+            &[]
         };
 
-        self.handle_error(result).await
+        let connection = self.get_connection().await?;
+
+        connection
+            .execute_sql(
+                sql.as_str(),
+                params,
+                sql.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub async fn execute_sql_as_vec<
@@ -178,83 +161,58 @@ impl MyPostgres {
         sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
-        let result = {
-            let read_access = self.client.read().await;
+        let (sql, params) = sql.as_sql();
 
-            let (sql, params) = sql.as_sql();
-
-            if let Some(connection) = read_access.as_ref() {
-                let execution = if let Some(params) = params {
-                    connection.execute_sql_as_vec(
-                        sql.as_str(),
-                        params,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                } else {
-                    connection.execute_sql_as_vec(
-                        sql.as_str(),
-                        &[],
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                };
-
-                self.execute_request_with_timeout(sql.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
+        let params = if let Some(params) = params {
+            params
+        } else {
+            &[]
         };
 
-        self.handle_error(result).await
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                params,
+                sql.as_str(),
+                |row| TEntity::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub async fn query_rows<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereData<'s>,
+        TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
-        let mut sql = String::new();
+        let (sql, params) =
+            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        let mut params = Vec::new();
-        sql.push_str("SELECT COUNT(*)::bigint FROM ");
-        sql.push_str(table_name);
-        sql.push_str(" WHERE ");
-
-        crate::sql_where_builder::build(&mut sql, where_model, &mut params);
-
-        let result = {
-            let read_access = self.client.read().await;
-
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.query_rows(
-                    sql.as_str(),
-                    params.as_slice(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(sql.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                params.as_slice(),
+                sql.as_str(),
+                |row| TEntity::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub async fn bulk_query_rows_with_transformation<
         's,
-        TIn: SqlWhereData<'s> + Send + Sync + 'static,
+        TIn: SqlWhereModel<'s> + Send + Sync + 'static,
         TOut,
-        TEntity: BulkSelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
     >(
         &self,
@@ -263,183 +221,171 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
+        let (sql, params) = sql_builder.build_sql(TEntity::get_select_fields());
 
-        let result = {
-            let read_access = self.client.read().await;
-
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.bulk_query_rows_with_transformation(
-                    sql_builder,
-                    transform,
+        let response = {
+            let connection = self.get_connection().await?;
+            connection
+                .execute_sql_as_vec(
+                    sql.as_str(),
+                    &params,
                     process_name.as_str(),
+                    |row| TEntity::from_db_row(row),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
+                )
+                .await?
         };
 
-        self.handle_error(result).await
+        let mut result = Vec::with_capacity(response.len());
+
+        let mut response_as_hashmap = BTreeMap::new();
+
+        for entity in response {
+            response_as_hashmap.insert(entity.get_line_no(), entity);
+        }
+
+        let mut line_no = 0;
+        for input_entity in &sql_builder.input_params {
+            let out = response_as_hashmap.remove(&line_no);
+            let item = transform(input_entity, out);
+            result.push(item);
+            line_no += 1;
+        }
+
+        Ok(result)
     }
 
-    pub async fn insert_db_entity<TEntity: InsertEntity>(
+    pub async fn insert_db_entity<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entity: &TEntity,
+        entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        let mut params = Vec::new();
+        let sql = crate::sql_insert::build_insert(table_name, entity, &mut params);
+
         let process_name: String = format!("insert_db_entity into table {}", table_name);
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.insert_db_entity(
-                    entity,
-                    table_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn insert_db_entity_if_not_exists<TEntity: InsertEntity>(
+    pub async fn insert_db_entity_if_not_exists<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entity: TEntity,
+        entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        let mut params = Vec::new();
+        let sql = crate::sql_insert::build_insert_if_not_exists(table_name, entity, &mut params);
+
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.insert_db_entity_if_not_exists(
-                    entity,
-                    table_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn bulk_insert_db_entities<TEntity: InsertEntity>(
+    pub async fn bulk_insert_db_entities<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entities: &[TEntity],
+        entities: &'s [TEntity],
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        let (sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
+
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.bulk_insert_db_entities(
-                    entities,
-                    table_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: InsertEntity>(
+    pub async fn bulk_insert_db_entities_if_not_exists<'s, TEntity: SqlInsertModel<'s>>(
         &self,
-        entities: &[TEntity],
         table_name: &str,
+        entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        let (mut sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
+
+        sql.push_str(" ON CONFLICT DO NOTHING");
+
         let process_name = format!(
             "bulk_insert_db_entities_if_not_exists into table {}",
             table_name
         );
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.bulk_insert_db_entities_if_not_exists(
-                    entities,
-                    table_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn update_db_entity<TEntity: UpdateEntity>(
+    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel<'s> + SqlWhereModel<'s>>(
         &self,
-        entity: TEntity,
+        entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        let (sql, params) = crate::sql_update::build(table_name, entity, entity);
         let process_name = format!("update_db_entity into table {}", table_name);
-        let result = {
-            let read_access = self.client.read().await;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.update_db_entity(
-                    entity,
-                    table_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn bulk_insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
+    pub async fn bulk_insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel<'s> + SqlUpdateModel<'s>,
+    >(
         &self,
-        entities: &[TEntity],
         table_name: &str,
         pk_name: &str,
+        entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!(
@@ -448,167 +394,92 @@ impl MyPostgres {
             entities.len()
         );
 
-        let result = {
-            let mut write_access = self.client.write().await;
+        let sqls = crate::sql_insert::build_bulk_insert_if_update(table_name, pk_name, entities);
 
-            if let Some(connection) = write_access.as_mut() {
-                let execution = connection.bulk_insert_or_update_db_entity(
-                    entities,
-                    table_name,
-                    pk_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        let mut connection = self.get_connection_mut().await?;
+        connection
+            .execute_bulk_sql(
+                sqls,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
-    pub async fn insert_or_update_db_entity<TEntity: InsertOrUpdateEntity>(
+    pub async fn insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel<'s> + SqlUpdateModel<'s>,
+    >(
         &self,
-        entity: &TEntity,
         table_name: &str,
         pk_name: &str,
+        entity: &'s TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
-        let result = {
-            let read_access = self.client.read().await;
+        let (sql, params) = crate::sql_insert::build_insert_or_update(table_name, pk_name, entity);
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.insert_or_update_db_entity(
-                    entity,
-                    table_name,
-                    pk_name,
-                    process_name.as_str(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                process_name.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await
+        Ok(())
     }
 
-    pub async fn delete_db_entity<'s, TWhereModel: SqlWhereData<'s>>(
+    pub async fn delete_db_entity<'s, TWhereModel: SqlWhereModel<'s>>(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
-        let result = {
-            let read_access = self.client.read().await;
+        let (sql, params) = crate::sql_delete::build_delete(table_name, where_model);
 
-            let mut sql = String::new();
-
-            sql.push_str("DELETE FROM ");
-            sql.push_str(table_name);
-            sql.push_str(" WHERE ");
-
-            let mut params = Vec::new();
-            crate::sql_where_builder::build(&mut sql, where_model, &mut params);
-
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.execute_sql(
-                    sql.as_str(),
-                    params.as_slice(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
-
-                self.execute_request_with_timeout(sql.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
-
-        self.handle_error(result).await?;
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                params.as_slice(),
+                sql.as_str(),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
         Ok(())
     }
 
-    pub async fn bulk_delete<TEntity: DeleteEntity>(
+    pub async fn bulk_delete<'s, TEntity: SqlWhereModel<'s>>(
         &self,
-        entities: &[TEntity],
         table_name: &str,
+        entities: &'s [TEntity],
 
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
         let process_name = format!("bulk_delete from table {}", table_name);
-        let result = {
-            let read_access = self.client.read().await;
 
-            if let Some(connection) = read_access.as_ref() {
-                let execution = connection.bulk_delete(
-                    entities,
-                    table_name,
-                    &process_name,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                );
+        let (sql, params) = crate::sql_delete::build_bulk_delete(table_name, entities);
 
-                self.execute_request_with_timeout(process_name.as_str(), execution)
-                    .await
-            } else {
-                Err(MyPostgressError::NoConnection)
-            }
-        };
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql(
+                sql.as_str(),
+                &params,
+                &process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
 
-        self.handle_error(result).await
-    }
-
-    async fn execute_request_with_timeout<
-        TResult,
-        TFuture: Future<Output = Result<TResult, MyPostgressError>>,
-    >(
-        &self,
-        process_name: &str,
-        execution: TFuture,
-    ) -> Result<TResult, MyPostgressError> {
-        let timeout_result: Result<Result<TResult, MyPostgressError>, Elapsed> =
-            tokio::time::timeout(self.sql_request_timeout, execution).await;
-
-        if timeout_result.is_err() {
-            println!(
-                "{}: query_rows {} is timeouted after {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                process_name,
-                self.sql_request_timeout
-            );
-            Err(MyPostgressError::Timeouted(self.sql_request_timeout))
-        } else {
-            timeout_result.unwrap()
-        }
-    }
-
-    async fn handle_error<T>(
-        &self,
-        result: Result<T, MyPostgressError>,
-    ) -> Result<T, MyPostgressError> {
-        if let Err(err) = &result {
-            if let MyPostgressError::Timeouted(_) = err {
-                let mut write_access = self.client.write().await;
-                if let Some(client) = write_access.take() {
-                    client.disconnect();
-                }
-            }
-        }
-
-        result
+        Ok(())
     }
 }
 
@@ -676,6 +547,7 @@ async fn create_and_start_no_tls(
                 let mut write_access = shared_connection.write().await;
                 let postgress_connection = PostgresConnection::new(
                     client,
+                    Duration::from_secs(5),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger.clone(),
                 );
