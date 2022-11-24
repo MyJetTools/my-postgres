@@ -18,7 +18,7 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
         }
         i += 1;
 
-        match sql_where_model.get_field_value(i) {
+        match value {
             SqlWhereValue::Ignore => {}
             SqlWhereValue::Null(name) => {
                 sql.push_str(name);
