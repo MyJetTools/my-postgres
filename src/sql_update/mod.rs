@@ -1,6 +1,6 @@
-mod sql_update_builder;
-mod sql_update_model;
-mod sql_update_value;
-pub use sql_update_builder::*;
-pub use sql_update_model::*;
-pub use sql_update_value::*;
+mod builder;
+mod model;
+mod value;
+pub use builder::*;
+pub use model::*;
+pub use value::*;

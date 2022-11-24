@@ -57,6 +57,9 @@ impl PostgresConnection {
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgressError> {
+        #[cfg(feature = "debug-sql")]
+        println!("SQL: {}", sql);
+
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
@@ -89,6 +92,9 @@ impl PostgresConnection {
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {
+        #[cfg(feature = "debug-sql")]
+        println!("SQL: {}", sql);
+
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
@@ -127,6 +133,9 @@ impl PostgresConnection {
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
+        #[cfg(feature = "debug-sql")]
+        println!("SQL: {}", sql);
+
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
