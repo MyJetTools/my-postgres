@@ -632,6 +632,7 @@ async fn create_and_start_with_tls(
                 let mut write_access = shared_connection.write().await;
                 let postgress_connection = PostgresConnection::new(
                     client,
+                    Duration::from_secs(5),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger.clone(),
                 );
