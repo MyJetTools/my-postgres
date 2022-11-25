@@ -8,21 +8,32 @@ pub enum SqlWhereValue<'s> {
     },
     AsInOperator {
         name: &'static str,
-        values: Vec<SqlValue<'s>>,
+        values: Option<Vec<SqlValue<'s>>>,
     },
 }
 
 impl<'s> SqlWhereValue<'s> {
-    pub fn to_in_operator<T: SqlValueWriter<'s>>(name: &'static str, src: &'s Vec<T>) -> Self {
-        let mut values: Vec<SqlValue<'s>> = Vec::new();
+    pub fn to_in_operator<T: SqlValueWriter<'s>>(
+        name: &'static str,
+        src: &'s Option<Vec<T>>,
+    ) -> Self {
+        match src {
+            Some(src) => {
+                let mut values: Vec<SqlValue<'s>> = Vec::new();
 
-        for itm in src {
-            values.push(SqlValue::Value {
-                options: None,
-                value: itm,
-            });
+                for itm in src {
+                    values.push(SqlValue::Value {
+                        options: None,
+                        value: itm,
+                    });
+                }
+
+                Self::AsInOperator {
+                    name,
+                    values: Some(values),
+                }
+            }
+            None => Self::AsInOperator { name, values: None },
         }
-
-        Self::AsInOperator { name, values }
     }
 }

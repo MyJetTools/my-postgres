@@ -29,6 +29,12 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                 }
             },
             SqlWhereValue::AsInOperator { name, values } => {
+                if values.is_none() {
+                    continue;
+                }
+
+                let values = values.unwrap();
+
                 if values.len() == 0 {
                     continue;
                 }
