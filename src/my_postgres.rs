@@ -29,10 +29,6 @@ pub struct MyPostgres {
     client: Arc<RwLock<Option<PostgresConnection>>>,
 }
 
-pub trait SqlProcessing {
-    fn post_process_sql(sql: &mut String);
-}
-
 impl MyPostgres {
     pub async fn new(
         app_name: String,
@@ -134,17 +130,19 @@ impl MyPostgres {
     pub async fn query_single_row_with_processing<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel<'s> + SqlProcessing,
+        TWhereModel: SqlWhereModel<'s>,
+        TPostProcessing: Fn(&mut String),
     >(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
+        post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let (mut sql, params) =
             crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        TWhereModel::post_process_sql(&mut sql);
+        post_processing(&mut sql);
 
         let connection = self.get_connection().await?;
 
@@ -250,17 +248,19 @@ impl MyPostgres {
     pub async fn query_rows_with_processing<
         's,
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel<'s> + SqlProcessing,
+        TWhereModel: SqlWhereModel<'s>,
+        TPostProcessing: Fn(&mut String),
     >(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
+        post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let (mut sql, params) =
             crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        TWhereModel::post_process_sql(&mut sql);
+        post_processing(&mut sql);
 
         let connection = self.get_connection().await?;
         connection
