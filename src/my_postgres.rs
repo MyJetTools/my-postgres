@@ -133,8 +133,8 @@ impl MyPostgres {
 
     pub async fn query_single_row_with_processing<
         's,
-        TEntity: SelectEntity + SqlProcessing + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel<'s>,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel<'s> + SqlProcessing,
     >(
         &self,
         table_name: &str,
@@ -144,7 +144,7 @@ impl MyPostgres {
         let (mut sql, params) =
             crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        TEntity::post_process_sql(&mut sql);
+        TWhereModel::post_process_sql(&mut sql);
 
         let connection = self.get_connection().await?;
 
@@ -249,8 +249,8 @@ impl MyPostgres {
 
     pub async fn query_rows_with_processing<
         's,
-        TEntity: SelectEntity + SqlProcessing + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel<'s>,
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel<'s> + SqlProcessing,
     >(
         &self,
         table_name: &str,
@@ -260,7 +260,7 @@ impl MyPostgres {
         let (mut sql, params) =
             crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
 
-        TEntity::post_process_sql(&mut sql);
+        TWhereModel::post_process_sql(&mut sql);
 
         let connection = self.get_connection().await?;
         connection
