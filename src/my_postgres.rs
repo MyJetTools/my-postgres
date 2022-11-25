@@ -29,6 +29,10 @@ pub struct MyPostgres {
     client: Arc<RwLock<Option<PostgresConnection>>>,
 }
 
+pub trait SqlProcessing {
+    fn post_process_sql(sql: &mut String);
+}
+
 impl MyPostgres {
     pub async fn new(
         app_name: String,
@@ -127,6 +131,41 @@ impl MyPostgres {
         }
     }
 
+    pub async fn query_single_row_with_processing<
+        's,
+        TEntity: SelectEntity + SqlProcessing + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel<'s>,
+    >(
+        &self,
+        table_name: &str,
+        where_model: &'s TWhereModel,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Option<TEntity>, MyPostgressError> {
+        let (mut sql, params) =
+            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+
+        TEntity::post_process_sql(&mut sql);
+
+        let connection = self.get_connection().await?;
+
+        let mut result = connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                &params,
+                sql.as_str(),
+                |row| TEntity::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
+
+        if result.len() > 0 {
+            Ok(Some(result.remove(0)))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub async fn execute_sql<ToSql: ToSqlString>(
         &self,
         sql: &ToSql,
@@ -194,6 +233,34 @@ impl MyPostgres {
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let (sql, params) =
             crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+
+        let connection = self.get_connection().await?;
+        connection
+            .execute_sql_as_vec(
+                sql.as_str(),
+                params.as_slice(),
+                sql.as_str(),
+                |row| TEntity::from_db_row(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn query_rows_with_processing<
+        's,
+        TEntity: SelectEntity + SqlProcessing + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel<'s>,
+    >(
+        &self,
+        table_name: &str,
+        where_model: &'s TWhereModel,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<TEntity>, MyPostgressError> {
+        let (mut sql, params) =
+            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+
+        TEntity::post_process_sql(&mut sql);
 
         let connection = self.get_connection().await?;
         connection
