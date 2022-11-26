@@ -53,9 +53,7 @@ impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
     ) {
         if let Some(sql_type) = sql_type {
             if sql_type == "bigint" {
-                sql.push('\'');
                 sql.push_str(self.unix_microseconds.to_string().as_str());
-                sql.push('\'');
                 return;
             }
 
