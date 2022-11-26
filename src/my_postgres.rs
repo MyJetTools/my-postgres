@@ -108,8 +108,8 @@ impl MyPostgres {
             table_name,
             |sql| TEntity::fill_select_fields(sql),
             where_model,
-            |sql| TEntity::fill_group_by_fields(sql),
-            |sql| TEntity::fill_group_by_fields(sql),
+            TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         let connection = self.get_connection().await?;
@@ -148,8 +148,8 @@ impl MyPostgres {
             table_name,
             |sql| TEntity::fill_select_fields(sql),
             where_model,
-            |sql| TEntity::fill_order_by_fields(sql),
-            |sql| TEntity::fill_order_by_fields(sql),
+            TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         post_processing(&mut sql);
@@ -243,8 +243,8 @@ impl MyPostgres {
             table_name,
             |sql| TEntity::fill_select_fields(sql),
             where_model,
-            |sql| TEntity::fill_order_by_fields(sql),
-            |sql| TEntity::fill_group_by_fields(sql),
+            TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         let connection = self.get_connection().await?;
@@ -276,8 +276,8 @@ impl MyPostgres {
             table_name,
             |sql| TEntity::fill_select_fields(sql),
             where_model,
-            |sql| TEntity::fill_order_by_fields(sql),
-            |sql| TEntity::fill_group_by_fields(sql),
+            TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         post_processing(&mut sql);
