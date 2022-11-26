@@ -14,6 +14,35 @@ pub fn build<'s, TWhereModel: SqlWhereModel<'s>>(
     sql.push_str(table_name);
     sql.push_str(" WHERE ");
 
+    if let Some(order_by_fields) = TWhereModel::get_order_by_fields() {
+        match order_by_fields {
+            crate::sql_where::OrderByFields::Asc(fields) => {
+                sql.push_str(" ORDER BY ");
+
+                for (no, field) in fields.into_iter().enumerate() {
+                    if no > 0 {
+                        sql.push_str(",");
+                    }
+
+                    sql.push_str(field);
+                }
+            }
+            crate::sql_where::OrderByFields::Desc(fields) => {
+                sql.push_str(" ORDER BY ");
+
+                for (no, field) in fields.into_iter().enumerate() {
+                    if no > 0 {
+                        sql.push_str(",");
+                    }
+
+                    sql.push_str(field);
+                }
+
+                sql.push_str(" DESC");
+            }
+        }
+    }
+
     crate::sql_where::build(&mut sql, model, &mut params);
 
     (sql, params)

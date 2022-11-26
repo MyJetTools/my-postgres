@@ -97,6 +97,10 @@ mod tests {
             fn get_fields_amount() -> usize {
                 3
             }
+
+            fn get_order_by_fields() -> Option<crate::sql_where::OrderByFields<'s>> {
+                None
+            }
         }
 
         let params = vec![
