@@ -97,6 +97,14 @@ mod tests {
             fn get_fields_amount() -> usize {
                 3
             }
+
+            fn get_limit(&self) -> Option<usize> {
+                None
+            }
+
+            fn get_offset(&self) -> Option<usize> {
+                None
+            }
         }
 
         let params = vec![
