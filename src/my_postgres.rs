@@ -106,7 +106,7 @@ impl MyPostgres {
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let (sql, params) = crate::sql_select::build(
             table_name,
-            TEntity::get_select_fields(),
+            |sql| TEntity::fill_sql_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -146,7 +146,7 @@ impl MyPostgres {
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let (mut sql, params) = crate::sql_select::build(
             table_name,
-            TEntity::get_select_fields(),
+            |sql| TEntity::fill_sql_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -241,7 +241,7 @@ impl MyPostgres {
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let (sql, params) = crate::sql_select::build(
             table_name,
-            TEntity::get_select_fields(),
+            |sql| TEntity::fill_sql_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -274,7 +274,7 @@ impl MyPostgres {
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let (mut sql, params) = crate::sql_select::build(
             table_name,
-            TEntity::get_select_fields(),
+            |sql| TEntity::fill_sql_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -308,7 +308,7 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgressError> {
         let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
-        let (sql, params) = sql_builder.build_sql(TEntity::get_select_fields());
+        let (sql, params) = sql_builder.build_sql(|sql| TEntity::fill_sql_fields(sql));
 
         let response = {
             let connection = self.get_connection().await?;

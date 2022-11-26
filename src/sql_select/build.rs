@@ -2,9 +2,9 @@ use crate::sql_where::SqlWhereModel;
 
 use super::{GroupByFields, OrderByFields};
 
-pub fn build<'s, TWhereModel: SqlWhereModel<'s>>(
+pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     table_name: &str,
-    sql_fields: &str,
+    fill_select: TFillSelect,
     where_model: &'s TWhereModel,
     order_by_feilds: Option<OrderByFields>,
     group_by_fields: Option<GroupByFields>,
@@ -13,7 +13,7 @@ pub fn build<'s, TWhereModel: SqlWhereModel<'s>>(
     let mut params = Vec::new();
 
     sql.push_str("SELECT ");
-    sql.push_str(sql_fields);
+    fill_select(&mut sql);
     sql.push_str(" FROM ");
     sql.push_str(table_name);
     sql.push_str(" WHERE ");

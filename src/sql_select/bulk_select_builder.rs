@@ -13,9 +13,9 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
         }
     }
 
-    pub fn build_sql(
+    pub fn build_sql<TBuildSelect: Fn(&mut String)>(
         &'s self,
-        select_part: &str,
+        build_select_part: TBuildSelect,
     ) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
         let mut sql = String::new();
         let mut params = Vec::new();
@@ -30,7 +30,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
             sql.push_str("SELECT ");
             sql.push_str(line_no.to_string().as_str());
             sql.push_str("::int as line_no, ");
-            sql.push_str(select_part);
+            build_select_part(&mut sql);
             sql.push_str(" FROM ");
             sql.push_str(self.table_name);
             sql.push_str(" WHERE ");
@@ -122,7 +122,7 @@ mod tests {
 
         let bulk_select = BulkSelectBuilder::new("test", params);
 
-        let (result, values) = bulk_select.build_sql("*");
+        let (result, values) = bulk_select.build_sql(|sql| sql.push('*'));
         println!("{}", result);
         println!("{:?}", values);
     }

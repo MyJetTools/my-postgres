@@ -11,7 +11,7 @@ pub enum FromDbRow<'s> {
 
 pub trait SelectEntity {
     fn from(src: FromDbRow) -> Self;
-    fn get_select_fields() -> &'static str;
+    fn fill_sql_fields(sql: &mut String);
     fn get_order_by_fields() -> Option<OrderByFields>;
     fn get_group_by_fields() -> Option<GroupByFields>;
 }
