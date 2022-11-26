@@ -23,7 +23,7 @@ impl<'s> SqlWhereValue<'s> {
 
                 for itm in src {
                     values.push(SqlValue::Value {
-                        options: None,
+                        sql_type: None,
                         value: itm,
                     });
                 }

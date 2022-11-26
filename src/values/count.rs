@@ -9,7 +9,7 @@ impl<'s> SqlValueWriter<'s> for RawField {
         &'s self,
         sql: &mut String,
         _params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.value.as_str());
     }

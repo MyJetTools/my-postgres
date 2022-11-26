@@ -52,8 +52,8 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
                 crate::SqlValue::Null => {
                     result.push_str("NULL");
                 }
-                crate::SqlValue::Value { options, value } => {
-                    value.write(result, params, options.as_ref());
+                crate::SqlValue::Value { sql_type, value } => {
+                    value.write(result, params, sql_type);
                 }
             }
         }

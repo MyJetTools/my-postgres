@@ -20,14 +20,14 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                     sql.push_str(name);
                     sql.push_str(" IS NULL");
                 }
-                crate::SqlValue::Value { options, value } => {
+                crate::SqlValue::Value { sql_type, value } => {
                     if i > 0 {
                         sql.push_str(" AND ");
                     }
                     i += 1;
                     sql.push_str(name);
                     sql.push_str(op);
-                    value.write(sql, params, options.as_ref());
+                    value.write(sql, params, sql_type);
                 }
             },
             SqlWhereValue::AsInOperator { name, values } => {
@@ -45,14 +45,14 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                     match values.get(0).unwrap() {
                         crate::SqlValue::Ignore => {}
                         crate::SqlValue::Null => {}
-                        crate::SqlValue::Value { options, value } => {
+                        crate::SqlValue::Value { sql_type, value } => {
                             if i > 0 {
                                 sql.push_str(" AND ");
                             }
                             i += 1;
                             sql.push_str(name);
                             sql.push_str(" = ");
-                            value.write(sql, params, options.as_ref());
+                            value.write(sql, params, *sql_type);
                             i += 1;
                         }
                     }
@@ -75,8 +75,8 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                     match value {
                         crate::SqlValue::Ignore => {}
                         crate::SqlValue::Null => {}
-                        crate::SqlValue::Value { options, value } => {
-                            value.write(sql, params, options.as_ref());
+                        crate::SqlValue::Value { sql_type, value } => {
+                            value.write(sql, params, sql_type);
                             no += 1;
                         }
                     }

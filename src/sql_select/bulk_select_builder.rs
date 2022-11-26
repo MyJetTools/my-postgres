@@ -69,7 +69,7 @@ mod tests {
                         name: "q1",
                         op: " = ",
                         value: crate::SqlValue::Value {
-                            options: None,
+                            sql_type: None,
                             value: &self.q1,
                         },
                     },
@@ -78,7 +78,7 @@ mod tests {
                         name: "q2",
                         op: " = ",
                         value: crate::SqlValue::Value {
-                            options: None,
+                            sql_type: None,
                             value: &self.q2,
                         },
                     },
@@ -86,7 +86,7 @@ mod tests {
                         name: "q3",
                         op: " = ",
                         value: crate::SqlValue::Value {
-                            options: None,
+                            sql_type: None,
                             value: &self.q3,
                         },
                     },

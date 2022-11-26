@@ -35,13 +35,13 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
         for no in 0..fields_amount {
             match model.get_field_value(no) {
                 SqlValue::Ignore => {}
-                SqlValue::Value { value, options } => {
+                SqlValue::Value { value, sql_type } => {
                     if written_no > 0 {
                         result.push(',');
                     }
 
                     written_no += 1;
-                    value.write(&mut result, &mut params, options.as_ref());
+                    value.write(&mut result, &mut params, sql_type);
                 }
                 SqlValue::Null => {
                     if written_no > 0 {

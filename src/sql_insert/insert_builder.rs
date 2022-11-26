@@ -27,7 +27,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
             SqlValue::Ignore => {}
             SqlValue::Value {
                 value: _,
-                options: _,
+                sql_type: _,
             } => {
                 if no > 0 {
                     result.push(',');
@@ -53,14 +53,14 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 
                 result.push_str("NULL");
             }
-            SqlValue::Value { options, value } => {
+            SqlValue::Value { sql_type, value } => {
                 if no > 0 {
                     result.push(',');
                 }
                 no += 1;
 
                 let pos = result.len();
-                value.write(&mut result, params, options.as_ref());
+                value.write(&mut result, params, sql_type);
 
                 if let Some(prms) = &mut params_with_index {
                     let param = &result[pos..];

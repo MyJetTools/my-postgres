@@ -4,7 +4,7 @@ pub enum SqlValue<'s> {
     Ignore,
     Null,
     Value {
-        options: Option<Vec<&'static str>>,
+        sql_type: Option<&'static str>,
         value: &'s dyn SqlValueWriter<'s>,
     },
 }
@@ -14,7 +14,7 @@ pub trait SqlValueWriter<'s> {
         &'s self,
         sql: &mut String,
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        options: Option<&Vec<&'static str>>,
+        sql_type: Option<&'static str>,
     );
 }
 
@@ -23,7 +23,7 @@ impl<'s> SqlValueWriter<'s> for String {
         &'s self,
         sql: &mut String,
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         params.push(self);
         sql.push('$');
@@ -36,7 +36,7 @@ impl<'s> SqlValueWriter<'s> for &'s str {
         &'s self,
         sql: &mut String,
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         params.push(self);
         sql.push('$');
@@ -49,21 +49,27 @@ impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        options: Option<&Vec<&'static str>>,
+        sql_type: Option<&'static str>,
     ) {
-        if let Some(options) = options {
-            for option in options {
-                if *option == "bigint" {
-                    sql.push('\'');
-                    sql.push_str(self.unix_microseconds.to_string().as_str());
-                    sql.push('\'');
-                }
+        if let Some(sql_type) = sql_type {
+            if sql_type == "bigint" {
+                sql.push('\'');
+                sql.push_str(self.unix_microseconds.to_string().as_str());
+                sql.push('\'');
+                return;
             }
+
+            if sql_type == "timestamp" {
+                sql.push('\'');
+                sql.push_str(self.to_rfc3339().as_str());
+                sql.push('\'');
+                return;
+            }
+
+            panic!("Unknown sql type: {}", sql_type);
         }
 
-        sql.push('\'');
-        sql.push_str(self.to_rfc3339().as_str());
-        sql.push('\'');
+        panic!("DateTimeAsMicroseconds requires sql_type");
     }
 }
 
@@ -72,7 +78,7 @@ impl<'s> SqlValueWriter<'s> for bool {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         match self {
             true => sql.push_str("true"),
@@ -86,7 +92,7 @@ impl<'s> SqlValueWriter<'s> for u8 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -97,7 +103,7 @@ impl<'s> SqlValueWriter<'s> for i8 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -108,7 +114,7 @@ impl<'s> SqlValueWriter<'s> for u16 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -119,7 +125,7 @@ impl<'s> SqlValueWriter<'s> for f32 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -130,7 +136,7 @@ impl<'s> SqlValueWriter<'s> for f64 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -141,7 +147,7 @@ impl<'s> SqlValueWriter<'s> for i16 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -152,7 +158,7 @@ impl<'s> SqlValueWriter<'s> for u32 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -163,7 +169,7 @@ impl<'s> SqlValueWriter<'s> for i32 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -174,7 +180,7 @@ impl<'s> SqlValueWriter<'s> for u64 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }
@@ -185,7 +191,7 @@ impl<'s> SqlValueWriter<'s> for i64 {
         &'s self,
         sql: &mut String,
         _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
     }

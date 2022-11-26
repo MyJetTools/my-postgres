@@ -15,7 +15,7 @@ impl<'s> SqlValueWriter<'s> for IsNull {
         &'s self,
         sql: &mut String,
         _params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
-        _options: Option<&Vec<&'static str>>,
+        _sql_type: Option<&'static str>,
     ) {
         if self.value {
             sql.push_str("IS NULL");
