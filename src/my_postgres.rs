@@ -73,7 +73,7 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        crate::sql_where::build(&mut sql, where_model, &mut params);
+        where_model.fill_where(&mut sql, &mut params);
 
         let connection = self.get_connection().await?;
 
@@ -333,9 +333,9 @@ impl MyPostgres {
         }
 
         let mut line_no = 0;
-        for input_entity in &sql_builder.input_params {
+        for where_model in &sql_builder.where_models {
             let out = response_as_hashmap.remove(&line_no);
-            let item = transform(input_entity, out);
+            let item = transform(where_model, out);
             result.push(item);
             line_no += 1;
         }

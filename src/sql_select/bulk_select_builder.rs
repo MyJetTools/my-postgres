@@ -1,15 +1,15 @@
 use crate::sql_where::SqlWhereModel;
 
 pub struct BulkSelectBuilder<'s, TWhereModel: SqlWhereModel<'s>> {
-    pub input_params: Vec<TWhereModel>,
+    pub where_models: Vec<TWhereModel>,
     pub table_name: &'s str,
 }
 
 impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
-    pub fn new(table_name: &'s str, input_params: Vec<TWhereModel>) -> Self {
+    pub fn new(table_name: &'s str, where_models: Vec<TWhereModel>) -> Self {
         Self {
             table_name,
-            input_params,
+            where_models,
         }
     }
 
@@ -22,7 +22,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
 
         let mut line_no = 0;
 
-        for input_param in &self.input_params {
+        for where_model in &self.where_models {
             if line_no > 0 {
                 sql.push_str("UNION ALL\n");
             }
@@ -35,7 +35,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
             sql.push_str(self.table_name);
             sql.push_str(" WHERE ");
 
-            crate::sql_where::build(&mut sql, input_param, &mut params);
+            where_model.fill_where(&mut sql, &mut params);
 
             sql.push('\n');
             line_no += 1;
@@ -45,14 +45,12 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
     }
 }
 
+/*
 #[cfg(test)]
 #[cfg(not(feature = "with-logs-and-telemetry"))]
 mod tests {
 
-    use crate::{
-        sql_select::BulkSelectBuilder,
-        sql_where::{SqlWhereModel, SqlWhereValue},
-    };
+    use crate::{sql_select::BulkSelectBuilder, sql_where::SqlWhereModel};
 
     #[test]
     fn test_build_sql() {
@@ -127,3 +125,4 @@ mod tests {
         println!("{:?}", values);
     }
 }
+ */
