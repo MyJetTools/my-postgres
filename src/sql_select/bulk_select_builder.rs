@@ -50,8 +50,8 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
 mod tests {
 
     use crate::{
+        sql_select::BulkSelectBuilder,
         sql_where::{SqlWhereModel, SqlWhereValue},
-        BulkSelectBuilder,
     };
 
     #[test]

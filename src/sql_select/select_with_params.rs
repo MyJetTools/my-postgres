@@ -1,6 +1,6 @@
 use rust_extensions::StrOrString;
 
-use crate::ToSqlString;
+use super::ToSqlString;
 
 pub struct SqlWithParams<'s> {
     pub sql: &'s str,

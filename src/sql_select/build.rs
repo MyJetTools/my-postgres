@@ -1,4 +1,6 @@
-use crate::{sql_where::SqlWhereModel, OrderByFields};
+use crate::sql_where::SqlWhereModel;
+
+use super::OrderByFields;
 
 pub fn build<'s, TWhereModel: SqlWhereModel<'s>>(
     table_name: &str,

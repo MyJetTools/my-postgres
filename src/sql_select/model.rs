@@ -1,4 +1,4 @@
-use crate::OrderByFields;
+use super::OrderByFields;
 
 pub trait BulkSelectEntity {
     fn get_line_no(&self) -> i32;

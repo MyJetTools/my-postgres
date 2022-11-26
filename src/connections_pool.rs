@@ -6,9 +6,12 @@ use rust_extensions::Logger;
 use std::sync::Arc;
 
 use crate::{
-    count_result::CountResult, sql_insert::SqlInsertModel, sql_update::SqlUpdateModel,
-    sql_where::SqlWhereModel, BulkSelectBuilder, BulkSelectEntity, MyPostgres, MyPostgressError,
-    PostgressSettings, SelectEntity, ToSqlString,
+    count_result::CountResult,
+    sql_insert::SqlInsertModel,
+    sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
+    sql_update::SqlUpdateModel,
+    sql_where::SqlWhereModel,
+    MyPostgres, MyPostgressError, PostgressSettings,
 };
 
 struct MyPostgresFactory {

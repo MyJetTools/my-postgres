@@ -19,10 +19,10 @@ use crate::{
     count_result::CountResult,
     rented_connection::{RentedConnection, RentedConnectionMut},
     sql_insert::SqlInsertModel,
+    sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    BulkSelectBuilder, BulkSelectEntity, MyPostgressError, PostgresConnection, PostgressSettings,
-    SelectEntity, ToSqlString,
+    MyPostgressError, PostgresConnection, PostgressSettings,
 };
 
 pub struct MyPostgres {
