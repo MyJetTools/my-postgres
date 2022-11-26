@@ -1,9 +1,9 @@
-pub enum OrderByFields<'s> {
-    Asc(Vec<&'s str>),
-    Desc(Vec<&'s str>),
+pub enum OrderByFields {
+    Asc(Vec<&'static str>),
+    Desc(Vec<&'static str>),
 }
 
-impl<'s> OrderByFields<'s> {
+impl OrderByFields {
     pub fn fill_sql(&self, sql: &mut String) {
         match self {
             Self::Asc(fields) => {

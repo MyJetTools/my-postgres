@@ -1,11 +1,13 @@
 mod build;
 mod bulk_select_builder;
+mod group_by;
 mod model;
 mod order_by;
 mod select_with_params;
 mod to_sql_string;
 pub use build::*;
 pub use bulk_select_builder::*;
+pub use group_by::*;
 pub use model::*;
 pub use order_by::*;
 pub use select_with_params::*;

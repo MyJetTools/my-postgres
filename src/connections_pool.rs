@@ -114,7 +114,7 @@ impl ConnectionsPool {
 
     pub async fn query_single_row<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -136,7 +136,7 @@ impl ConnectionsPool {
 
     pub async fn query_rows<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -160,7 +160,7 @@ impl ConnectionsPool {
         's,
         TIn: SqlWhereModel<'s> + Send + Sync + 'static,
         TOut,
-        TEntity: SelectEntity<'s> + BulkSelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
     >(
         &self,

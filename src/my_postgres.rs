@@ -96,7 +96,7 @@ impl MyPostgres {
 
     pub async fn query_single_row<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -109,6 +109,7 @@ impl MyPostgres {
             TEntity::get_select_fields(),
             where_model,
             TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         let connection = self.get_connection().await?;
@@ -133,7 +134,7 @@ impl MyPostgres {
 
     pub async fn query_single_row_with_processing<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
         TPostProcessing: Fn(&mut String),
     >(
@@ -148,6 +149,7 @@ impl MyPostgres {
             TEntity::get_select_fields(),
             where_model,
             TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         post_processing(&mut sql);
@@ -199,9 +201,8 @@ impl MyPostgres {
     }
 
     pub async fn execute_sql_as_vec<
-        's,
         ToSql: ToSqlString,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
     >(
         &self,
         sql: &ToSql,
@@ -230,7 +231,7 @@ impl MyPostgres {
 
     pub async fn query_rows<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -243,6 +244,7 @@ impl MyPostgres {
             TEntity::get_select_fields(),
             where_model,
             TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         let connection = self.get_connection().await?;
@@ -260,7 +262,7 @@ impl MyPostgres {
 
     pub async fn query_rows_with_processing<
         's,
-        TEntity: SelectEntity<'s> + Send + Sync + 'static,
+        TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
         TPostProcessing: Fn(&mut String),
     >(
@@ -275,6 +277,7 @@ impl MyPostgres {
             TEntity::get_select_fields(),
             where_model,
             TEntity::get_order_by_fields(),
+            TEntity::get_group_by_fields(),
         );
 
         post_processing(&mut sql);
@@ -296,7 +299,7 @@ impl MyPostgres {
         's,
         TIn: SqlWhereModel<'s> + Send + Sync + 'static,
         TOut,
-        TEntity: SelectEntity<'s> + BulkSelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
     >(
         &self,
