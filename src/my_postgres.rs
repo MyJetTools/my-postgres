@@ -119,7 +119,7 @@ impl MyPostgres {
                 sql.as_str(),
                 &params,
                 sql.as_str(),
-                |row| TEntity::from_db_row(row),
+                |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -161,7 +161,7 @@ impl MyPostgres {
                 sql.as_str(),
                 &params,
                 sql.as_str(),
-                |row| TEntity::from_db_row(row),
+                |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -222,7 +222,7 @@ impl MyPostgres {
                 sql.as_str(),
                 params,
                 sql.as_str(),
-                |row| TEntity::from_db_row(row),
+                |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -253,7 +253,7 @@ impl MyPostgres {
                 sql.as_str(),
                 params.as_slice(),
                 sql.as_str(),
-                |row| TEntity::from_db_row(row),
+                |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -288,7 +288,7 @@ impl MyPostgres {
                 sql.as_str(),
                 params.as_slice(),
                 sql.as_str(),
-                |row| TEntity::from_db_row(row),
+                |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -317,7 +317,7 @@ impl MyPostgres {
                     sql.as_str(),
                     &params,
                     process_name.as_str(),
-                    |row| TEntity::from_db_row(row),
+                    |row| TEntity::from(crate::sql_select::FromDbRow::Single(row)),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,
                 )
