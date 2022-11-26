@@ -9,23 +9,25 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
     for field_no in 0..TSqlWhereModel::get_fields_amount() {
         let value = sql_where_model.get_field_value(field_no);
 
-        if i > 0 {
-            sql.push_str(" AND ");
-        }
-
         match value {
             SqlWhereValue::AsValue { name, op, value } => match value {
                 crate::SqlValue::Ignore => {}
                 crate::SqlValue::Null => {
+                    if i > 0 {
+                        sql.push_str(" AND ");
+                    }
+                    i += 1;
                     sql.push_str(name);
                     sql.push_str(" IS NULL");
-                    i += 1;
                 }
                 crate::SqlValue::Value { options, value } => {
+                    if i > 0 {
+                        sql.push_str(" AND ");
+                    }
+                    i += 1;
                     sql.push_str(name);
                     sql.push_str(op);
                     value.write(sql, params, options.as_ref());
-                    i += 1;
                 }
             },
             SqlWhereValue::AsInOperator { name, values } => {
@@ -44,6 +46,10 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                         crate::SqlValue::Ignore => {}
                         crate::SqlValue::Null => {}
                         crate::SqlValue::Value { options, value } => {
+                            if i > 0 {
+                                sql.push_str(" AND ");
+                            }
+                            i += 1;
                             sql.push_str(name);
                             sql.push_str(" = ");
                             value.write(sql, params, options.as_ref());
@@ -53,6 +59,10 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
 
                     continue;
                 }
+                if i > 0 {
+                    sql.push_str(" AND ");
+                }
+                i += 1;
 
                 sql.push_str(name);
                 sql.push_str(" IN (");
