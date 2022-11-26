@@ -96,7 +96,7 @@ impl MyPostgres {
 
     pub async fn query_single_row<
         's,
-        TEntity: SelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -104,8 +104,12 @@ impl MyPostgres {
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
-        let (sql, params) =
-            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+        let (sql, params) = crate::sql_select::build(
+            table_name,
+            TEntity::get_select_fields(),
+            where_model,
+            TEntity::get_order_by_fields(),
+        );
 
         let connection = self.get_connection().await?;
 
@@ -129,7 +133,7 @@ impl MyPostgres {
 
     pub async fn query_single_row_with_processing<
         's,
-        TEntity: SelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
         TPostProcessing: Fn(&mut String),
     >(
@@ -139,8 +143,12 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
-        let (mut sql, params) =
-            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+        let (mut sql, params) = crate::sql_select::build(
+            table_name,
+            TEntity::get_select_fields(),
+            where_model,
+            TEntity::get_order_by_fields(),
+        );
 
         post_processing(&mut sql);
 
@@ -191,8 +199,9 @@ impl MyPostgres {
     }
 
     pub async fn execute_sql_as_vec<
+        's,
         ToSql: ToSqlString,
-        TEntity: SelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + Send + Sync + 'static,
     >(
         &self,
         sql: &ToSql,
@@ -221,7 +230,7 @@ impl MyPostgres {
 
     pub async fn query_rows<
         's,
-        TEntity: SelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,
@@ -229,8 +238,12 @@ impl MyPostgres {
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
-        let (sql, params) =
-            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+        let (sql, params) = crate::sql_select::build(
+            table_name,
+            TEntity::get_select_fields(),
+            where_model,
+            TEntity::get_order_by_fields(),
+        );
 
         let connection = self.get_connection().await?;
         connection
@@ -247,7 +260,7 @@ impl MyPostgres {
 
     pub async fn query_rows_with_processing<
         's,
-        TEntity: SelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + Send + Sync + 'static,
         TWhereModel: SqlWhereModel<'s>,
         TPostProcessing: Fn(&mut String),
     >(
@@ -257,8 +270,12 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
-        let (mut sql, params) =
-            crate::sql_select::build(table_name, TEntity::get_select_fields(), where_model);
+        let (mut sql, params) = crate::sql_select::build(
+            table_name,
+            TEntity::get_select_fields(),
+            where_model,
+            TEntity::get_order_by_fields(),
+        );
 
         post_processing(&mut sql);
 
@@ -279,7 +296,7 @@ impl MyPostgres {
         's,
         TIn: SqlWhereModel<'s> + Send + Sync + 'static,
         TOut,
-        TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
+        TEntity: SelectEntity<'s> + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
     >(
         &self,
