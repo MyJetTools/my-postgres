@@ -1,10 +1,10 @@
 use crate::SqlValueWriter;
 
-pub struct SelectRawField {
+pub struct RawField {
     pub value: String,
 }
 
-impl<'s> SqlValueWriter<'s> for SelectRawField {
+impl<'s> SqlValueWriter<'s> for RawField {
     fn write(
         &'s self,
         sql: &mut String,
