@@ -81,6 +81,8 @@ pub fn build<'s, TSqlWhereModel: SqlWhereModel<'s>>(
                         }
                     }
                 }
+
+                sql.push(')');
             }
         }
     }
