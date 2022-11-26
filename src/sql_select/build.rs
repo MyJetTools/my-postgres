@@ -1,13 +1,17 @@
 use crate::sql_where::SqlWhereModel;
 
-use super::{GroupByFields, OrderByFields};
-
-pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
+pub fn build<
+    's,
+    TFillSelect: Fn(&mut String),
+    TFillOrderBy: Fn(&mut String),
+    TFillGroupBy: Fn(&mut String),
+    TWhereModel: SqlWhereModel<'s>,
+>(
     table_name: &str,
     fill_select: TFillSelect,
     where_model: &'s TWhereModel,
-    order_by_feilds: Option<OrderByFields>,
-    group_by_fields: Option<GroupByFields>,
+    order_by_feilds: TFillOrderBy,
+    group_by_fields: TFillGroupBy,
 ) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
     let mut sql = String::new();
     let mut params = Vec::new();
@@ -20,13 +24,9 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
 
     crate::sql_where::build(&mut sql, where_model, &mut params);
 
-    if let Some(order_by_fields) = order_by_feilds {
-        order_by_fields.fill_sql(&mut sql);
-    }
+    order_by_feilds(&mut sql);
 
-    if let Some(group_by_fields) = group_by_fields {
-        group_by_fields.fill_sql(&mut sql);
-    }
+    group_by_fields(&mut sql);
 
     if let Some(limit) = where_model.get_limit() {
         sql.push_str(" LIMIT ");
