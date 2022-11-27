@@ -15,7 +15,7 @@ pub fn build_bulk_delete<'s, TSqlWhereModel: crate::sql_where::SqlWhereModel<'s>
         if no > 0 {
             sql.push_str(" OR ");
         }
-        params = where_model.fill_where(&mut sql, params);
+        where_model.fill_where(&mut sql, &mut params);
     }
 
     (sql, params)

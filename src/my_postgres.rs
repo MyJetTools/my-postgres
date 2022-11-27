@@ -73,7 +73,7 @@ impl MyPostgres {
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
 
-        params = where_model.fill_where(&mut sql, params);
+        where_model.fill_where(&mut sql, &mut params);
 
         let connection = self.get_connection().await?;
 
