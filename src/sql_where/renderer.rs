@@ -51,7 +51,7 @@ impl WhereRenderer {
         &'s mut self,
         sql: &mut String,
         name: &'static str,
-        values: &Vec<&'s TSqlValueWriter>,
+        values: &'s Vec<TSqlValueWriter>,
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
@@ -86,7 +86,7 @@ impl WhereRenderer {
         &'s mut self,
         sql: &mut String,
         name: &'static str,
-        values: &Option<Vec<&'s TSqlValueWriter>>,
+        values: &'s Option<Vec<TSqlValueWriter>>,
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
