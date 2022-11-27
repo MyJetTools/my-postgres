@@ -21,7 +21,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
 
     result.push_str(") WHERE ");
 
-    where_model.fill_where(&mut result, &mut params);
+    let params = where_model.fill_where(&mut result, params);
 
     //crate::sql_where::build(&mut result, where_model, &mut params);
 

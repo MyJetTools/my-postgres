@@ -16,7 +16,7 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     sql.push_str(table_name);
     sql.push_str(" WHERE ");
 
-    where_model.fill_where(&mut sql, &mut params);
+    params = where_model.fill_where(&mut sql, params);
 
     if let Some(order_by_fields) = order_by_fields {
         sql.push_str(order_by_fields);
