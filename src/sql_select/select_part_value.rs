@@ -91,7 +91,7 @@ impl SelectPartValue for bool {
 impl SelectPartValue for DateTimeAsMicroseconds {
     fn fill_select_part(sql: &mut String, field_name: &str, sql_type: Option<&str>) {
         if let Some(sql_type) = sql_type {
-            if sql_type == "bigint" {
+            if sql_type == "timestamp" {
                 sql.push_str("(extract(EPOCH FROM ");
                 sql.push_str(field_name);
                 sql.push_str(") * 1000000)::bigint");
