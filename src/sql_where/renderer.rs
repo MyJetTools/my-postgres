@@ -24,7 +24,7 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s TSqlValueWriter,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &'s mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
         self.add_delimiter(sql);
@@ -39,7 +39,7 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s Option<TSqlValueWriter>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &'s mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
         if let Some(value) = value {
@@ -52,7 +52,7 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Vec<TSqlValueWriter>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &'s mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
         if values.len() == 0 {
@@ -87,7 +87,7 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Option<Vec<TSqlValueWriter>>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &'s mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     ) {
         if let Some(values) = values {
