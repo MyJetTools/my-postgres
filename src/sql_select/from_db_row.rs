@@ -119,3 +119,15 @@ impl FromDbRow<DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
         DateTimeAsMicroseconds::new(unix_microseconds)
     }
 }
+
+impl FromDbRow<Option<DateTimeAsMicroseconds>> for Option<DateTimeAsMicroseconds> {
+    fn from_db_row(
+        row: &tokio_postgres::Row,
+        name: &str,
+        _sql_type: Option<&str>,
+    ) -> Option<DateTimeAsMicroseconds> {
+        let unix_microseconds: Option<i64> = row.get(name);
+        let unix_microseconds = unix_microseconds?;
+        Some(DateTimeAsMicroseconds::new(unix_microseconds))
+    }
+}
