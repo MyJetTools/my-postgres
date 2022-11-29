@@ -22,12 +22,13 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
     }
 
     result.push_str(" VALUES ");
-    let model_no = 0;
+    let mut model_no = 0;
     let mut params = Vec::new();
     for model in models {
         if model_no > 0 {
             result.push(',');
         }
+        model_no += 1;
         result.push('(');
 
         let mut written_no = 0;
