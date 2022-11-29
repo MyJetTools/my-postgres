@@ -21,7 +21,7 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
         result.push_str(TInsertModel::get_field_name(no));
     }
 
-    result.push_str(" VALUES ");
+    result.push_str(") VALUES ");
     let mut model_no = 0;
     let mut params = Vec::new();
     for model in models {
