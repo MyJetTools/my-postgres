@@ -26,4 +26,4 @@ jobs:
 
 
       - name: Build with-telemetry and with_tls         
-        run: cargo build --features with-logs-and-telemetry, with-tls    
+        run: cargo build --features with-logs-and-telemetry,with-tls    
