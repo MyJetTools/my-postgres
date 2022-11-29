@@ -24,11 +24,6 @@ jobs:
       - name: Build with-telemetry          
         run: cargo build --features with-logs-and-telemetry      
 
-      - name: Build failed-sql-to-console          
-        run: cargo build --features debug-sql         
 
-      - name: Build with-telemetry          
-        run: cargo build --features with-logs-and-telemetry      
-
-      - name: Build debug-sql + with-logs-and-telemetry          
-        run: cargo build --features with-logs-and-telemetry,debug-sql  
+      - name: Build with-telemetry and with_tls         
+        run: cargo build --features with-logs-and-telemetry, with-tls    
