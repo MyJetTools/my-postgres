@@ -1,26 +1,19 @@
 use crate::SqlValueWriter;
 
-pub struct IsNull {
-    value: bool,
-}
-
-impl IsNull {
-    pub fn new(value: bool) -> Self {
-        Self { value }
-    }
-}
-
-impl<'s> SqlValueWriter<'s> for IsNull {
+impl<'s> SqlValueWriter<'s> for tokio_postgres::types::IsNull {
     fn write(
         &'s self,
         sql: &mut String,
         _params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         _sql_type: Option<&'static str>,
     ) {
-        if self.value {
-            sql.push_str("IS NULL");
-        } else {
-            sql.push_str("IS NOT NULL");
+        match self {
+            tokio_postgres::types::IsNull::Yes => {
+                sql.push_str("IS NULL");
+            }
+            tokio_postgres::types::IsNull::No => {
+                sql.push_str("IS NOT NULL");
+            }
         }
     }
 }
