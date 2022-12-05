@@ -13,13 +13,13 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
 
     result.push_str("UPDATE ");
     result.push_str(table_name);
-    result.push_str(" SET (");
+    result.push_str(" SET ");
 
     let mut params = Vec::new();
 
     build_update_part(&mut result, &mut params, update_model, None);
 
-    result.push_str(") WHERE ");
+    result.push_str(" WHERE ");
 
     where_model.fill_where(&mut result, &mut params);
 
