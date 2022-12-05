@@ -47,26 +47,16 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
             if let Some(value) = cached_fields.get(update_data.name) {
                 result.push_str("$");
                 result.push_str(value.to_string().as_str());
-            } else {
-                match update_data.value {
-                    SqlValue::Ignore => {}
-                    SqlValue::Null => {
-                        result.push_str("NULL");
-                    }
-                    SqlValue::Value { sql_type, value } => {
-                        value.write(result, params, sql_type);
-                    }
-                }
+                continue;
             }
-        } else {
-            match update_data.value {
-                SqlValue::Ignore => {}
-                SqlValue::Null => {
-                    result.push_str("NULL");
-                }
-                SqlValue::Value { sql_type, value } => {
-                    value.write(result, params, sql_type);
-                }
+        }
+        match update_data.value {
+            SqlValue::Ignore => {}
+            SqlValue::Null => {
+                result.push_str("NULL");
+            }
+            SqlValue::Value { sql_type, value } => {
+                value.write(result, params, sql_type);
             }
         }
     }
