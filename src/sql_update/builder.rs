@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::sql_where::SqlWhereModel;
+use crate::{sql_where::SqlWhereModel, SqlValue};
 
 use super::SqlUpdateModel;
 
@@ -34,6 +34,7 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
     update_model: &'s TSqlUpdateModel,
     cached_fields: Option<HashMap<&'static str, usize>>,
 ) {
+    let cached_fields = cached_fields.unwrap_or_default();
     for i in 0..TSqlUpdateModel::get_fields_amount() {
         if i > 0 {
             result.push(',');
@@ -43,18 +44,16 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
         result.push_str(update_data.name);
         result.push_str("=");
 
-        if let Some(cached_fields) = &cached_fields {
-            if let Some(value) = cached_fields.get(update_data.name) {
-                result.push_str("$");
-                result.push_str(value.to_string().as_str());
-            }
+        if let Some(value) = cached_fields.get(update_data.name) {
+            result.push_str("$");
+            result.push_str(value.to_string().as_str());
         } else {
             match update_data.value {
-                crate::SqlValue::Ignore => {}
-                crate::SqlValue::Null => {
+                SqlValue::Ignore => {}
+                SqlValue::Null => {
                     result.push_str("NULL");
                 }
-                crate::SqlValue::Value { sql_type, value } => {
+                SqlValue::Value { sql_type, value } => {
                     value.write(result, params, sql_type);
                 }
             }
