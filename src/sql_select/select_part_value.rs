@@ -94,7 +94,9 @@ impl SelectPartValue for DateTimeAsMicroseconds {
             if sql_type == "timestamp" {
                 sql.push_str("(extract(EPOCH FROM ");
                 sql.push_str(field_name);
-                sql.push_str(") * 1000000)::bigint");
+                sql.push_str(") * 1000000)::bigint \"");
+                sql.push_str(field_name);
+                sql.push('"');
                 return;
             }
 
