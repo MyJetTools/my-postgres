@@ -272,3 +272,42 @@ impl<'s> SqlValueWriter<'s> for tokio_postgres::types::IsNull {
         " IS "
     }
 }
+
+impl<'s, T: SqlValueWriter<'s>> SqlValueWriter<'s> for Vec<T> {
+    fn write(
+        &'s self,
+        sql: &mut String,
+        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        sql_type: Option<&'static str>,
+    ) {
+        if self.len() == 1 {
+            self.get(0).unwrap().write(sql, params, sql_type);
+            return;
+        }
+
+        if self.len() > 0 {
+            sql.push('(');
+
+            let mut no = 0;
+            for itm in self {
+                if no > 0 {
+                    sql.push_str(",");
+                }
+                itm.write(sql, params, sql_type);
+                no += 1;
+            }
+
+            sql.push(')');
+        }
+    }
+
+    fn get_default_operator(&self) -> &str {
+        if self.len() == 0 {
+            return "";
+        } else if self.len() == 1 {
+            return "=";
+        } else {
+            return " IN ";
+        }
+    }
+}
