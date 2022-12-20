@@ -17,7 +17,7 @@ pub trait SqlValueWriter<'s> {
         sql_type: Option<&'static str>,
     );
 
-    fn use_operator(&self) -> bool;
+    fn get_default_operator(&self) -> &str;
 }
 
 impl<'s> SqlValueWriter<'s> for String {
@@ -32,8 +32,8 @@ impl<'s> SqlValueWriter<'s> for String {
         sql.push_str(params.len().to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -49,8 +49,8 @@ impl<'s> SqlValueWriter<'s> for &'s str {
         sql.push_str(params.len().to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -80,8 +80,8 @@ impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
         panic!("DateTimeAsMicroseconds requires sql_type");
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -98,8 +98,8 @@ impl<'s> SqlValueWriter<'s> for bool {
         }
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -113,8 +113,8 @@ impl<'s> SqlValueWriter<'s> for u8 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -127,9 +127,8 @@ impl<'s> SqlValueWriter<'s> for i8 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
-
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -143,8 +142,8 @@ impl<'s> SqlValueWriter<'s> for u16 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -158,8 +157,8 @@ impl<'s> SqlValueWriter<'s> for f32 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -173,8 +172,8 @@ impl<'s> SqlValueWriter<'s> for f64 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -187,9 +186,8 @@ impl<'s> SqlValueWriter<'s> for i16 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
-
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -203,8 +201,8 @@ impl<'s> SqlValueWriter<'s> for u32 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -218,8 +216,8 @@ impl<'s> SqlValueWriter<'s> for i32 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -233,8 +231,8 @@ impl<'s> SqlValueWriter<'s> for u64 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -248,8 +246,8 @@ impl<'s> SqlValueWriter<'s> for i64 {
         sql.push_str(self.to_string().as_str());
     }
 
-    fn use_operator(&self) -> bool {
-        true
+    fn get_default_operator(&self) -> &str {
+        "="
     }
 }
 
@@ -262,15 +260,15 @@ impl<'s> SqlValueWriter<'s> for tokio_postgres::types::IsNull {
     ) {
         match self {
             tokio_postgres::types::IsNull::Yes => {
-                sql.push_str("IS NULL");
+                sql.push_str("NULL");
             }
             tokio_postgres::types::IsNull::No => {
-                sql.push_str("IS NOT NULL");
+                sql.push_str("NOT NULL");
             }
         }
     }
 
-    fn use_operator(&self) -> bool {
-        false
+    fn get_default_operator(&self) -> &str {
+        " IS "
     }
 }
