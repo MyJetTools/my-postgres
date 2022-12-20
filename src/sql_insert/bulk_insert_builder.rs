@@ -60,26 +60,3 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
 
     (result, params)
 }
-
-/*
-todo!("Restore unit tests")
-#[cfg(test)]
-mod tests {
-    use crate::code_gens::{insert::InsertCodeGen, SqlValue};
-
-    use super::BulkInsertBuilder;
-
-    #[test]
-    fn general_test() {
-        let mut builder = BulkInsertBuilder::new();
-
-        builder.start_new_value_line();
-        builder.append_field_and_value("Field1", SqlValue::Str("1"));
-        builder.append_field("Field2", SqlValue::Str("2"));
-
-        let sql = builder.build("test_table");
-
-        assert_eq!("INSERT INTO test_table (Field1,Field2) VALUES ($1,$2)", sql)
-    }
-}
- */

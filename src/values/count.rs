@@ -13,4 +13,8 @@ impl<'s> SqlValueWriter<'s> for RawField {
     ) {
         sql.push_str(self.value.as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }

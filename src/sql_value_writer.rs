@@ -16,6 +16,8 @@ pub trait SqlValueWriter<'s> {
         params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
         sql_type: Option<&'static str>,
     );
+
+    fn use_operator(&self) -> bool;
 }
 
 impl<'s> SqlValueWriter<'s> for String {
@@ -29,6 +31,10 @@ impl<'s> SqlValueWriter<'s> for String {
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for &'s str {
@@ -41,6 +47,10 @@ impl<'s> SqlValueWriter<'s> for &'s str {
         params.push(self);
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -69,6 +79,10 @@ impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
 
         panic!("DateTimeAsMicroseconds requires sql_type");
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for bool {
@@ -83,6 +97,10 @@ impl<'s> SqlValueWriter<'s> for bool {
             false => sql.push_str("false"),
         }
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for u8 {
@@ -93,6 +111,10 @@ impl<'s> SqlValueWriter<'s> for u8 {
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -105,6 +127,10 @@ impl<'s> SqlValueWriter<'s> for i8 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for u16 {
@@ -115,6 +141,10 @@ impl<'s> SqlValueWriter<'s> for u16 {
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -127,6 +157,10 @@ impl<'s> SqlValueWriter<'s> for f32 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for f64 {
@@ -137,6 +171,10 @@ impl<'s> SqlValueWriter<'s> for f64 {
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -149,6 +187,10 @@ impl<'s> SqlValueWriter<'s> for i16 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for u32 {
@@ -159,6 +201,10 @@ impl<'s> SqlValueWriter<'s> for u32 {
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -171,6 +217,10 @@ impl<'s> SqlValueWriter<'s> for i32 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for u64 {
@@ -182,6 +232,10 @@ impl<'s> SqlValueWriter<'s> for u64 {
     ) {
         sql.push_str(self.to_string().as_str());
     }
+
+    fn use_operator(&self) -> bool {
+        true
+    }
 }
 
 impl<'s> SqlValueWriter<'s> for i64 {
@@ -192,6 +246,10 @@ impl<'s> SqlValueWriter<'s> for i64 {
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
+    }
+
+    fn use_operator(&self) -> bool {
+        true
     }
 }
 
@@ -210,5 +268,9 @@ impl<'s> SqlValueWriter<'s> for tokio_postgres::types::IsNull {
                 sql.push_str("IS NOT NULL");
             }
         }
+    }
+
+    fn use_operator(&self) -> bool {
+        false
     }
 }
