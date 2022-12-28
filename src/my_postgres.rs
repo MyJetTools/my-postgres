@@ -79,8 +79,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         let mut result = connection
@@ -122,8 +122,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         let mut result = connection
@@ -170,8 +170,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         let mut result = connection
@@ -269,8 +269,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -311,8 +311,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -347,8 +347,8 @@ impl MyPostgres {
 
             let mut params_to_invoke = Vec::with_capacity(params.len());
 
-            for param in params {
-                params_to_invoke.push(param.value);
+            for param in &params {
+                params_to_invoke.push(param.get_value());
             }
 
             connection
@@ -396,8 +396,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -426,8 +426,8 @@ impl MyPostgres {
         let connection = self.get_connection().await?;
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -457,8 +457,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -492,9 +492,10 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
+
         connection
             .execute_sql(
                 sql.as_str(),
@@ -520,8 +521,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -585,8 +586,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -613,8 +614,8 @@ impl MyPostgres {
         let connection = self.get_connection().await?;
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection
@@ -645,8 +646,8 @@ impl MyPostgres {
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
-        for param in params {
-            params_to_invoke.push(param.value);
+        for param in &params {
+            params_to_invoke.push(param.get_value());
         }
 
         connection

@@ -104,7 +104,7 @@ impl PostgresConnection {
                 let mut params_to_invoke = Vec::with_capacity(params.len());
 
                 for param in params {
-                    params_to_invoke.push(param.value);
+                    params_to_invoke.push(param.get_value());
                 }
 
                 transaction.execute(sql, &params_to_invoke).await?;

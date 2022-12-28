@@ -10,8 +10,18 @@ pub enum SqlValue<'s> {
 }
 
 #[derive(Debug)]
-pub struct SqlValueToWrite<'s> {
-    pub value: &'s (dyn tokio_postgres::types::ToSql + Sync),
+pub enum SqlValueToWrite<'s> {
+    Value(Box<dyn tokio_postgres::types::ToSql + Sync>),
+    Ref(&'s (dyn tokio_postgres::types::ToSql + Sync)),
+}
+
+impl<'s> SqlValueToWrite<'s> {
+    pub fn get_value(&'s self) -> &'s (dyn tokio_postgres::types::ToSql + Sync) {
+        match self {
+            SqlValueToWrite::Value(value) => value.as_ref(),
+            SqlValueToWrite::Ref(value) => *value,
+        }
+    }
 }
 
 pub trait SqlValueWriter<'s> {
@@ -32,7 +42,7 @@ impl<'s> SqlValueWriter<'s> for String {
         params: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
-        params.push(SqlValueToWrite { value: self });
+        params.push(SqlValueToWrite::Ref(self));
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
     }
@@ -49,7 +59,7 @@ impl<'s> SqlValueWriter<'s> for &'s str {
         params: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
-        params.push(SqlValueToWrite { value: self });
+        params.push(SqlValueToWrite::Ref(self));
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
     }
