@@ -1,4 +1,4 @@
-use crate::sql_where::SqlWhereModel;
+use crate::{sql_where::SqlWhereModel, SqlValueToWrite};
 
 pub struct BulkSelectBuilder<'s, TWhereModel: SqlWhereModel<'s>> {
     pub where_models: Vec<TWhereModel>,
@@ -16,7 +16,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
     pub fn build_sql<TBuildSelect: Fn(&mut String)>(
         &'s self,
         build_select_part: TBuildSelect,
-    ) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
+    ) -> (String, Vec<SqlValueToWrite<'s>>) {
         let mut sql = String::new();
         let mut params = Vec::new();
 

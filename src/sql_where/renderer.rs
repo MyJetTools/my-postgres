@@ -1,4 +1,4 @@
-use crate::SqlValueWriter;
+use crate::{SqlValueToWrite, SqlValueWriter};
 
 pub struct WhereRenderer {
     no: usize,
@@ -24,7 +24,7 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s TSqlValueWriter,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         self.add_delimiter(sql);
@@ -39,7 +39,7 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s Option<TSqlValueWriter>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         if let Some(value) = value {
@@ -52,7 +52,7 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Vec<TSqlValueWriter>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         if values.len() == 0 {
@@ -87,7 +87,7 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Option<Vec<TSqlValueWriter>>,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         if let Some(values) = values {

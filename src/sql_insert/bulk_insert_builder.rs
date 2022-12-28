@@ -1,11 +1,11 @@
-use crate::SqlValue;
+use crate::{SqlValue, SqlValueToWrite};
 
 use super::SqlInsertModel;
 
 pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
     table_name: &str,
     models: &'s [TInsertModel],
-) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
+) -> (String, Vec<SqlValueToWrite<'s>>) {
     let mut result = String::new();
 
     result.push_str("INSERT INTO ");

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{sql_where::SqlWhereModel, SqlValue};
+use crate::{sql_where::SqlWhereModel, SqlValue, SqlValueToWrite};
 
 use super::SqlUpdateModel;
 
@@ -8,7 +8,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
     table_name: &str,
     update_model: &'s TSqlUpdateModel,
     where_model: &'s TSqlWhereModel,
-) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
+) -> (String, Vec<SqlValueToWrite<'s>>) {
     let mut result = String::new();
 
     result.push_str("UPDATE ");
@@ -30,7 +30,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
 
 pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
     result: &mut String,
-    params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+    params: &mut Vec<SqlValueToWrite<'s>>,
     update_model: &'s TSqlUpdateModel,
     cached_fields: Option<HashMap<&'static str, usize>>,
 ) {

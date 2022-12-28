@@ -1,7 +1,9 @@
+use crate::SqlValueToWrite;
+
 pub fn build_bulk_delete<'s, TSqlWhereModel: crate::sql_where::SqlWhereModel<'s>>(
     table_name: &str,
     where_models: &'s [TSqlWhereModel],
-) -> (String, Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>) {
+) -> (String, Vec<SqlValueToWrite<'s>>) {
     let mut sql = String::new();
 
     sql.push_str("DELETE FROM ");

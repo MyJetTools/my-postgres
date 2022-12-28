@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use crate::SqlValue;
+use crate::{SqlValue, SqlValueToWrite};
 
 use super::SqlInsertModel;
 
 pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     table_name: &str,
     insert_model: &'s TSqlInsertModel,
-    params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+    params: &mut Vec<SqlValueToWrite<'s>>,
     mut params_with_index: Option<HashMap<&'static str, usize>>,
 ) -> (String, Option<HashMap<&'static str, usize>>) {
     let mut result = String::new();

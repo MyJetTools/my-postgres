@@ -9,11 +9,16 @@ pub enum SqlValue<'s> {
     },
 }
 
+#[derive(Debug)]
+pub struct SqlValueToWrite<'s> {
+    pub value: &'s (dyn tokio_postgres::types::ToSql + Sync),
+}
+
 pub trait SqlValueWriter<'s> {
     fn write(
         &'s self,
         sql: &mut String,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     );
 
@@ -24,10 +29,10 @@ impl<'s> SqlValueWriter<'s> for String {
     fn write(
         &'s self,
         sql: &mut String,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
-        params.push(self);
+        params.push(SqlValueToWrite { value: self });
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
     }
@@ -41,10 +46,10 @@ impl<'s> SqlValueWriter<'s> for &'s str {
     fn write(
         &'s self,
         sql: &mut String,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
-        params.push(self);
+        params.push(SqlValueToWrite { value: self });
         sql.push('$');
         sql.push_str(params.len().to_string().as_str());
     }
@@ -58,7 +63,7 @@ impl<'s> SqlValueWriter<'s> for DateTimeAsMicroseconds {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         if let Some(sql_type) = sql_type {
@@ -89,7 +94,7 @@ impl<'s> SqlValueWriter<'s> for bool {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         match self {
@@ -107,7 +112,7 @@ impl<'s> SqlValueWriter<'s> for u8 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -122,7 +127,7 @@ impl<'s> SqlValueWriter<'s> for i8 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -136,7 +141,7 @@ impl<'s> SqlValueWriter<'s> for u16 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -151,7 +156,7 @@ impl<'s> SqlValueWriter<'s> for f32 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -166,7 +171,7 @@ impl<'s> SqlValueWriter<'s> for f64 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -181,7 +186,7 @@ impl<'s> SqlValueWriter<'s> for i16 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -195,7 +200,7 @@ impl<'s> SqlValueWriter<'s> for u32 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -210,7 +215,7 @@ impl<'s> SqlValueWriter<'s> for i32 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -225,7 +230,7 @@ impl<'s> SqlValueWriter<'s> for u64 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -240,7 +245,7 @@ impl<'s> SqlValueWriter<'s> for i64 {
     fn write(
         &'s self,
         sql: &mut String,
-        _: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         sql.push_str(self.to_string().as_str());
@@ -255,7 +260,7 @@ impl<'s> SqlValueWriter<'s> for tokio_postgres::types::IsNull {
     fn write(
         &'s self,
         sql: &mut String,
-        _params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        _params: &mut Vec<SqlValueToWrite<'s>>,
         _sql_type: Option<&'static str>,
     ) {
         match self {
@@ -277,7 +282,7 @@ impl<'s, T: SqlValueWriter<'s>> SqlValueWriter<'s> for Vec<T> {
     fn write(
         &'s self,
         sql: &mut String,
-        params: &mut Vec<&'s (dyn tokio_postgres::types::ToSql + Sync)>,
+        params: &mut Vec<SqlValueToWrite<'s>>,
         sql_type: Option<&'static str>,
     ) {
         if self.len() == 1 {
