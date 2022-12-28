@@ -11,14 +11,14 @@ pub enum SqlValue<'s> {
 
 #[derive(Debug)]
 pub enum SqlValueToWrite<'s> {
-    Value(Box<dyn tokio_postgres::types::ToSql + Sync>),
+    ValueAsString(String),
     Ref(&'s (dyn tokio_postgres::types::ToSql + Sync)),
 }
 
 impl<'s> SqlValueToWrite<'s> {
     pub fn get_value(&'s self) -> &'s (dyn tokio_postgres::types::ToSql + Sync) {
         match self {
-            SqlValueToWrite::Value(value) => value.as_ref(),
+            SqlValueToWrite::ValueAsString(value) => value,
             SqlValueToWrite::Ref(value) => *value,
         }
     }
