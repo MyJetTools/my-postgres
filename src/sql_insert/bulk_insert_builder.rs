@@ -1,11 +1,11 @@
-use crate::{SqlValue, SqlValueToWrite};
+use crate::{SqlValue, SqlValueWrapper};
 
 use super::SqlInsertModel;
 
 pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
     table_name: &str,
     models: &'s [TInsertModel],
-) -> (String, Vec<SqlValueToWrite<'s>>) {
+) -> (String, Vec<SqlValue<'s>>) {
     let mut result = String::new();
 
     result.push_str("INSERT INTO ");
@@ -35,16 +35,16 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
 
         for no in 0..fields_amount {
             match model.get_field_value(no) {
-                SqlValue::Ignore => {}
-                SqlValue::Value { value, sql_type } => {
+                SqlValueWrapper::Ignore => {}
+                SqlValueWrapper::Value { value, metadata } => {
                     if written_no > 0 {
                         result.push(',');
                     }
 
                     written_no += 1;
-                    value.write(&mut result, &mut params, sql_type);
+                    value.write(&mut result, &mut params, &metadata);
                 }
-                SqlValue::Null => {
+                SqlValueWrapper::Null => {
                     if written_no > 0 {
                         result.push(',');
                     }

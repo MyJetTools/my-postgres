@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{sql_update::SqlUpdateModel, SqlValueToWrite};
+use crate::{sql_update::SqlUpdateModel, SqlValue};
 
 use super::SqlInsertModel;
 
@@ -8,7 +8,7 @@ pub fn build_insert_or_update<'s, TSqlInsertModel: SqlInsertModel<'s> + SqlUpdat
     table_name: &str,
     primary_key_name: &str,
     model: &'s TSqlInsertModel,
-) -> (String, Vec<SqlValueToWrite<'s>>) {
+) -> (String, Vec<SqlValue<'s>>) {
     let mut params = Vec::new();
 
     let update_fields = HashMap::new();

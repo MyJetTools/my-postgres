@@ -14,7 +14,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{MyPostgressError, SqlValueToWrite};
+use crate::{MyPostgressError, SqlValue};
 
 pub struct PostgresConnection {
     client: tokio_postgres::Client,
@@ -85,7 +85,7 @@ impl PostgresConnection {
 
     pub async fn execute_bulk_sql<'s>(
         &mut self,
-        sql_with_params: Vec<(String, Vec<SqlValueToWrite<'s>>)>,
+        sql_with_params: Vec<(String, Vec<SqlValue<'s>>)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgressError> {

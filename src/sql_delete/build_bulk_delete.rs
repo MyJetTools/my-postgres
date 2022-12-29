@@ -1,9 +1,9 @@
-use crate::SqlValueToWrite;
+use crate::SqlValue;
 
 pub fn build_bulk_delete<'s, TSqlWhereModel: crate::sql_where::SqlWhereModel<'s>>(
     table_name: &str,
     where_models: &'s [TSqlWhereModel],
-) -> (String, Vec<SqlValueToWrite<'s>>) {
+) -> (String, Vec<SqlValue<'s>>) {
     let mut sql = String::new();
 
     sql.push_str("DELETE FROM ");

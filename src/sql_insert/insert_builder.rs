@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use crate::{SqlValue, SqlValueToWrite};
+use crate::{SqlValue, SqlValueWrapper};
 
 use super::SqlInsertModel;
 
 pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     table_name: &str,
     insert_model: &'s TSqlInsertModel,
-    params: &mut Vec<SqlValueToWrite<'s>>,
+    params: &mut Vec<SqlValue<'s>>,
     mut params_with_index: Option<HashMap<&'static str, usize>>,
 ) -> (String, Option<HashMap<&'static str, usize>>) {
     let mut result = String::new();
@@ -24,10 +24,10 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
         let sql_value = insert_model.get_field_value(field_no);
 
         match &sql_value {
-            SqlValue::Ignore => {}
-            SqlValue::Value {
+            SqlValueWrapper::Ignore => {}
+            SqlValueWrapper::Value {
                 value: _,
-                sql_type: _,
+                metadata: _,
             } => {
                 if no > 0 {
                     result.push(',');
@@ -37,15 +37,15 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
                 result.push_str(field_name);
                 values.push((field_name, sql_value));
             }
-            SqlValue::Null => {}
+            SqlValueWrapper::Null => {}
         }
     }
     result.push_str(") VALUES (");
     no = 0;
     for (field_name, sql_value) in values {
         match sql_value {
-            SqlValue::Ignore => {}
-            SqlValue::Null => {
+            SqlValueWrapper::Ignore => {}
+            SqlValueWrapper::Null => {
                 if no > 0 {
                     result.push(',');
                 }
@@ -53,14 +53,14 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 
                 result.push_str("NULL");
             }
-            SqlValue::Value { sql_type, value } => {
+            SqlValueWrapper::Value { metadata, value } => {
                 if no > 0 {
                     result.push(',');
                 }
                 no += 1;
 
                 let pos = result.len();
-                value.write(&mut result, params, sql_type);
+                value.write(&mut result, params, &metadata);
 
                 if let Some(prms) = &mut params_with_index {
                     let param = &result[pos..];

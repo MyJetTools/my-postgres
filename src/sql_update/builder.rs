@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{sql_where::SqlWhereModel, SqlValue, SqlValueToWrite};
+use crate::{sql_where::SqlWhereModel, SqlValue, SqlValueWrapper};
 
 use super::SqlUpdateModel;
 
@@ -8,7 +8,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
     table_name: &str,
     update_model: &'s TSqlUpdateModel,
     where_model: &'s TSqlWhereModel,
-) -> (String, Vec<SqlValueToWrite<'s>>) {
+) -> (String, Vec<SqlValue<'s>>) {
     let mut result = String::new();
 
     result.push_str("UPDATE ");
@@ -30,7 +30,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
 
 pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
     result: &mut String,
-    params: &mut Vec<SqlValueToWrite<'s>>,
+    params: &mut Vec<SqlValue<'s>>,
     update_model: &'s TSqlUpdateModel,
     cached_fields: Option<HashMap<&'static str, usize>>,
 ) {
@@ -51,12 +51,12 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
             }
         }
         match update_data.value {
-            SqlValue::Ignore => {}
-            SqlValue::Null => {
+            SqlValueWrapper::Ignore => {}
+            SqlValueWrapper::Null => {
                 result.push_str("NULL");
             }
-            SqlValue::Value { sql_type, value } => {
-                value.write(result, params, sql_type);
+            SqlValueWrapper::Value { metadata, value } => {
+                value.write(result, params, &metadata);
             }
         }
     }

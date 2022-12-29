@@ -1,4 +1,4 @@
-use crate::{sql_where::SqlWhereModel, SqlValueToWrite};
+use crate::{sql_where::SqlWhereModel, SqlValue};
 
 pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     table_name: &str,
@@ -6,7 +6,7 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     where_model: &'s TWhereModel,
     order_by_fields: Option<&str>,
     group_by_fields: Option<&str>,
-) -> (String, Vec<SqlValueToWrite<'s>>) {
+) -> (String, Vec<SqlValue<'s>>) {
     let mut sql = String::new();
     let mut params = Vec::new();
 

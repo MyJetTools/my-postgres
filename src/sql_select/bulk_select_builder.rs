@@ -1,4 +1,4 @@
-use crate::{sql_where::SqlWhereModel, SqlValueToWrite};
+use crate::{sql_where::SqlWhereModel, SqlValue};
 
 pub struct BulkSelectBuilder<'s, TWhereModel: SqlWhereModel<'s>> {
     pub where_models: Vec<TWhereModel>,
@@ -16,7 +16,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
     pub fn build_sql<TBuildSelect: Fn(&mut String)>(
         &'s self,
         build_select_part: TBuildSelect,
-    ) -> (String, Vec<SqlValueToWrite<'s>>) {
+    ) -> (String, Vec<SqlValue<'s>>) {
         let mut sql = String::new();
         let mut params = Vec::new();
 

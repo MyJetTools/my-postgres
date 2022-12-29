@@ -1,4 +1,4 @@
-use crate::{SqlValueToWrite, SqlValueWriter};
+use crate::{SqlValue, SqlValueMetadata, SqlValueWriter};
 
 pub struct WhereRenderer {
     no: usize,
@@ -24,13 +24,13 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s TSqlValueWriter,
-        params: &mut Vec<SqlValueToWrite<'s>>,
-        sql_type: Option<&'static str>,
+        params: &mut Vec<SqlValue<'s>>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
         self.add_delimiter(sql);
         sql.push_str(name);
         sql.push_str(op);
-        value.write(sql, params, sql_type);
+        value.write(sql, params, metadata);
     }
 
     pub fn add_optional_value<'s, TSqlValueWriter: SqlValueWriter<'s>>(
@@ -39,11 +39,11 @@ impl WhereRenderer {
         name: &'s str,
         op: &'s str,
         value: &'s Option<TSqlValueWriter>,
-        params: &mut Vec<SqlValueToWrite<'s>>,
-        sql_type: Option<&'static str>,
+        params: &mut Vec<SqlValue<'s>>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
         if let Some(value) = value {
-            self.add_value(sql, name, op, value, params, sql_type);
+            self.add_value(sql, name, op, value, params, metadata);
         }
     }
 
@@ -52,8 +52,8 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Vec<TSqlValueWriter>,
-        params: &mut Vec<SqlValueToWrite<'s>>,
-        sql_type: Option<&'static str>,
+        params: &mut Vec<SqlValue<'s>>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
         if values.len() == 0 {
             return;
@@ -63,7 +63,7 @@ impl WhereRenderer {
             self.add_delimiter(sql);
             sql.push_str(name);
             sql.push('=');
-            values.get(0).unwrap().write(sql, params, sql_type);
+            values.get(0).unwrap().write(sql, params, metadata);
             return;
         }
 
@@ -76,7 +76,7 @@ impl WhereRenderer {
                 sql.push(',');
             }
             no += 1;
-            value.write(sql, params, sql_type);
+            value.write(sql, params, metadata);
         }
 
         sql.push(')');
@@ -87,11 +87,11 @@ impl WhereRenderer {
         sql: &mut String,
         name: &'static str,
         values: &'s Option<Vec<TSqlValueWriter>>,
-        params: &mut Vec<SqlValueToWrite<'s>>,
-        sql_type: Option<&'static str>,
+        params: &mut Vec<SqlValue<'s>>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
         if let Some(values) = values {
-            self.add_vec(sql, name, values, params, sql_type);
+            self.add_vec(sql, name, values, params, metadata);
         }
     }
 }
