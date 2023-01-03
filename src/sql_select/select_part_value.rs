@@ -3,160 +3,95 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 use crate::SqlValueMetadata;
 
 pub trait SelectPartValue {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        metadata: &Option<SqlValueMetadata>,
-    );
+    fn fill_select_part(sql: &mut String, field_name: &str, metadata: &Option<SqlValueMetadata>);
 }
 
 impl SelectPartValue for String {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl<'s> SelectPartValue for &'s str {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for usize {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for i64 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for u64 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for i32 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for u32 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for i16 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for u16 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for i8 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for u8 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for f64 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for f32 {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for bool {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(field_names.get(0).unwrap());
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
     }
 }
 
 impl SelectPartValue for DateTimeAsMicroseconds {
-    fn fill_select_part(
-        sql: &mut String,
-        field_names: &[&str],
-        metadata: &Option<SqlValueMetadata>,
-    ) {
-        let field_name = field_names.get(0).unwrap();
+    fn fill_select_part(sql: &mut String, field_name: &str, metadata: &Option<SqlValueMetadata>) {
         if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "timestamp" {
