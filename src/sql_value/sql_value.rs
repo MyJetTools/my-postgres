@@ -3,6 +3,7 @@ use crate::{SqlValueMetadata, SqlValueWriter};
 #[derive(Debug)]
 pub enum SqlValue<'s> {
     ValueAsString(String),
+    ValueAsStaticStr(&'static str),
     Ref(&'s (dyn tokio_postgres::types::ToSql + Sync)),
 }
 
@@ -11,6 +12,7 @@ impl<'s> SqlValue<'s> {
         match self {
             SqlValue::ValueAsString(value) => value,
             SqlValue::Ref(value) => *value,
+            SqlValue::ValueAsStaticStr(value) => value,
         }
     }
 }
