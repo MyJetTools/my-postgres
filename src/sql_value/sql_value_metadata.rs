@@ -10,4 +10,21 @@ impl SqlValueMetadata {
             related_field_name: None,
         }
     }
+
+    pub fn write_related_field_name(
+        src: &Option<SqlValueMetadata>,
+        field_name: &'static str,
+    ) -> Self {
+        if let Some(src) = src {
+            return Self {
+                sql_type: src.sql_type,
+                related_field_name: Some(field_name),
+            };
+        }
+
+        Self {
+            sql_type: None,
+            related_field_name: Some(field_name),
+        }
+    }
 }
