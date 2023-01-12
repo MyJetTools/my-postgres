@@ -11,7 +11,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    MyPostgressError, PostgresConnection, PostgressSettings,
+    MyPostgressError, PostgresConnection, PostgresConnectionInstance, PostgressSettings,
 };
 
 pub struct MyPostgres {
@@ -24,16 +24,21 @@ impl MyPostgres {
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
-        let connection = PostgresConnection::new(
+        let connection = PostgresConnectionInstance::new(
             app_name,
             postgres_settings,
             Duration::from_secs(5),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         );
+
         Self {
-            connection: Arc::new(connection),
+            connection: Arc::new(PostgresConnection::Single(connection)),
         }
+    }
+
+    pub async fn with_shared_connection(connection: Arc<PostgresConnection>) -> Self {
+        Self { connection }
     }
 
     pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(
