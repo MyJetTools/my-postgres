@@ -1,8 +1,12 @@
+use std::{sync::Arc, time::Duration};
+
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
 use tokio_postgres::Row;
 
-use crate::{ConnectionsPool, MyPostgressError, PostgresConnectionInstance, SqlValue};
+use crate::{
+    ConnectionsPool, MyPostgressError, PostgresConnectionInstance, PostgressSettings, SqlValue,
+};
 
 pub enum PostgresConnection {
     Single(PostgresConnectionInstance),
@@ -10,6 +14,35 @@ pub enum PostgresConnection {
 }
 
 impl PostgresConnection {
+    pub fn new_as_single_connection(
+        app_name: String,
+        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        sql_request_timeout: Duration,
+    ) -> Self {
+        let connection = PostgresConnectionInstance::new(
+            app_name,
+            postgres_settings,
+            sql_request_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
+        );
+
+        Self::Single(connection)
+    }
+
+    pub fn new_as_multiple_connections(
+        app_name: String,
+        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        sql_request_timeout: Duration,
+        max_pool_size: usize,
+    ) -> Self {
+        Self::Pool(ConnectionsPool::new(
+            app_name,
+            postgres_settings,
+            max_pool_size,
+            sql_request_timeout,
+        ))
+    }
     pub async fn execute_sql(
         &self,
         sql: &str,

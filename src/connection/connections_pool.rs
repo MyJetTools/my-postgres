@@ -54,6 +54,7 @@ impl ConnectionsPool {
         app_name: String,
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         max_pool_size: usize,
+        request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
@@ -62,7 +63,7 @@ impl ConnectionsPool {
                 Arc::new(MyPostgresFactory::new(
                     app_name.clone(),
                     postgres_settings.clone(),
-                    Duration::from_secs(5),
+                    request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )),
