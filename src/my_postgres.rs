@@ -24,8 +24,13 @@ impl MyPostgres {
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
-        let connection =
-            PostgresConnection::new(app_name, postgres_settings, Duration::from_secs(5));
+        let connection = PostgresConnection::new(
+            app_name,
+            postgres_settings,
+            Duration::from_secs(5),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
+        );
         Self {
             connection: Arc::new(connection),
         }

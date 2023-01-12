@@ -42,13 +42,17 @@ impl PostgresConnection {
     ) -> Self {
         let client = Arc::new(RwLock::new(None));
         let connected = Arc::new(AtomicBool::new(false));
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let logger_spawned = logger.clone();
+
         tokio::spawn(establish_connection_loop(
             app_name,
             postgres_settings,
             client.clone(),
             connected.clone(),
             #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
+            logger_spawned,
         ));
 
         Self {
