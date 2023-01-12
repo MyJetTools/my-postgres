@@ -1,23 +1,12 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
-#[cfg(feature = "with-tls")]
-use openssl::ssl::{SslConnector, SslMethod};
-#[cfg(feature = "with-tls")]
-use postgres_openssl::MakeTlsConnector;
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
-use std::{
-    collections::BTreeMap,
-    sync::{atomic::Ordering, Arc},
-    time::Duration,
-};
-use tokio::sync::RwLock;
-use tokio_postgres::NoTls;
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    rented_connection::{RentedConnection, RentedConnectionMut},
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
@@ -26,7 +15,7 @@ use crate::{
 };
 
 pub struct MyPostgres {
-    client: Arc<RwLock<Option<PostgresConnection>>>,
+    connection: Arc<PostgresConnection>,
 }
 
 impl MyPostgres {
@@ -35,26 +24,11 @@ impl MyPostgres {
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
-        let shared_connection = Arc::new(RwLock::new(None));
-        tokio::spawn(do_connection(
-            app_name,
-            postgres_settings,
-            shared_connection.clone(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
-        ));
-
+        let connection =
+            PostgresConnection::new(app_name, postgres_settings, Duration::from_secs(5));
         Self {
-            client: shared_connection,
+            connection: Arc::new(connection),
         }
-    }
-
-    async fn get_connection<'s>(&'s self) -> Result<RentedConnection<'s>, MyPostgressError> {
-        RentedConnection::new(self.client.read().await)
-    }
-
-    async fn get_connection_mut<'s>(&'s self) -> Result<RentedConnectionMut<'s>, MyPostgressError> {
-        RentedConnectionMut::new(self.client.write().await)
     }
 
     pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(
@@ -75,15 +49,14 @@ impl MyPostgres {
 
         where_model.fill_where(&mut sql, &mut params);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        let mut result = connection
+        let mut result = self
+            .connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 &params_to_invoke,
@@ -118,15 +91,14 @@ impl MyPostgres {
             TEntity::get_group_by_fields(),
         );
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        let mut result = connection
+        let mut result = self
+            .connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 &params_to_invoke,
@@ -166,15 +138,14 @@ impl MyPostgres {
 
         post_processing(&mut sql);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        let mut result = connection
+        let mut result = self
+            .connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 &params_to_invoke,
@@ -205,9 +176,7 @@ impl MyPostgres {
             &[]
         };
 
-        let connection = self.get_connection().await?;
-
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 params,
@@ -234,8 +203,7 @@ impl MyPostgres {
             &[]
         };
 
-        let connection = self.get_connection().await?;
-        connection
+        self.connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 params,
@@ -265,15 +233,13 @@ impl MyPostgres {
             TEntity::get_group_by_fields(),
         );
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 params_to_invoke.as_slice(),
@@ -307,15 +273,13 @@ impl MyPostgres {
 
         post_processing(&mut sql);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql_as_vec(
                 sql.as_str(),
                 params_to_invoke.as_slice(),
@@ -343,15 +307,13 @@ impl MyPostgres {
         let (sql, params) = sql_builder.build_sql(|sql| TEntity::fill_select_fields(sql));
 
         let response = {
-            let connection = self.get_connection().await?;
-
             let mut params_to_invoke = Vec::with_capacity(params.len());
 
             for param in &params {
                 params_to_invoke.push(param.get_value());
             }
 
-            connection
+            self.connection
                 .execute_sql_as_vec(
                     sql.as_str(),
                     &params_to_invoke,
@@ -392,7 +354,6 @@ impl MyPostgres {
         let (sql, _) = crate::sql_insert::build_insert(table_name, entity, &mut params, None);
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
-        let connection = self.get_connection().await?;
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -400,7 +361,7 @@ impl MyPostgres {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -423,14 +384,14 @@ impl MyPostgres {
         let sql = crate::sql_insert::build_insert_if_not_exists(table_name, entity, &mut params);
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
-        let connection = self.get_connection().await?;
+
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -453,15 +414,13 @@ impl MyPostgres {
 
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -488,7 +447,6 @@ impl MyPostgres {
             "bulk_insert_db_entities_if_not_exists into table {}",
             table_name
         );
-        let connection = self.get_connection().await?;
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -496,7 +454,7 @@ impl MyPostgres {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -517,7 +475,6 @@ impl MyPostgres {
     ) -> Result<(), MyPostgressError> {
         let (sql, params) = crate::sql_update::build(table_name, entity, entity);
         let process_name = format!("update_db_entity into table {}", table_name);
-        let connection = self.get_connection().await?;
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -525,7 +482,7 @@ impl MyPostgres {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -556,9 +513,7 @@ impl MyPostgres {
 
         let sqls = crate::sql_insert::build_bulk_insert_if_update(table_name, pk_name, entities);
 
-        let mut connection = self.get_connection_mut().await?;
-
-        connection
+        self.connection
             .execute_bulk_sql(
                 sqls,
                 process_name.as_str(),
@@ -582,15 +537,13 @@ impl MyPostgres {
 
         let (sql, params) = crate::sql_insert::build_insert_or_update(table_name, pk_name, entity);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -611,14 +564,13 @@ impl MyPostgres {
     ) -> Result<(), MyPostgressError> {
         let (sql, params) = crate::sql_delete::build_delete(table_name, where_model);
 
-        let connection = self.get_connection().await?;
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 params_to_invoke.as_slice(),
@@ -642,15 +594,13 @@ impl MyPostgres {
 
         let (sql, params) = crate::sql_delete::build_bulk_delete(table_name, entities);
 
-        let connection = self.get_connection().await?;
-
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
         for param in &params {
             params_to_invoke.push(param.get_value());
         }
 
-        connection
+        self.connection
             .execute_sql(
                 sql.as_str(),
                 &params_to_invoke,
@@ -661,199 +611,5 @@ impl MyPostgres {
             .await?;
 
         Ok(())
-    }
-}
-
-async fn do_connection(
-    app_name: String,
-    postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
-    shared_connection: Arc<RwLock<Option<PostgresConnection>>>,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
-) {
-    loop {
-        let conn_string = postgres_settings.get_connection_string().await;
-
-        let conn_string = super::connection_string::format(conn_string.as_str(), app_name.as_str());
-
-        if conn_string.contains("sslmode=require") {
-            #[cfg(feature = "with-tls")]
-            create_and_start_with_tls(
-                conn_string,
-                &shared_connection,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &logger,
-            )
-            .await;
-            #[cfg(not(feature = "with-tls"))]
-            {
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger.write_error(
-                    "PostgressConnection".to_string(),
-                    "Postgres connection with sslmode=require is not supported without tls feature"
-                        .to_string(),
-                    None,
-                );
-
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        } else {
-            create_and_start_no_tls(
-                conn_string,
-                &shared_connection,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &logger,
-            )
-            .await
-        }
-    }
-}
-
-async fn create_and_start_no_tls(
-    connection_string: String,
-    shared_connection: &Arc<RwLock<Option<PostgresConnection>>>,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Sync + Send + 'static>,
-) {
-    let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
-
-    let connected_date_time = DateTimeAsMicroseconds::now();
-
-    match result {
-        Ok((client, connection)) => {
-            println!(
-                "{}: Postgres SQL Connection is estabiled",
-                connected_date_time.to_rfc3339()
-            );
-
-            let connected = {
-                let mut write_access = shared_connection.write().await;
-                let postgress_connection = PostgresConnection::new(
-                    client,
-                    Duration::from_secs(5),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger.clone(),
-                );
-                let result = postgress_connection.connected.clone();
-                *write_access = Some(postgress_connection);
-                result
-            };
-
-            let connected_spawned = connected.clone();
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            let logger_spawned = logger.clone();
-
-            tokio::spawn(async move {
-                match connection.await {
-                    Ok(_) => {
-                        println!(
-                            "{}: Connection estabilshed at {} is closed.",
-                            DateTimeAsMicroseconds::now().to_rfc3339(),
-                            connected_date_time.to_rfc3339(),
-                        );
-                    }
-                    Err(err) => {
-                        println!(
-                            "{}: Connection estabilshed at {} is closed with error: {}",
-                            DateTimeAsMicroseconds::now().to_rfc3339(),
-                            connected_date_time.to_rfc3339(),
-                            err
-                        );
-
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        logger_spawned.write_fatal_error(
-                            "Potgress background".to_string(),
-                            format!("Exist connection loop"),
-                            None,
-                        );
-                    }
-                }
-
-                connected_spawned.store(false, Ordering::SeqCst);
-            });
-
-            while connected.load(Ordering::Relaxed) {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-        }
-        Err(err) => {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "{}: Postgres SQL Connection is closed with Err: {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                err
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger.write_fatal_error(
-                "CreatingPosrgress".to_string(),
-                format!("Invalid connection string. {:?}", err),
-                None,
-            );
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    }
-}
-
-#[cfg(feature = "with-tls")]
-async fn create_and_start_with_tls(
-    connection_string: String,
-    shared_connection: &Arc<RwLock<Option<PostgresConnection>>>,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Sync + Send + 'static>,
-) {
-    let builder = SslConnector::builder(SslMethod::tls()).unwrap();
-
-    let connector = MakeTlsConnector::new(builder.build());
-
-    let result = tokio_postgres::connect(connection_string.as_str(), connector).await;
-    #[cfg(feature = "with-logs-and-telemetry")]
-    let logger_spawned = logger.clone();
-    match result {
-        Ok((client, connection)) => {
-            let connected = {
-                let mut write_access = shared_connection.write().await;
-                let postgress_connection = PostgresConnection::new(
-                    client,
-                    Duration::from_secs(5),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger.clone(),
-                );
-                let result = postgress_connection.connected.clone();
-                *write_access = Some(postgress_connection);
-                result
-            };
-
-            let connected_copy = connected.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    eprintln!(
-                        "{}: connection error: {}",
-                        DateTimeAsMicroseconds::now().to_rfc3339(),
-                        e
-                    );
-                }
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger_spawned.write_fatal_error(
-                    "Potgress background".to_string(),
-                    format!("Exist connection loop"),
-                    None,
-                );
-
-                connected_copy.store(false, Ordering::SeqCst);
-            });
-
-            while connected.load(Ordering::Relaxed) {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-        }
-        Err(_err) => {
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger.write_fatal_error(
-                "CreatingPosrgress".to_string(),
-                format!("Invalid connection string. {:?}", _err),
-                None,
-            );
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
     }
 }
