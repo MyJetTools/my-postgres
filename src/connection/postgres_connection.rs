@@ -2,6 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
+#[cfg(feature = "with-logs-and-telemetry")]
+use rust_extensions::Logger;
 use tokio_postgres::Row;
 
 use crate::{
@@ -18,6 +20,7 @@ impl PostgresConnection {
         app_name: String,
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let connection = PostgresConnectionInstance::new(
             app_name,
@@ -35,12 +38,15 @@ impl PostgresConnection {
         postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         max_pool_size: usize,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self::Pool(ConnectionsPool::new(
             app_name,
             postgres_settings,
             max_pool_size,
             sql_request_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
         ))
     }
     pub async fn execute_sql(
