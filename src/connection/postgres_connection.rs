@@ -404,6 +404,7 @@ async fn create_and_start_no_tls(
                 let mut write_access = client.write().await;
                 *write_access = Some(postgres_client);
             };
+            connected.store(true, Ordering::SeqCst);
 
             let connected_spawned = connected.clone();
 
@@ -483,6 +484,7 @@ async fn create_and_start_with_tls(
                 *write_access = Some(postgres_client);
             }
 
+            connected.store(true, Ordering::SeqCst);
             let connected_spawned = connected.clone();
 
             tokio::spawn(async move {
