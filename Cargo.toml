@@ -22,3 +22,5 @@ rust-extensions = { tag = "0.1.3", git = "https://github.com/MyJetTools/rust-ext
 async-trait = "*"
 tokio = { version = "*", features = ["full"] }
 my-telemetry = { tag = "0.3.0", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"

@@ -92,7 +92,9 @@ impl SelectPartValue for bool {
 
 impl<T> SelectPartValue for Vec<T> {
     fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push('(');
         sql.push_str(field_name);
+        sql.push_str(")::text");
     }
 }
 

@@ -1,4 +1,5 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
+use serde::de::DeserializeOwned;
 
 use crate::SqlValueMetadata;
 
@@ -132,6 +133,17 @@ impl FromDbRow<Option<bool>> for Option<bool> {
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<bool> {
         row.get(name)
+    }
+}
+
+impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
+    fn from_db_row(
+        row: &tokio_postgres::Row,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Vec<T> {
+        let value: String = row.get(name);
+        serde_json::from_str(&value).unwrap()
     }
 }
 
