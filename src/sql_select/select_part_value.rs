@@ -90,6 +90,12 @@ impl SelectPartValue for bool {
     }
 }
 
+impl<T> SelectPartValue for Vec<T> {
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
+    }
+}
+
 impl SelectPartValue for DateTimeAsMicroseconds {
     fn fill_select_part(sql: &mut String, field_name: &str, metadata: &Option<SqlValueMetadata>) {
         if let Some(metadata) = metadata {
