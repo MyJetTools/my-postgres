@@ -90,7 +90,7 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        where_model: &'s TWhereModel,
+        where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
         let (sql, params) = crate::sql_select::build(
@@ -134,7 +134,7 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        where_model: &'s TWhereModel,
+        where_model: Option<&'s TWhereModel>,
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgressError> {
@@ -232,7 +232,7 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        where_model: &'s TWhereModel,
+        where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
         let (sql, params) = crate::sql_select::build(
@@ -269,7 +269,7 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        where_model: &'s TWhereModel,
+        where_model: Option<&'s TWhereModel>,
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgressError> {
