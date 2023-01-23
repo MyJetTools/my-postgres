@@ -1,4 +1,4 @@
-use crate::{SqlValue, SqlValueMetadata, SqlValueWriter};
+use crate::{SqlValue, SqlValueMetadata, SqlWhereValueWriter};
 
 pub struct WhereRenderer {
     no: usize,
@@ -18,7 +18,7 @@ impl WhereRenderer {
         }
     }
 
-    pub fn add_value<'s, TSqlValueWriter: SqlValueWriter<'s>>(
+    pub fn add_value<'s, TSqlValueWriter: SqlWhereValueWriter<'s>>(
         &'s mut self,
         sql: &mut String,
         name: &'s str,
@@ -33,7 +33,7 @@ impl WhereRenderer {
         value.write(sql, params, metadata);
     }
 
-    pub fn add_optional_value<'s, TSqlValueWriter: SqlValueWriter<'s>>(
+    pub fn add_optional_value<'s, TSqlValueWriter: SqlWhereValueWriter<'s>>(
         &'s mut self,
         sql: &mut String,
         name: &'s str,
@@ -47,7 +47,7 @@ impl WhereRenderer {
         }
     }
 
-    pub fn add_vec<'s, TSqlValueWriter: SqlValueWriter<'s>>(
+    pub fn add_vec<'s, TSqlValueWriter: SqlWhereValueWriter<'s>>(
         &'s mut self,
         sql: &mut String,
         name: &'static str,
@@ -82,7 +82,7 @@ impl WhereRenderer {
         sql.push(')');
     }
 
-    pub fn add_opt_of_vec<'s, TSqlValueWriter: SqlValueWriter<'s>>(
+    pub fn add_opt_of_vec<'s, TSqlValueWriter: SqlWhereValueWriter<'s>>(
         &'s mut self,
         sql: &mut String,
         name: &'static str,

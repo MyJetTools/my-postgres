@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{SqlValue, SqlValueWrapper};
+use crate::{SqlUpdateValueWrapper, SqlValue};
 
 use super::SqlInsertModel;
 
@@ -24,8 +24,8 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
         let sql_value = insert_model.get_field_value(field_no);
 
         match &sql_value {
-            SqlValueWrapper::Ignore => {}
-            SqlValueWrapper::Value {
+            SqlUpdateValueWrapper::Ignore => {}
+            SqlUpdateValueWrapper::Value {
                 value: _,
                 metadata: _,
             } => {
@@ -37,15 +37,15 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
                 result.push_str(field_name);
                 values.push((field_name, sql_value));
             }
-            SqlValueWrapper::Null => {}
+            SqlUpdateValueWrapper::Null => {}
         }
     }
     result.push_str(") VALUES (");
     no = 0;
     for (field_name, sql_value) in values {
         match sql_value {
-            SqlValueWrapper::Ignore => {}
-            SqlValueWrapper::Null => {
+            SqlUpdateValueWrapper::Ignore => {}
+            SqlUpdateValueWrapper::Null => {
                 if no > 0 {
                     result.push(',');
                 }
@@ -53,7 +53,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 
                 result.push_str("NULL");
             }
-            SqlValueWrapper::Value { metadata, value } => {
+            SqlUpdateValueWrapper::Value { metadata, value } => {
                 if no > 0 {
                     result.push(',');
                 }

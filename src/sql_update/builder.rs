@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{sql_where::SqlWhereModel, SqlValue, SqlValueWrapper};
+use crate::{sql_where::SqlWhereModel, SqlUpdateValueWrapper, SqlValue};
 
 use super::SqlUpdateModel;
 
@@ -51,11 +51,11 @@ pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
             }
         }
         match update_data.value {
-            SqlValueWrapper::Ignore => {}
-            SqlValueWrapper::Null => {
+            SqlUpdateValueWrapper::Ignore => {}
+            SqlUpdateValueWrapper::Null => {
                 result.push_str("NULL");
             }
-            SqlValueWrapper::Value { metadata, value } => {
+            SqlUpdateValueWrapper::Value { metadata, value } => {
                 value.write(result, params, &metadata);
             }
         }

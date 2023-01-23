@@ -1,6 +1,6 @@
-use crate::SqlValueWrapper;
+use crate::SqlUpdateValueWrapper;
 
 pub struct SqlUpdateValue<'s> {
     pub name: &'static str,
-    pub value: SqlValueWrapper<'s>,
+    pub value: SqlUpdateValueWrapper<'s>,
 }

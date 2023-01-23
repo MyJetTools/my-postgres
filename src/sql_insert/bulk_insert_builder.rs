@@ -1,4 +1,4 @@
-use crate::{SqlValue, SqlValueWrapper};
+use crate::{SqlUpdateValueWrapper, SqlValue};
 
 use super::SqlInsertModel;
 
@@ -35,8 +35,8 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
 
         for no in 0..fields_amount {
             match model.get_field_value(no) {
-                SqlValueWrapper::Ignore => {}
-                SqlValueWrapper::Value { value, metadata } => {
+                SqlUpdateValueWrapper::Ignore => {}
+                SqlUpdateValueWrapper::Value { value, metadata } => {
                     if written_no > 0 {
                         result.push(',');
                     }
@@ -44,7 +44,7 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
                     written_no += 1;
                     value.write(&mut result, &mut params, &metadata);
                 }
-                SqlValueWrapper::Null => {
+                SqlUpdateValueWrapper::Null => {
                     if written_no > 0 {
                         result.push(',');
                     }

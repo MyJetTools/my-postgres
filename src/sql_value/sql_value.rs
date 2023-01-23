@@ -1,4 +1,4 @@
-use crate::{SqlValueMetadata, SqlValueWriter};
+use crate::{SqlUpdateValueWriter, SqlValueMetadata, SqlWhereValueWriter};
 
 #[derive(Debug)]
 pub enum SqlValue<'s> {
@@ -17,11 +17,20 @@ impl<'s> SqlValue<'s> {
     }
 }
 
-pub enum SqlValueWrapper<'s> {
+pub enum SqlWhereValueWrapper<'s> {
     Ignore,
     Null,
     Value {
         metadata: Option<SqlValueMetadata>,
-        value: &'s dyn SqlValueWriter<'s>,
+        value: &'s dyn SqlWhereValueWriter<'s>,
+    },
+}
+
+pub enum SqlUpdateValueWrapper<'s> {
+    Ignore,
+    Null,
+    Value {
+        metadata: Option<SqlValueMetadata>,
+        value: &'s dyn SqlUpdateValueWriter<'s>,
     },
 }
