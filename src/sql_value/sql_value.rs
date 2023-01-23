@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 use crate::{SqlUpdateValueWriter, SqlValueMetadata, SqlWhereValueWriter};
 
 #[derive(Debug)]
