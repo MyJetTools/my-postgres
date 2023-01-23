@@ -202,6 +202,6 @@ impl<'s, T: Serialize> SqlUpdateValueWriter<'s> for Vec<T> {
         params.push(SqlValue::ValueAsString(as_string));
         sql.push_str("to_json($");
         sql.push_str(params.len().to_string().as_str());
-        sql.push_str(")");
+        sql.push_str("::text)");
     }
 }
