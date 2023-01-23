@@ -201,8 +201,8 @@ impl<'s, T: Serialize> SqlUpdateValueWriter<'s> for Vec<T> {
         let as_string = serde_json::to_string(self).unwrap();
 
         params.push(SqlValue::ValueAsString(as_string));
-        sql.push_str("($");
+        sql.push_str("$");
         sql.push_str(params.len().to_string().as_str());
-        sql.push_str(")::json");
+        sql.push_str("::json");
     }
 }
