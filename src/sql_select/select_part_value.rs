@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::SqlValueMetadata;
@@ -91,6 +93,15 @@ impl SelectPartValue for bool {
 }
 
 impl<T> SelectPartValue for Vec<T> {
+    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
+        sql.push_str(field_name);
+        sql.push_str(" #>> '{}' as \"");
+        sql.push_str(field_name);
+        sql.push('"');
+    }
+}
+
+impl<T> SelectPartValue for HashMap<String, T> {
     fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
         sql.push_str(field_name);
         sql.push_str(" #>> '{}' as \"");
