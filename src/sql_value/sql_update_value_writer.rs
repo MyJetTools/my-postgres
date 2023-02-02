@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::Serialize;
 
@@ -192,6 +194,21 @@ impl<'s> SqlUpdateValueWriter<'s> for i64 {
 }
 
 impl<'s, T: Serialize> SqlUpdateValueWriter<'s> for Vec<T> {
+    fn write(
+        &'s self,
+        sql: &mut String,
+        params: &mut Vec<SqlValue<'s>>,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        let as_string = serde_json::to_string(self).unwrap();
+        params.push(SqlValue::ValueAsString(as_string));
+        sql.push_str("to_json($");
+        sql.push_str(params.len().to_string().as_str());
+        sql.push_str("::text)");
+    }
+}
+
+impl<'s, TKey: Serialize, TVale: Serialize> SqlUpdateValueWriter<'s> for HashMap<TKey, TVale> {
     fn write(
         &'s self,
         sql: &mut String,
