@@ -101,7 +101,7 @@ impl<T> SelectPartValue for Vec<T> {
     }
 }
 
-impl<T> SelectPartValue for HashMap<String, T> {
+impl<TKey, TValue> SelectPartValue for HashMap<TKey, TValue> {
     fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
         sql.push_str(field_name);
         sql.push_str(" #>> '{}' as \"");
