@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::de::DeserializeOwned;
 
@@ -142,6 +144,19 @@ impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Vec<T> {
+        let value: String = row.get(name);
+        serde_json::from_str(&value).unwrap()
+    }
+}
+
+impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<HashMap<TKey, TValue>>
+    for HashMap<TKey, TValue>
+{
+    fn from_db_row(
+        row: &tokio_postgres::Row,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> HashMap<TKey, TValue> {
         let value: String = row.get(name);
         serde_json::from_str(&value).unwrap()
     }
