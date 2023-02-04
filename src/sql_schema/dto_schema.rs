@@ -7,7 +7,7 @@ pub enum SqlType {
     Double,
     Integer,
     Json,
-    Timestamp,
+    Timestamp { sql_type: String },
 }
 
 pub struct DtoColumn {
