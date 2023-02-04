@@ -17,5 +17,6 @@ pub use postgres_settings::*;
 pub use sql_value::*;
 
 pub mod sql_delete;
+pub mod sql_schema;
 pub mod sql_update;
 pub mod sql_where;
