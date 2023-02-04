@@ -11,6 +11,12 @@ pub trait FromDbRow<TResult> {
         name: &str,
         metadata: &Option<SqlValueMetadata>,
     ) -> TResult;
+
+    fn from_db_row_opt(
+        row: &tokio_postgres::Row,
+        name: &str,
+        metadata: &Option<SqlValueMetadata>,
+    ) -> Option<TResult>;
 }
 
 impl FromDbRow<String> for String {
@@ -21,10 +27,8 @@ impl FromDbRow<String> for String {
     ) -> String {
         row.get(name)
     }
-}
 
-impl FromDbRow<Option<String>> for Option<String> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -41,9 +45,8 @@ impl FromDbRow<i64> for i64 {
     ) -> i64 {
         row.get(name)
     }
-}
-impl FromDbRow<Option<i64>> for Option<i64> {
-    fn from_db_row(
+
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -61,10 +64,8 @@ impl FromDbRow<u64> for u64 {
         let result: i64 = row.get(name);
         result as u64
     }
-}
 
-impl FromDbRow<Option<u64>> for Option<u64> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -83,10 +84,8 @@ impl FromDbRow<i32> for i32 {
     ) -> i32 {
         row.get(name)
     }
-}
 
-impl FromDbRow<Option<i32>> for Option<i32> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -104,10 +103,8 @@ impl FromDbRow<u32> for u32 {
         let result: i64 = row.get(name);
         result as u32
     }
-}
 
-impl FromDbRow<Option<u32>> for Option<u32> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -126,10 +123,8 @@ impl FromDbRow<bool> for bool {
     ) -> bool {
         row.get(name)
     }
-}
 
-impl FromDbRow<Option<bool>> for Option<bool> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -147,10 +142,8 @@ impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
         let value: String = row.get(name);
         serde_json::from_str(&value).unwrap()
     }
-}
 
-impl<T: DeserializeOwned> FromDbRow<Option<Vec<T>>> for Option<Vec<T>> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -174,12 +167,8 @@ impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<Has
         let value: String = row.get(name);
         serde_json::from_str(&value).unwrap()
     }
-}
 
-impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
-    FromDbRow<Option<HashMap<TKey, TValue>>> for Option<HashMap<TKey, TValue>>
-{
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -199,10 +188,8 @@ impl FromDbRow<f64> for f64 {
     ) -> f64 {
         row.get(name)
     }
-}
 
-impl FromDbRow<Option<f64>> for Option<f64> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -219,10 +206,8 @@ impl FromDbRow<f32> for f32 {
     ) -> f32 {
         row.get(name)
     }
-}
 
-impl FromDbRow<Option<f32>> for Option<f32> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
@@ -240,10 +225,8 @@ impl FromDbRow<DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
         let unix_microseconds: i64 = row.get(name);
         DateTimeAsMicroseconds::new(unix_microseconds)
     }
-}
 
-impl FromDbRow<Option<DateTimeAsMicroseconds>> for Option<DateTimeAsMicroseconds> {
-    fn from_db_row(
+    fn from_db_row_opt(
         row: &tokio_postgres::Row,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
