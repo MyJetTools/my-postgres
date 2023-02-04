@@ -149,6 +149,20 @@ impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
     }
 }
 
+impl<T: DeserializeOwned> FromDbRow<Option<Vec<T>>> for Option<Vec<T>> {
+    fn from_db_row(
+        row: &tokio_postgres::Row,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Option<Vec<T>> {
+        let value: Option<String> = row.get(name);
+
+        let value = value.as_ref()?;
+        let result = serde_json::from_str(value).unwrap();
+        Some(result)
+    }
+}
+
 impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<HashMap<TKey, TValue>>
     for HashMap<TKey, TValue>
 {
@@ -159,6 +173,21 @@ impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<Has
     ) -> HashMap<TKey, TValue> {
         let value: String = row.get(name);
         serde_json::from_str(&value).unwrap()
+    }
+}
+
+impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
+    FromDbRow<Option<HashMap<TKey, TValue>>> for Option<HashMap<TKey, TValue>>
+{
+    fn from_db_row(
+        row: &tokio_postgres::Row,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Option<HashMap<TKey, TValue>> {
+        let value: Option<String> = row.get(name);
+        let value = value.as_ref()?;
+        let result = serde_json::from_str(value).unwrap();
+        Some(result)
     }
 }
 
