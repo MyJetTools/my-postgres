@@ -7,11 +7,11 @@ pub enum SqlType {
     Double,
     Integer,
     Json,
-    Timestamp { sql_type: String },
+    Timestamp,
 }
 
 pub struct DtoColumn {
-    pub name: String,
+    pub name: &'static str,
     pub sql_type: SqlType,
     pub is_primary_key: bool,
     pub is_nullable: bool,
