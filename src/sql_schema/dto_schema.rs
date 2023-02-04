@@ -1,4 +1,4 @@
-pub enum SqlType {
+pub enum DbSchemaSqlType {
     Text,
     SmallInt,
     BigInt,
@@ -10,13 +10,13 @@ pub enum SqlType {
     Timestamp,
 }
 
-pub struct DtoColumn {
+pub struct DbColumn {
     pub name: &'static str,
-    pub sql_type: SqlType,
+    pub sql_type: DbSchemaSqlType,
     pub is_primary_key: bool,
     pub is_nullable: bool,
 }
 
-pub trait DtoSchema {
-    fn get_columns() -> Vec<DtoColumn>;
+pub trait DbSchema {
+    fn get_columns() -> Vec<DbColumn>;
 }
