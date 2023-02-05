@@ -11,6 +11,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
+    table_schema::TableSchema,
     MyPostgressError, PostgresConnection, PostgresConnectionInstance, PostgressSettings,
 };
 
@@ -39,6 +40,11 @@ impl MyPostgres {
 
     pub async fn with_shared_connection(connection: Arc<PostgresConnection>) -> Self {
         Self { connection }
+    }
+
+    pub async fn check_table_schema<TTableSchema: TableSchema>(&mut self, table_name: &str) {
+        let columns = TTableSchema::get_columns();
+        crate::TABLE_SCHEMAS.add_columns(table_name, columns).await;
     }
 
     pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(

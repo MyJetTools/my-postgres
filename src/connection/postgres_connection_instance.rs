@@ -391,20 +391,10 @@ async fn create_and_start_no_tls(
 ) {
     let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
 
-    let connected_date_time = DateTimeAsMicroseconds::now();
-
     match result {
         Ok((postgres_client, postgres_connection)) => {
-            println!(
-                "{}: Postgres SQL Connection is estabiled",
-                connected_date_time.to_rfc3339()
-            );
-
-            {
-                let mut write_access = client.write().await;
-                *write_access = Some(postgres_client);
-            };
-            connected.store(true, Ordering::SeqCst);
+            let connected_date_time =
+                handle_connection_is_established(client, postgres_client, connected).await;
 
             let connected_spawned = connected.clone();
 
@@ -479,19 +469,16 @@ async fn create_and_start_with_tls(
     let logger_spawned = logger.clone();
     match result {
         Ok((postgres_client, postgres_connection)) => {
-            {
-                let mut write_access = client.write().await;
-                *write_access = Some(postgres_client);
-            }
+            let connected_date_time =
+                handle_connection_is_established(client, postgres_client, connected).await;
 
-            connected.store(true, Ordering::SeqCst);
             let connected_spawned = connected.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = postgres_connection.await {
                     eprintln!(
-                        "{}: connection error: {}",
-                        DateTimeAsMicroseconds::now().to_rfc3339(),
+                        "Connection started at {} has error: {}",
+                        connected_date_time.to_rfc3339(),
                         e
                     );
                 }
@@ -519,4 +506,30 @@ async fn create_and_start_with_tls(
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     }
+}
+
+async fn handle_connection_is_established(
+    client: &Arc<RwLock<Option<tokio_postgres::Client>>>,
+    postgres_client: tokio_postgres::Client,
+    connected: &Arc<AtomicBool>,
+) -> DateTimeAsMicroseconds {
+    let connected_date_time = DateTimeAsMicroseconds::now();
+    println!(
+        "{}: Postgres SQL Connection is estabiled",
+        connected_date_time.to_rfc3339()
+    );
+
+    let result = super::table_schemes_verification::verify_schemas(&postgres_client).await;
+
+    if let Err(err) = result {
+        println!("Error during schema verification: {:?}", err);
+    }
+
+    {
+        let mut write_access = client.write().await;
+        *write_access = Some(postgres_client);
+    };
+    connected.store(true, Ordering::SeqCst);
+
+    connected_date_time
 }
