@@ -30,7 +30,13 @@ pub async fn verify_schemas(postgres_client: &tokio_postgres::Client) -> Result<
             ));
         }
 
-        let mut schema_from_db = get_columns_from_schema(result.unwrap())?;
+        let rows = result.unwrap();
+
+        if rows.len() == 0 {
+            return Err(format!("Table {} is not found in DB", table_name));
+        }
+
+        let mut schema_from_db = get_columns_from_schema(rows)?;
 
         update_primary_key(postgres_client, &table_name, &mut schema_from_db).await?;
 
