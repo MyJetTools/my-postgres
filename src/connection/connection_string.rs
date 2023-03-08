@@ -73,6 +73,12 @@ impl<'s> ConnectionString<'s> {
                         to: end_of_value,
                     });
                 }
+                "user id" => {
+                    user_name = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
                 "password" => {
                     password = Some(Position {
                         from: eq_pos + 1,
