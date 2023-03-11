@@ -12,7 +12,7 @@ use crate::{
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
     table_schema::TableSchema,
-    MyPostgressError, PostgresConnection, PostgresConnectionInstance, PostgressSettings,
+    MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
 };
 
 pub struct MyPostgres {
@@ -22,7 +22,7 @@ pub struct MyPostgres {
 impl MyPostgres {
     pub async fn new(
         app_name: String,
-        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let connection = PostgresConnectionInstance::new(
@@ -52,7 +52,7 @@ impl MyPostgres {
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<TResult>, MyPostgressError> {
+    ) -> Result<Option<TResult>, MyPostgresError> {
         let mut sql = String::new();
 
         let mut params = Vec::new();
@@ -98,7 +98,7 @@ impl MyPostgres {
         table_name: &str,
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<TEntity>, MyPostgressError> {
+    ) -> Result<Option<TEntity>, MyPostgresError> {
         let (sql, params) = crate::sql_select::build(
             table_name,
             |sql| TEntity::fill_select_fields(sql),
@@ -143,7 +143,7 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<TEntity>, MyPostgressError> {
+    ) -> Result<Option<TEntity>, MyPostgresError> {
         let (mut sql, params) = crate::sql_select::build(
             table_name,
             |sql| TEntity::fill_select_fields(sql),
@@ -183,7 +183,7 @@ impl MyPostgres {
         &self,
         sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<u64, MyPostgressError> {
+    ) -> Result<u64, MyPostgresError> {
         let (sql, params) = sql.as_sql();
 
         let params = if let Some(params) = params {
@@ -210,7 +210,7 @@ impl MyPostgres {
         &self,
         sql: &ToSql,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, MyPostgressError> {
+    ) -> Result<Vec<TEntity>, MyPostgresError> {
         let (sql, params) = sql.as_sql();
 
         let params = if let Some(params) = params {
@@ -240,7 +240,7 @@ impl MyPostgres {
         table_name: &str,
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, MyPostgressError> {
+    ) -> Result<Vec<TEntity>, MyPostgresError> {
         let (sql, params) = crate::sql_select::build(
             table_name,
             |sql| TEntity::fill_select_fields(sql),
@@ -278,7 +278,7 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, MyPostgressError> {
+    ) -> Result<Vec<TEntity>, MyPostgresError> {
         let (mut sql, params) = crate::sql_select::build(
             table_name,
             |sql| TEntity::fill_select_fields(sql),
@@ -318,7 +318,7 @@ impl MyPostgres {
         sql_builder: &'s BulkSelectBuilder<'s, TIn>,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TOut>, MyPostgressError> {
+    ) -> Result<Vec<TOut>, MyPostgresError> {
         let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
         let (sql, params) = sql_builder.build_sql(|sql| TEntity::fill_select_fields(sql));
 
@@ -365,7 +365,7 @@ impl MyPostgres {
         entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let mut params = Vec::new();
         let (sql, _) = crate::sql_insert::build_insert(table_name, entity, &mut params, None);
 
@@ -395,7 +395,7 @@ impl MyPostgres {
         entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let mut params = Vec::new();
         let sql = crate::sql_insert::build_insert_if_not_exists(table_name, entity, &mut params);
 
@@ -425,7 +425,7 @@ impl MyPostgres {
         entities: &'s [TEntity],
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let (sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
 
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
@@ -454,7 +454,7 @@ impl MyPostgres {
         table_name: &str,
         entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let (mut sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
 
         sql.push_str(" ON CONFLICT DO NOTHING");
@@ -488,7 +488,7 @@ impl MyPostgres {
         entity: &'s TEntity,
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let (sql, params) = crate::sql_update::build(table_name, entity, entity);
         let process_name = format!("update_db_entity into table {}", table_name);
 
@@ -520,18 +520,19 @@ impl MyPostgres {
         pk_name: &str,
         entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let process_name = format!(
             "bulk_insert_or_update_db_entity into table {} {} entities",
             table_name,
             entities.len()
         );
 
-        let sqls = crate::sql_insert::build_bulk_insert_if_update(table_name, pk_name, entities);
+        let sql_with_params =
+            crate::sql_insert::build_bulk_insert_if_update(table_name, pk_name, entities);
 
         self.connection
             .execute_bulk_sql(
-                sqls,
+                sql_with_params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -548,7 +549,7 @@ impl MyPostgres {
         pk_name: &str,
         entity: &'s TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
         let (sql, params) = crate::sql_insert::build_insert_or_update(table_name, pk_name, entity);
@@ -577,7 +578,7 @@ impl MyPostgres {
         table_name: &str,
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let (sql, params) = crate::sql_delete::build_delete(table_name, where_model);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
@@ -605,7 +606,7 @@ impl MyPostgres {
         entities: &'s [TEntity],
 
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         let process_name = format!("bulk_delete from table {}", table_name);
 
         let (sql, params) = crate::sql_delete::build_bulk_delete(table_name, entities);

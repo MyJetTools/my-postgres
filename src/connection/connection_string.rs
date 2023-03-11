@@ -22,7 +22,7 @@ impl<'s> ConnectionString<'s> {
                 panic!("We should not go here");
             }
             ConnectionStringFormat::AsUrl(conn_string) => {
-                Self::parse_url_connstring(conn_string.as_bytes())
+                Self::parse_url_connection_string(conn_string.as_bytes())
             }
             ConnectionStringFormat::SemiColumnSeparated(conn_string) => {
                 Self::parse_column_separated(conn_string.as_bytes())
@@ -126,7 +126,7 @@ impl<'s> ConnectionString<'s> {
         }
     }
 
-    fn parse_url_connstring(conn_string: &'s [u8]) -> Self {
+    fn parse_url_connection_string(conn_string: &'s [u8]) -> Self {
         let user_name_start = PREFIX.len();
 
         let pos = find_pos(conn_string, user_name_start + 1, b':');
@@ -281,7 +281,7 @@ impl<'s> ConnectionStringFormat<'s> {
 
         let mut spaces = 0;
 
-        let mut semicolumns = 0;
+        let mut semicolons = 0;
 
         let as_bytes = conn_string.as_bytes();
 
@@ -289,11 +289,11 @@ impl<'s> ConnectionStringFormat<'s> {
             if as_bytes[i] == b' ' {
                 spaces += 1;
             } else if as_bytes[i] == b';' {
-                semicolumns += 1;
+                semicolons += 1;
             }
         }
 
-        if spaces > semicolumns {
+        if spaces > semicolons {
             return ConnectionStringFormat::ReadyToUse(conn_string);
         }
 
@@ -314,7 +314,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_connstring_with_no_additional_params() {
+    fn test_conn_string_with_no_additional_params() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "postgresql://username@username:password@localhost:5432/dbname",
         );
@@ -381,7 +381,7 @@ mod test {
     #[test]
     fn test_parsing_url_like_connection_string_with_timeout() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
-            "postgresql://admin:example@10.0.0.3:5432/mydbname?connect_timeout=10",
+            "postgresql://admin:example@10.0.0.3:5432/my_dbname?connect_timeout=10",
         );
         let connection_string = ConnectionString::parse(conn_string_format);
 
@@ -403,7 +403,7 @@ mod test {
         assert_eq!(5432, connection_string.port);
 
         assert_eq!(
-            "mydbname",
+            "my_dbname",
             connection_string.get_field_value(&connection_string.db_name)
         );
 
@@ -413,7 +413,7 @@ mod test {
     #[test]
     fn test_parsing_semicolon_separated_connection_string() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
-            "Server=localhost;UserId=usr;Password=pswd;Database=payments;sslmode=require;Port=5566",
+            "Server=localhost;UserId=usr;Password=password;Database=payments;sslmode=require;Port=5566",
         );
         let connection_string = ConnectionString::parse(conn_string_format);
 
@@ -423,7 +423,7 @@ mod test {
         );
 
         assert_eq!(
-            "pswd",
+            "password",
             connection_string.get_field_value(&connection_string.password)
         );
 

@@ -22,7 +22,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{MyPostgressError, PostgressSettings, SqlValue};
+use crate::{MyPostgresError, PostgresSettings, SqlValue};
 
 pub struct PostgresConnectionInstance {
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
@@ -36,7 +36,7 @@ pub struct PostgresConnectionInstance {
 impl PostgresConnectionInstance {
     pub fn new(
         app_name: String,
-        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
@@ -80,11 +80,11 @@ impl PostgresConnectionInstance {
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<u64, MyPostgressError> {
+    ) -> Result<u64, MyPostgresError> {
         let connection_access = self.client.read().await;
 
         if connection_access.is_none() {
-            return Err(MyPostgressError::NoConnection);
+            return Err(MyPostgresError::NoConnection);
         }
 
         let connection_access = connection_access.as_ref().unwrap();
@@ -121,7 +121,7 @@ impl PostgresConnectionInstance {
         sql_with_params: Vec<(String, Vec<SqlValue<'s>>)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         if std::env::var("DEBUG").is_ok() {
             println!("SQL: {:?}", sql_with_params);
         }
@@ -132,7 +132,7 @@ impl PostgresConnectionInstance {
         let mut connection_access = self.client.write().await;
 
         if connection_access.is_none() {
-            return Err(MyPostgressError::NoConnection);
+            return Err(MyPostgresError::NoConnection);
         }
 
         let connection_access = connection_access.as_mut().unwrap();
@@ -178,11 +178,11 @@ impl PostgresConnectionInstance {
         process_name: &str,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, MyPostgressError> {
+    ) -> Result<Vec<TEntity>, MyPostgresError> {
         let connection_access = self.client.read().await;
 
         if connection_access.is_none() {
-            return Err(MyPostgressError::NoConnection);
+            return Err(MyPostgresError::NoConnection);
         }
 
         let connection_access = connection_access.as_ref().unwrap();
@@ -218,17 +218,17 @@ impl PostgresConnectionInstance {
 
     fn handle_error<TResult>(
         &self,
-        result: Result<TResult, MyPostgressError>,
-    ) -> Result<TResult, MyPostgressError> {
+        result: Result<TResult, MyPostgresError>,
+    ) -> Result<TResult, MyPostgresError> {
         if let Err(err) = &result {
             match err {
-                MyPostgressError::NoConnection => {}
-                MyPostgressError::SingleRowRequestReturnedMultipleRows(_) => {}
-                MyPostgressError::PostgresError(_) => {}
-                MyPostgressError::Other(_) => {
+                MyPostgresError::NoConnection => {}
+                MyPostgresError::SingleRowRequestReturnedMultipleRows(_) => {}
+                MyPostgresError::PostgresError(_) => {}
+                MyPostgresError::Other(_) => {
                     self.disconnect();
                 }
-                MyPostgressError::Timeouted(_) => {
+                MyPostgresError::TimeOut(_) => {
                     self.disconnect();
                 }
             }
@@ -250,17 +250,17 @@ async fn execute_with_timeout<
     #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Send + Sync + 'static>,
     #[cfg(feature = "with-logs-and-telemetry")] started: DateTimeAsMicroseconds,
     #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-) -> Result<TResult, MyPostgressError> {
+) -> Result<TResult, MyPostgresError> {
     let timeout_result: Result<Result<TResult, tokio_postgres::Error>, Elapsed> =
         tokio::time::timeout(sql_request_timeout, execution).await;
 
     let result = if timeout_result.is_err() {
         connected.store(false, Ordering::SeqCst);
-        Err(MyPostgressError::Timeouted(sql_request_timeout))
+        Err(MyPostgresError::TimeOut(sql_request_timeout))
     } else {
         match timeout_result.unwrap() {
             Ok(result) => Ok(result),
-            Err(err) => Err(MyPostgressError::PostgresError(err)),
+            Err(err) => Err(MyPostgresError::PostgresError(err)),
         }
     };
 
@@ -338,7 +338,7 @@ async fn write_fail_telemetry_and_log(
 
 async fn establish_connection_loop(
     app_name: String,
-    postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+    postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
     connected: Arc<AtomicBool>,
     #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -362,7 +362,7 @@ async fn establish_connection_loop(
             {
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger.write_error(
-                    "PostgressConnection".to_string(),
+                    "PostgresConnection".to_string(),
                     "Postgres connection with sslmode=require is not supported without tls feature"
                         .to_string(),
                     None,
@@ -405,14 +405,14 @@ async fn create_and_start_no_tls(
                 match postgres_connection.await {
                     Ok(_) => {
                         println!(
-                            "{}: Connection estabilshed at {} is closed.",
+                            "{}: Connection established at {} is closed.",
                             DateTimeAsMicroseconds::now().to_rfc3339(),
                             connected_date_time.to_rfc3339(),
                         );
                     }
                     Err(err) => {
                         println!(
-                            "{}: Connection estabilshed at {} is closed with error: {}",
+                            "{}: Connection established at {} is closed with error: {}",
                             DateTimeAsMicroseconds::now().to_rfc3339(),
                             connected_date_time.to_rfc3339(),
                             err
@@ -420,7 +420,7 @@ async fn create_and_start_no_tls(
 
                         #[cfg(feature = "with-logs-and-telemetry")]
                         logger_spawned.write_fatal_error(
-                            "Potgress background".to_string(),
+                            "Postgres background".to_string(),
                             format!("Exist connection loop"),
                             None,
                         );
@@ -444,7 +444,7 @@ async fn create_and_start_no_tls(
 
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.write_fatal_error(
-                "CreatingPosrgress".to_string(),
+                "CreatingPostgres".to_string(),
                 format!("Invalid connection string. {:?}", err),
                 None,
             );
@@ -484,7 +484,7 @@ async fn create_and_start_with_tls(
                 }
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger_spawned.write_fatal_error(
-                    "Potgress background".to_string(),
+                    "Postgres background".to_string(),
                     format!("Exist connection loop"),
                     None,
                 );
@@ -499,7 +499,7 @@ async fn create_and_start_with_tls(
         Err(_err) => {
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.write_fatal_error(
-                "CreatingPosrgress".to_string(),
+                "Creating Postgres".to_string(),
                 format!("Invalid connection string. {:?}", _err),
                 None,
             );
@@ -515,7 +515,7 @@ async fn handle_connection_is_established(
 ) -> DateTimeAsMicroseconds {
     let connected_date_time = DateTimeAsMicroseconds::now();
     println!(
-        "{}: Postgres SQL Connection is estabiled",
+        "{}: Postgres SQL Connection is established",
         connected_date_time.to_rfc3339()
     );
 

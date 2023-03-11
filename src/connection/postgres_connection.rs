@@ -7,7 +7,7 @@ use rust_extensions::Logger;
 use tokio_postgres::Row;
 
 use crate::{
-    ConnectionsPool, MyPostgressError, PostgresConnectionInstance, PostgressSettings, SqlValue,
+    ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings, SqlValue,
 };
 
 pub enum PostgresConnection {
@@ -18,7 +18,7 @@ pub enum PostgresConnection {
 impl PostgresConnection {
     pub fn new_as_single_connection(
         app_name: String,
-        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
@@ -35,7 +35,7 @@ impl PostgresConnection {
 
     pub fn new_as_multiple_connections(
         app_name: String,
-        postgres_settings: Arc<dyn PostgressSettings + Sync + Send + 'static>,
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         max_pool_size: usize,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -55,7 +55,7 @@ impl PostgresConnection {
         params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<u64, MyPostgressError> {
+    ) -> Result<u64, MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
                 connection
@@ -89,7 +89,7 @@ impl PostgresConnection {
         sql_with_params: Vec<(String, Vec<SqlValue<'s>>)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgressError> {
+    ) -> Result<(), MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
                 connection
@@ -123,7 +123,7 @@ impl PostgresConnection {
         process_name: &str,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Vec<TEntity>, MyPostgressError> {
+    ) -> Result<Vec<TEntity>, MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
                 connection

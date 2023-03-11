@@ -1,15 +1,15 @@
 use std::time::Duration;
 
 #[derive(Debug)]
-pub enum MyPostgressError {
+pub enum MyPostgresError {
     NoConnection,
     SingleRowRequestReturnedMultipleRows(usize),
     PostgresError(tokio_postgres::Error),
     Other(String),
-    Timeouted(Duration),
+    TimeOut(Duration),
 }
 
-impl From<tokio_postgres::Error> for MyPostgressError {
+impl From<tokio_postgres::Error> for MyPostgresError {
     fn from(error: tokio_postgres::Error) -> Self {
         Self::PostgresError(error)
     }
