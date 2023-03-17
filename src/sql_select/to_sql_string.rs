@@ -16,7 +16,7 @@ impl ToSqlString for String {
         StrOrString,
         Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
     ) {
-        (StrOrString::crate_as_str(self), None)
+        (StrOrString::create_as_str(self), None)
     }
 }
 
@@ -27,6 +27,6 @@ impl<'s> ToSqlString for &'s str {
         StrOrString,
         Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
     ) {
-        (StrOrString::crate_as_str(self), None)
+        (StrOrString::create_as_str(self), None)
     }
 }

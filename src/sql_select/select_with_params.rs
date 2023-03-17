@@ -39,6 +39,6 @@ impl<'s> ToSqlString for SqlWithParams<'s> {
         StrOrString,
         Option<&[&(dyn tokio_postgres::types::ToSql + Sync)]>,
     ) {
-        (StrOrString::crate_as_str(self.sql), Some(self.params))
+        (StrOrString::create_as_str(self.sql), Some(self.params))
     }
 }
