@@ -1,6 +1,7 @@
 mod connection;
 
 mod count_result;
+mod db_row;
 mod error;
 mod my_postgres;
 mod postgres_settings;
@@ -16,6 +17,8 @@ pub use connection::*;
 
 pub use error::*;
 pub use postgres_settings::*;
+
+pub use db_row::*;
 
 pub use sql_value::*;
 

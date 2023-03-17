@@ -1,6 +1,6 @@
 pub trait CountResult {
     fn get_postgres_type() -> &'static str;
-    fn from_db_row(row: &tokio_postgres::Row) -> Self;
+    fn from_db_row(row: &crate::DbRow) -> Self;
 }
 
 impl CountResult for u64 {
@@ -8,7 +8,7 @@ impl CountResult for u64 {
         "bigint"
     }
 
-    fn from_db_row(row: &tokio_postgres::Row) -> Self {
+    fn from_db_row(row: &crate::DbRow) -> Self {
         let result: i64 = row.get(0);
         result as u64
     }
@@ -19,7 +19,7 @@ impl CountResult for i32 {
         "int"
     }
 
-    fn from_db_row(row: &tokio_postgres::Row) -> Self {
+    fn from_db_row(row: &crate::DbRow) -> Self {
         row.get(0)
     }
 }
@@ -29,7 +29,7 @@ impl CountResult for usize {
         "bigint"
     }
 
-    fn from_db_row(row: &tokio_postgres::Row) -> Self {
+    fn from_db_row(row: &crate::DbRow) -> Self {
         let result: i64 = row.get(0);
         result as usize
     }
@@ -40,7 +40,7 @@ impl CountResult for i16 {
         "smallint"
     }
 
-    fn from_db_row(row: &tokio_postgres::Row) -> Self {
+    fn from_db_row(row: &crate::DbRow) -> Self {
         row.get(0)
     }
 }
