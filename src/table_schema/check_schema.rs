@@ -8,18 +8,48 @@ use super::{TableSchema, DEFAULT_SCHEMA};
 pub async fn check_schema(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
+    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
+        dyn rust_extensions::Logger + Sync + Send + 'static,
+    >,
 ) -> Result<(), MyPostgresError> {
     let db_fields = get_db_fields(conn_string, table_schema.table_name).await?;
 
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     if db_fields.is_none() {
-        println!("Please execute script to create Table");
+        println!("Table not found. Creating Table");
         let create_table_sql = table_schema.generate_create_table_script();
-        println!("{}", create_table_sql);
+        conn_string
+            .execute_sql(&create_table_sql, &[], "create_table")
+            .await
+            .unwrap();
+    }
 
-        panic!(
-            "Stopped because - table {} does not exist",
-            table_schema.table_name
+    #[cfg(feature = "with-logs-and-telemetry")]
+    if db_fields.is_none() {
+        let create_table_sql = table_schema.generate_create_table_script();
+
+        let mut ctx = HashMap::new();
+
+        ctx.insert(
+            "table_name".to_string(),
+            table_schema.table_name.to_string(),
         );
+
+        if let Some(primary_key_name) = &table_schema.primary_key_name {
+            ctx.insert("primary_key_name".to_string(), primary_key_name.to_string());
+        }
+
+        ctx.insert("sql".to_string(), create_table_sql.to_string());
+
+        logger.write_info(
+            "check_schema".to_string(),
+            format!("Creating table: {}", table_schema.table_name),
+            Some(ctx),
+        );
+        conn_string
+            .execute_sql(&create_table_sql, &[], "create_table", None)
+            .await
+            .unwrap();
     }
 
     Ok(())

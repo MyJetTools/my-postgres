@@ -62,7 +62,7 @@ impl TableSchema {
         result.push_str(DEFAULT_SCHEMA);
         result.push_str(".");
         result.push_str(self.table_name);
-        result.push_str(" (");
+        result.push_str("\n(\n");
 
         let mut no = 0;
 

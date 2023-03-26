@@ -18,6 +18,8 @@ use crate::{
 
 pub struct MyPostgres {
     connection: Arc<PostgresConnection>,
+    #[cfg(feature = "with-logs-and-telemetry")]
+    logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl MyPostgres {
@@ -31,16 +33,25 @@ impl MyPostgres {
             postgres_settings,
             Duration::from_secs(5),
             #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
+            logger.clone(),
         );
 
         Self {
             connection: Arc::new(PostgresConnection::Single(connection)),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
         }
     }
 
-    pub async fn with_shared_connection(connection: Arc<PostgresConnection>) -> Self {
-        Self { connection }
+    pub async fn with_shared_connection(
+        connection: Arc<PostgresConnection>,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
+    ) -> Self {
+        Self {
+            connection,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
+        }
     }
 
     pub async fn check_table_schema<TTableSchemaProvider: TableSchemaProvider>(
@@ -54,8 +65,13 @@ impl MyPostgres {
 
         let started = DateTimeAsMicroseconds::now();
 
-        while let Err(err) =
-            crate::table_schema::check_schema(&self.connection, &table_schema).await
+        while let Err(err) = crate::table_schema::check_schema(
+            &self.connection,
+            &table_schema,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            &self.logger,
+        )
+        .await
         {
             println!(
                 "Can not verify schema for table {} because of error {:?}",
