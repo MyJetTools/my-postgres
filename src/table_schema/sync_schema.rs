@@ -5,7 +5,7 @@ use crate::{MyPostgresError, PostgresConnection};
 use super::{TableColumn, TableColumnType};
 use super::{TableSchema, DEFAULT_SCHEMA};
 
-pub async fn check_schema(
+pub async fn sync_schema(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
@@ -41,7 +41,7 @@ pub async fn check_schema(
 
         ctx.insert("sql".to_string(), create_table_sql.to_string());
 
-        logger.write_info(
+        logger.write_warning(
             "check_schema".to_string(),
             format!("Creating table: {}", table_schema.table_name),
             Some(ctx),

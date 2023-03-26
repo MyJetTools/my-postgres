@@ -59,13 +59,15 @@ impl MyPostgres {
         table_name: &'static str,
         primary_key_name: Option<String>,
     ) {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
         let columns = TTableSchemaProvider::get_columns();
 
         let table_schema = TableSchema::new(table_name, primary_key_name, columns);
 
         let started = DateTimeAsMicroseconds::now();
 
-        while let Err(err) = crate::table_schema::check_schema(
+        while let Err(err) = crate::table_schema::sync_schema(
             &self.connection,
             &table_schema,
             #[cfg(feature = "with-logs-and-telemetry")]
