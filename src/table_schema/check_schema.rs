@@ -37,6 +37,7 @@ async fn get_db_fields(
     ORDER BY ordinal_position"#
     );
 
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     let mut result = conn_string
         .execute_sql_as_vec(&sql, &[], "get_db_fields", |db_row| TableColumn {
             name: db_row.get("column_name"),
@@ -45,6 +46,23 @@ async fn get_db_fields(
             is_nullable: get_is_nullable(db_row),
             default: None,
         })
+        .await?;
+
+    #[cfg(feature = "with-logs-and-telemetry")]
+    let mut result = conn_string
+        .execute_sql_as_vec(
+            &sql,
+            &[],
+            "get_db_fields",
+            |db_row| TableColumn {
+                name: db_row.get("column_name"),
+                sql_type: get_sql_type(db_row),
+                is_primary_key: None,
+                is_nullable: get_is_nullable(db_row),
+                default: None,
+            },
+            None,
+        )
         .await?;
 
     if result.is_empty() {
@@ -83,11 +101,25 @@ async fn get_primary_key_fields(
 
     // cSpell: enable
 
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
     let result = conn_string
         .execute_sql_as_vec(&sql, &[], "get_db_fields", |db_row| {
             let result: String = db_row.get(0);
             result
         })
+        .await?;
+    #[cfg(feature = "with-logs-and-telemetry")]
+    let result = conn_string
+        .execute_sql_as_vec(
+            &sql,
+            &[],
+            "get_db_fields",
+            |db_row| {
+                let result: String = db_row.get(0);
+                result
+            },
+            None,
+        )
         .await?;
 
     if result.is_empty() {
