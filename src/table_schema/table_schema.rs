@@ -22,7 +22,7 @@ impl TableSchema {
         }
     }
 
-    pub fn get_primary_key_fields(&self) -> Option<Vec<TableColumn>> {
+    fn get_primary_key_fields(&self) -> Option<Vec<TableColumn>> {
         let mut by_primary_key = BTreeMap::new();
         let mut amount = 0;
 
@@ -83,30 +83,97 @@ impl TableSchema {
         }
 
         if let Some(primary_key_name) = self.primary_key_name.as_ref() {
-            if let Some(primary_key_columns) = self.get_primary_key_fields() {
-                result.push_str(",\n");
-                result.push_str("  constraint ");
-                result.push_str(primary_key_name);
-                result.push_str("\n    primary key (");
-                let mut no = 0;
-                for column in primary_key_columns {
-                    if no > 0 {
-                        result.push_str(", ");
-                    }
-                    result.push_str(column.name.as_str());
-                    no += 1;
-                }
-                result.push_str(")");
-            } else {
-                panic!(
-                "Table {} with primary key {} does not have primary key columns in Table Schema definition",
-                self.table_name, primary_key_name
+            result.push_str(",\n");
+            result.push_str("  constraint ");
+            result.push_str(primary_key_name);
+            result.push_str("\n    primary key (");
+            result.push_str(self.generate_primary_key_sql_columns().as_str());
+            result.push_str(")");
+        } else {
+            panic!(
+                "Table {} does not have primary key name in Table Schema definition",
+                self.table_name
             );
-            }
         }
 
         result.push_str(");");
 
         result
+    }
+
+    pub fn generate_add_column_sql(&self, column_name: &str) -> String {
+        if let Some(column) = self.columns.iter().find(|itm| itm.name == column_name) {
+            let schema = DEFAULT_SCHEMA;
+            let table_name = self.table_name;
+            let column_name = column.name.as_str();
+            let column_type = column.sql_type.to_db_type();
+            return format!("alter table {schema}.{table_name} add {column_name} {column_type};");
+        }
+
+        panic!(
+            "Somehow column {} was not found in table schema",
+            column_name
+        )
+    }
+
+    pub fn generate_update_primary_key_sql(&self, has_primary_key_in_db: bool) -> Vec<String> {
+        if !has_primary_key_in_db {
+            let schema = DEFAULT_SCHEMA;
+            let table_name = self.table_name;
+            let primary_key_columns = self.generate_primary_key_sql_columns();
+            if let Some(primary_key) = &self.primary_key_name {
+                return vec![format!(
+                    "alter table {schema}.{table_name} add constraint {primary_key} primary key ({primary_key_columns});")
+                ];
+            } else {
+                panic!(
+                    "Somehow primary key was not found in table schema {}",
+                    self.table_name
+                );
+            }
+        }
+
+        if let Some(primary_key) = &self.primary_key_name {
+            let schema = DEFAULT_SCHEMA;
+            let table_name = self.table_name;
+
+            let mut result = Vec::with_capacity(2);
+            result.push(format!(
+                "alter table {schema}.{table_name} drop constraint {primary_key};"
+            ));
+
+            let primary_key_columns = self.generate_primary_key_sql_columns();
+            result.push(format!(
+                "alter table {schema}.{table_name} add constraint {primary_key} primary key ({primary_key_columns});"
+            ));
+
+            return result;
+        }
+
+        panic!(
+            "Somehow primary key was not found in table schema {}",
+            self.table_name
+        )
+    }
+
+    fn generate_primary_key_sql_columns(&self) -> String {
+        if let Some(primary_key_columns) = self.get_primary_key_fields() {
+            let mut result = String::new();
+            let mut no = 0;
+            for column in primary_key_columns {
+                if no > 0 {
+                    result.push_str(", ");
+                }
+                result.push_str(column.name.as_str());
+                no += 1;
+            }
+
+            return result;
+        }
+
+        panic!(
+            "Somehow primary key columns was not found in table {} with primary_key {:?}",
+            self.table_name, self.primary_key_name
+        )
     }
 }

@@ -1,9 +1,11 @@
+mod schema_difference;
 mod sync_schema;
 mod table_column;
 mod table_column_type;
 mod table_schema;
 mod table_schema_provider;
 mod table_schemas;
+pub use schema_difference::*;
 pub use sync_schema::*;
 pub use table_column::*;
 pub use table_column_type::*;
