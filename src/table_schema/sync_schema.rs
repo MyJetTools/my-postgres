@@ -47,6 +47,19 @@ pub async fn sync_schema(
             continue;
         }
 
+        #[cfg(feature = "with-logs-and-telemetry")]
+        {
+            logger.write_info(
+                "Table Schema verification".into(),
+                format!(
+                    "Db Schema is up to date for a table, {}",
+                    table_schema.table_name
+                ),
+                None,
+            );
+        }
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
         println!(
             "Db Schema is up to date for a table: {}",
             table_schema.table_name
