@@ -197,16 +197,13 @@ async fn create_table(
 
     let mut ctx = HashMap::new();
 
-    ctx.insert(
-        "table_name".to_string(),
-        table_schema.table_name.to_string(),
-    );
+    ctx.insert("TableName".to_string(), table_schema.table_name.to_string());
 
     if let Some(primary_key_name) = &table_schema.primary_key_name {
-        ctx.insert("primary_key_name".to_string(), primary_key_name.to_string());
+        ctx.insert("primaryKeyName".to_string(), primary_key_name.to_string());
     }
 
-    ctx.insert("sql".to_string(), create_table_sql.to_string());
+    ctx.insert("Sql".to_string(), create_table_sql.to_string());
 
     logger.write_warning(
         "check_schema".to_string(),
