@@ -70,6 +70,7 @@ impl TableSchema {
             if no > 0 {
                 result.push_str(",\n");
             }
+            result.push_str("  ");
             result.push_str(column.name.as_str());
             result.push_str(" ");
             result.push_str(column.sql_type.to_db_type());
@@ -86,10 +87,9 @@ impl TableSchema {
         if let Some(primary_key_name) = self.primary_key_name.as_ref() {
             if let Some(primary_key_columns) = self.get_primary_key_fields() {
                 result.push_str(",\n");
-                result.push_str("constraint ");
+                result.push_str("  constraint ");
                 result.push_str(primary_key_name);
-                result.push_str("primary key (");
-                result.push_str("\n");
+                result.push_str("\n    primary key (");
                 let mut no = 0;
                 for column in primary_key_columns {
                     if no > 0 {
