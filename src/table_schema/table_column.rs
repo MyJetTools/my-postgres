@@ -1,5 +1,10 @@
 use super::TableColumnType;
 
+pub struct ColumnIsTheSame {
+    pub schema_is_different: bool,
+    pub primary_key_is_different: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct TableColumn {
     pub name: String,
@@ -27,27 +32,32 @@ impl TableColumn {
         }
     }
 
-    pub fn is_the_same(&self, other: &TableColumn) -> bool {
+    pub fn is_the_same(&self, other: &TableColumn) -> ColumnIsTheSame {
+        let mut schema_is_different = false;
+        let mut primary_key_is_different = false;
         if self.name != other.name {
-            return false;
+            schema_is_different = true;
         }
 
         if !self.sql_type.equals_to(&other.sql_type) {
-            return false;
-        }
-
-        if self.is_primary_key != other.is_primary_key {
-            return false;
+            schema_is_different = true;
         }
 
         if self.is_nullable != other.is_nullable {
-            return false;
+            schema_is_different = true;
         }
 
         if self.default != other.default {
-            return false;
+            schema_is_different = true;
         }
 
-        true
+        if self.is_primary_key != other.is_primary_key {
+            primary_key_is_different = true;
+        }
+
+        ColumnIsTheSame {
+            schema_is_different,
+            primary_key_is_different,
+        }
     }
 }
