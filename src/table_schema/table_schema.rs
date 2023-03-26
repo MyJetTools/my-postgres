@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use super::{TableColumn, DEFAULT_SCHEMA};
 
@@ -6,7 +6,7 @@ use super::{TableColumn, DEFAULT_SCHEMA};
 pub struct TableSchema {
     pub table_name: &'static str,
     pub primary_key_name: Option<String>,
-    pub columns: HashMap<String, TableColumn>,
+    pub columns: Vec<TableColumn>,
 }
 
 impl TableSchema {
@@ -18,9 +18,7 @@ impl TableSchema {
         Self {
             table_name,
             primary_key_name,
-            columns: rust_extensions::linq::to_hash_map(columns.into_iter(), |itm| {
-                (itm.name.to_string(), itm)
-            }),
+            columns,
         }
     }
 
@@ -28,7 +26,7 @@ impl TableSchema {
         let mut by_primary_key = BTreeMap::new();
         let mut amount = 0;
 
-        for table_column in self.columns.values() {
+        for table_column in &self.columns {
             if let Some(primary_key) = table_column.is_primary_key {
                 if !by_primary_key.contains_key(&primary_key) {
                     by_primary_key.insert(primary_key, Vec::new());
@@ -66,7 +64,7 @@ impl TableSchema {
 
         let mut no = 0;
 
-        for column in self.columns.values() {
+        for column in &self.columns {
             if no > 0 {
                 result.push_str(",\n");
             }
