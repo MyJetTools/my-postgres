@@ -60,4 +60,12 @@ impl TableColumn {
             primary_key_is_different,
         }
     }
+
+    pub fn generate_is_nullable_sql(&self) -> &'static str {
+        if self.is_nullable {
+            "null"
+        } else {
+            "not null"
+        }
+    }
 }

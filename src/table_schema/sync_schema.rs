@@ -231,8 +231,15 @@ async fn add_column_to_table(
         add_column_sql.as_str()
     );
 
+    #[cfg(feature = "with-logs-and-telemetry")]
     conn_string
         .execute_sql(&add_column_sql, &[], "add_column_to_table", None)
+        .await
+        .unwrap();
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    conn_string
+        .execute_sql(&add_column_sql, &[], "add_column_to_table")
         .await
         .unwrap();
 }
@@ -248,8 +255,15 @@ async fn update_primary_key(
     for sql in update_primary_key_sql {
         println!("Executing update primary key sql: {}", sql);
 
+        #[cfg(feature = "with-logs-and-telemetry")]
         conn_string
             .execute_sql(&sql, &[], "update_primary_key", None)
+            .await
+            .unwrap();
+
+        #[cfg(not(feature = "with-logs-and-telemetry"))]
+        conn_string
+            .execute_sql(&sql, &[], "update_primary_key")
             .await
             .unwrap();
     }

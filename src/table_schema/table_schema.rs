@@ -73,11 +73,7 @@ impl TableSchema {
             result.push_str(" ");
             result.push_str(column.sql_type.to_db_type());
             result.push_str(" ");
-            result.push_str(if column.is_nullable {
-                "null"
-            } else {
-                "not null"
-            });
+            result.push_str(column.generate_is_nullable_sql());
 
             no += 1;
         }
@@ -107,7 +103,10 @@ impl TableSchema {
             let table_name = self.table_name;
             let column_name = column.name.as_str();
             let column_type = column.sql_type.to_db_type();
-            return format!("alter table {schema}.{table_name} add {column_name} {column_type};");
+            let is_nullable = column.generate_is_nullable_sql();
+            return format!(
+                "alter table {schema}.{table_name} add {column_name} {column_type} {is_nullable};"
+            );
         }
 
         panic!(
