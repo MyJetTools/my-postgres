@@ -519,12 +519,6 @@ async fn handle_connection_is_established(
         connected_date_time.to_rfc3339()
     );
 
-    let result = super::table_schemes_verification::verify_schemas(&postgres_client).await;
-
-    if let Err(err) = result {
-        println!("Error during schema verification: {:?}", err);
-    }
-
     {
         let mut write_access = client.write().await;
         *write_access = Some(postgres_client);

@@ -1,6 +1,7 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
 
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
@@ -11,7 +12,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    table_schema::TableSchema,
+    table_schema::{TableSchema, TableSchemaProvider},
     MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
 };
 
@@ -42,9 +43,39 @@ impl MyPostgres {
         Self { connection }
     }
 
-    pub async fn check_table_schema<TTableSchema: TableSchema>(&mut self, table_name: &str) {
-        let columns = TTableSchema::get_columns();
-        crate::TABLE_SCHEMAS.add_columns(table_name, columns).await;
+    pub async fn check_table_schema<TTableSchemaProvider: TableSchemaProvider>(
+        &mut self,
+        table_name: &'static str,
+        primary_key_name: Option<String>,
+    ) {
+        let columns = TTableSchemaProvider::get_columns();
+
+        let table_schema = TableSchema::new(table_name, primary_key_name, columns);
+
+        let started = DateTimeAsMicroseconds::now();
+
+        while let Err(err) =
+            crate::table_schema::check_schema(&self.connection, &table_schema).await
+        {
+            println!(
+                "Can not verify schema for table {} because of error {:?}",
+                table_name, err
+            );
+
+            if DateTimeAsMicroseconds::now()
+                .duration_since(started)
+                .as_positive_or_zero()
+                > Duration::from_secs(20)
+            {
+                panic!(
+                    "Aborting  the process due to the failing to verify table {} schema during 20 seconds.",
+                    table_name
+                );
+            } else {
+                println!("Retrying in 3 seconds...");
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            }
+        }
     }
 
     pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(

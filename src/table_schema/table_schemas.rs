@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use tokio::sync::RwLock;
 
-use super::TableColumn;
+use super::{TableColumn, TableSchema};
 
 pub struct TableSchemas {
-    pub schemas: RwLock<HashMap<String, HashMap<String, TableColumn>>>,
+    pub schemas: RwLock<HashMap<String, TableSchema>>,
 }
 
 impl TableSchemas {
@@ -15,25 +15,23 @@ impl TableSchemas {
         }
     }
 
-    pub async fn add_columns(&self, table_name: &str, columns: Vec<TableColumn>) {
+    pub async fn add_columns(
+        &self,
+        table_name: &'static str,
+        partition_key_name: Option<String>,
+        columns: Vec<TableColumn>,
+    ) {
         let mut schemas = self.schemas.write().await;
 
         if !schemas.contains_key(table_name) {
-            schemas.insert(table_name.to_string(), HashMap::new());
-        }
-
-        let table_schema_inner = schemas.get_mut(table_name).unwrap();
-
-        for column in columns {
-            if let Some(table_column) = table_schema_inner.get_mut(&column.name) {
-                table_column.update_table_column(table_name, &column);
-            } else {
-                table_schema_inner.insert(column.name.to_string(), column);
-            }
+            schemas.insert(
+                table_name.to_string(),
+                TableSchema::new(table_name, partition_key_name, columns),
+            );
         }
     }
 
-    pub async fn get_schemas_to_verify(&self) -> HashMap<String, HashMap<String, TableColumn>> {
+    pub async fn get_schemas(&self) -> HashMap<String, TableSchema> {
         let schemas = self.schemas.read().await;
         schemas.clone()
     }

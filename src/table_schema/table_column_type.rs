@@ -53,4 +53,18 @@ impl TableColumnType {
             _ => None,
         }
     }
+
+    pub fn to_db_type(&self) -> &'static str {
+        match self {
+            TableColumnType::Text => "text",
+            TableColumnType::SmallInt => "smallint",
+            TableColumnType::BigInt => "bigint",
+            TableColumnType::Boolean => "boolean",
+            TableColumnType::Real => "real",
+            TableColumnType::Double => "double precision",
+            TableColumnType::Integer => "integer",
+            TableColumnType::Json => "json",
+            TableColumnType::Timestamp => "timestamp",
+        }
+    }
 }

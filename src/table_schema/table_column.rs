@@ -6,6 +6,7 @@ pub struct TableColumn {
     pub sql_type: TableColumnType,
     pub is_primary_key: Option<u8>,
     pub is_nullable: bool,
+    pub default: Option<String>,
 }
 
 impl TableColumn {
