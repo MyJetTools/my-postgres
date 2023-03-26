@@ -44,7 +44,7 @@ impl MyPostgres {
     }
 
     pub async fn check_table_schema<TTableSchemaProvider: TableSchemaProvider>(
-        &mut self,
+        &self,
         table_name: &'static str,
         primary_key_name: Option<String>,
     ) {
