@@ -119,8 +119,8 @@ impl IndexSchema {
             }
             result.push_str(field.name.as_str());
             match field.order {
-                IndexOrder::Asc => result.push_str("ASC"),
-                IndexOrder::Desc => result.push_str("DESC"),
+                IndexOrder::Asc => result.push_str(" ASC"),
+                IndexOrder::Desc => result.push_str(" DESC"),
             }
 
             i += 1;
