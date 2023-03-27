@@ -60,6 +60,24 @@ pub async fn sync_schema(
 
         if let Some(table_schema_indexes) = &table_schema.indexes {
             let indexes_from_db = get_indexes_from_db(conn_string, table_schema.table_name).await?;
+
+            let mut has_updates = false;
+
+            for (index_name, index_schema) in table_schema_indexes {
+                if let Some(index_from_db) = indexes_from_db.get(index_name) {
+                    if index_schema.is_the_same_with(index_from_db) {
+                        update_index(conn_string, table_schema, index_name, index_schema).await;
+                        has_updates = true;
+                    }
+                } else {
+                    create_index(conn_string, table_schema, index_name, index_schema).await;
+                    has_updates = true;
+                }
+            }
+
+            if has_updates {
+                continue;
+            }
         }
 
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -107,7 +125,7 @@ async fn get_db_fields(
         .await?;
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    let mut result = conn_string
+    let result = conn_string
         .execute_sql_as_vec(
             &sql,
             &[],
@@ -115,7 +133,6 @@ async fn get_db_fields(
             |db_row| TableColumn {
                 name: db_row.get("column_name"),
                 sql_type: get_sql_type(db_row),
-                is_primary_key: None,
                 is_nullable: get_is_nullable(db_row),
                 default: None,
             },
@@ -212,7 +229,7 @@ async fn create_table(
 
     ctx.insert("TableName".to_string(), table_schema.table_name.to_string());
 
-    if let Some(primary_key_name) = &table_schema.primary_key_name {
+    if let Some((primary_key_name, _)) = &table_schema.primary_key {
         ctx.insert("primaryKeyName".to_string(), primary_key_name.to_string());
     }
 
@@ -299,7 +316,6 @@ async fn get_indexes_from_db(
     let sql = format!(
         "select indexname, indexdef from pg_indexes where schemaname = '{schema}' AND tablename = '{table_name}'"
     );
-    // cSpell: enable
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     let result = conn_string
@@ -323,6 +339,7 @@ async fn get_indexes_from_db(
             None,
         )
         .await?;
+    // cSpell: enable
 
     let mut as_has_map = HashMap::new();
 
@@ -331,4 +348,48 @@ async fn get_indexes_from_db(
     }
 
     Ok(as_has_map)
+}
+
+async fn create_index(
+    conn_string: &PostgresConnection,
+    table_schema: &TableSchema,
+    index_name: &str,
+    index_schema: &IndexSchema,
+) {
+    let sql = index_schema.generate_create_index_sql(&table_schema.table_name, index_name);
+
+    #[cfg(feature = "with-logs-and-telemetry")]
+    conn_string
+        .execute_sql(&sql, &[], "create_new_index", None)
+        .await
+        .unwrap();
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    conn_string
+        .execute_sql(&sql, &[], "create_new_index")
+        .await
+        .unwrap();
+}
+
+async fn update_index(
+    conn_string: &PostgresConnection,
+    table_schema: &TableSchema,
+    index_name: &str,
+    index_schema: &IndexSchema,
+) {
+    let sql = format!("drop index {index_name};");
+
+    #[cfg(feature = "with-logs-and-telemetry")]
+    conn_string
+        .execute_sql(&sql, &[], "create_new_index", None)
+        .await
+        .unwrap();
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    conn_string
+        .execute_sql(&sql, &[], "create_new_index")
+        .await
+        .unwrap();
+
+    create_index(conn_string, table_schema, index_name, index_schema).await;
 }

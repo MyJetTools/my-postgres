@@ -98,6 +98,61 @@ impl IndexSchema {
             fields: parse_params(params),
         }
     }
+
+    pub fn generate_create_index_sql(&self, table_name: &str, index_name: &str) -> String {
+        let fields = self.generate_fields();
+        if self.is_unique {
+            format!("create unique index {index_name} on {table_name} ({fields})")
+        } else {
+            format!("create index {index_name} on {table_name} ({fields})")
+        }
+    }
+
+    fn generate_fields(&self) -> String {
+        let mut result = String::new();
+
+        let mut i = 0;
+
+        for field in &self.fields {
+            if i > 0 {
+                result.push(',');
+            }
+            result.push_str(field.name.as_str());
+            match field.order {
+                IndexOrder::Asc => result.push_str("ASC"),
+                IndexOrder::Desc => result.push_str("DESC"),
+            }
+
+            i += 1;
+        }
+
+        result
+    }
+
+    pub fn is_the_same_with(&self, other: &Self) -> bool {
+        if self.is_unique != other.is_unique {
+            return false;
+        }
+
+        if self.fields.len() != other.fields.len() {
+            return false;
+        }
+
+        for i in 0..self.fields.len() {
+            let field = self.fields.get(i).unwrap();
+            let other_field = other.fields.get(i).unwrap();
+
+            if field.name.as_str() != other_field.name.as_str() {
+                return false;
+            }
+
+            if !field.order.is_the_same_to(&other_field.order) {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 fn find_opening_parenthesis(src: &str) -> Option<usize> {
