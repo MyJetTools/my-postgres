@@ -19,7 +19,7 @@ impl PrimaryKeySchema {
         Self(Some(result))
     }
 
-    pub fn from_vec_of_str(src: &Vec<&'static str>) -> Self {
+    pub fn from_vec_of_str(src: &[&'static str]) -> Self {
         if src.len() == 0 {
             return Self(None);
         }

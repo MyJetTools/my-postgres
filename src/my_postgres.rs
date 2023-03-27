@@ -64,7 +64,7 @@ impl MyPostgres {
         let columns = TTableSchemaProvider::get_columns();
 
         let primary_key = if let Some(primary_key_name) = primary_key_name {
-            if let Some(primary_key_columns) = &TTableSchemaProvider::PRIMARY_KEY_COLUMNS {
+            if let Some(primary_key_columns) = TTableSchemaProvider::PRIMARY_KEY_COLUMNS {
                 Some((
                     primary_key_name,
                     PrimaryKeySchema::from_vec_of_str(primary_key_columns),
