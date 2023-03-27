@@ -96,6 +96,16 @@ impl MyPostgres {
         }
     }
 
+    pub async fn with_table_schema_verification<TTableSchemaProvider: TableSchemaProvider>(
+        self,
+        table_name: &'static str,
+        primary_key_name: Option<String>,
+    ) -> Self {
+        self.check_table_schema::<TTableSchemaProvider>(table_name, primary_key_name)
+            .await;
+        self
+    }
+
     pub async fn get_count<'s, TWhereModel: SqlWhereModel<'s>, TResult: CountResult>(
         &self,
         table_name: &str,
