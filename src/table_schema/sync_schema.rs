@@ -65,7 +65,8 @@ pub async fn sync_schema(
 
             for (index_name, index_schema) in table_schema_indexes {
                 if let Some(index_from_db) = indexes_from_db.get(index_name) {
-                    if index_schema.is_the_same_with(index_from_db) {
+                    if !index_schema.is_the_same_with(index_from_db) {
+                        println!("Index {} is the synchronized", index_name);
                         update_index(conn_string, table_schema, index_name, index_schema).await;
                         has_updates = true;
                     }
