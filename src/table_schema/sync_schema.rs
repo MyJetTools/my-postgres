@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{MyPostgresError, PostgresConnection};
 
-use super::{SchemaDifference, TableColumn, TableColumnType};
+use super::{IndexSchema, PrimaryKeySchema, SchemaDifference, TableColumn, TableColumnType};
 use super::{TableSchema, DEFAULT_SCHEMA};
 
 pub async fn sync_schema(
@@ -42,9 +42,24 @@ pub async fn sync_schema(
             continue;
         }
 
-        if schema_difference.primary_key_is_different {
-            update_primary_key(conn_string, table_schema, has_primary_key_in_db(db_fields)).await;
-            continue;
+        if let Some((primary_key_name, primary_key_schema)) = &table_schema.primary_key {
+            let primary_key_from_db =
+                get_primary_key_fields_from_db(conn_string, table_schema.table_name).await?;
+
+            if !primary_key_schema.is_same_with(&primary_key_from_db) {
+                update_primary_key(
+                    conn_string,
+                    &table_schema.table_name,
+                    primary_key_name,
+                    primary_key_schema,
+                    &primary_key_from_db,
+                )
+                .await;
+            }
+        }
+
+        if let Some(table_schema_indexes) = &table_schema.indexes {
+            let indexes_from_db = get_indexes_from_db(conn_string, table_schema.table_name).await?;
         }
 
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -82,11 +97,10 @@ async fn get_db_fields(
     );
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
-    let mut result = conn_string
+    let result = conn_string
         .execute_sql_as_vec(&sql, &[], "get_db_fields", |db_row| TableColumn {
             name: db_row.get("column_name"),
             sql_type: get_sql_type(db_row),
-            is_primary_key: None,
             is_nullable: get_is_nullable(db_row),
             default: None,
         })
@@ -113,26 +127,16 @@ async fn get_db_fields(
         return Ok(None);
     }
 
-    if let Some(primary_keys) = get_primary_key_fields(conn_string, table_name).await? {
-        let mut no = 0;
-        for primary_key in primary_keys {
-            if let Some(column) = result.iter_mut().find(|itm| itm.name == primary_key) {
-                column.is_primary_key = Some(no);
-            }
-            no += 1;
-        }
-    }
-
     Ok(Some(rust_extensions::linq::to_hash_map(
         result.into_iter(),
         |itm| (itm.name.clone(), itm),
     )))
 }
 
-async fn get_primary_key_fields(
+async fn get_primary_key_fields_from_db(
     conn_string: &PostgresConnection,
     table_name: &str,
-) -> Result<Option<Vec<String>>, MyPostgresError> {
+) -> Result<PrimaryKeySchema, MyPostgresError> {
     // cSpell: disable
     let sql = format!(
         r#"SELECT a.attname AS name
@@ -166,11 +170,7 @@ async fn get_primary_key_fields(
         )
         .await?;
 
-    if result.is_empty() {
-        return Ok(None);
-    }
-
-    Ok(Some(result))
+    Ok(PrimaryKeySchema::from_vec_of_string(result))
 }
 
 fn get_sql_type(db_row: &tokio_postgres::Row) -> TableColumnType {
@@ -256,11 +256,22 @@ async fn add_column_to_table(
 
 async fn update_primary_key(
     conn_string: &PostgresConnection,
-    table_schema: &TableSchema,
-    has_primary_key_in_db: bool,
+    table_name: &str,
+    primary_key_name: &str,
+    primary_key_schema: &PrimaryKeySchema,
+    primary_key_from_db: &PrimaryKeySchema,
 ) {
-    let update_primary_key_sql =
-        table_schema.generate_update_primary_key_sql(has_primary_key_in_db);
+    let update_primary_key_sql = primary_key_schema.generate_update_primary_key_sql(
+        table_name,
+        primary_key_name,
+        primary_key_from_db,
+    );
+
+    if update_primary_key_sql.is_none() {
+        return;
+    }
+
+    let update_primary_key_sql = update_primary_key_sql.unwrap();
 
     for sql in update_primary_key_sql {
         println!("Executing update primary key sql: {}", sql);
@@ -279,11 +290,45 @@ async fn update_primary_key(
     }
 }
 
-fn has_primary_key_in_db(fields: &HashMap<String, TableColumn>) -> bool {
-    for (_, field) in fields {
-        if field.is_primary_key.is_some() {
-            return true;
-        }
+async fn get_indexes_from_db(
+    conn_string: &PostgresConnection,
+    table_name: &str,
+) -> Result<HashMap<String, IndexSchema>, MyPostgresError> {
+    let schema = DEFAULT_SCHEMA;
+    // cSpell: disable
+    let sql = format!(
+        "select indexname, indexdef from pg_indexes where schemaname = '{schema}' AND tablename = '{table_name}'"
+    );
+    // cSpell: enable
+
+    #[cfg(not(feature = "with-logs-and-telemetry"))]
+    let result = conn_string
+        .execute_sql_as_vec(&sql, &[], "get_db_fields", |db_row| {
+            let index_name: String = db_row.get("indexname");
+            let index_def: String = db_row.get("indexdef");
+            (index_name, index_def)
+        })
+        .await?;
+    #[cfg(feature = "with-logs-and-telemetry")]
+    let result = conn_string
+        .execute_sql_as_vec(
+            &sql,
+            &[],
+            "get_db_fields",
+            |db_row| {
+                let index_name: String = db_row.get("indexname");
+                let index_def: String = db_row.get("indexdef");
+                (index_name, index_def)
+            },
+            None,
+        )
+        .await?;
+
+    let mut as_has_map = HashMap::new();
+
+    for (index_name, index_def) in result {
+        as_has_map.insert(index_name, IndexSchema::from_index_def(&index_def));
     }
-    false
+
+    Ok(as_has_map)
 }

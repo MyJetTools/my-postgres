@@ -12,7 +12,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    table_schema::{TableSchema, TableSchemaProvider},
+    table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
     MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
 };
 
@@ -63,7 +63,25 @@ impl MyPostgres {
 
         let columns = TTableSchemaProvider::get_columns();
 
-        let table_schema = TableSchema::new(table_name, primary_key_name, columns);
+        let primary_key = if let Some(primary_key_name) = primary_key_name {
+            if let Some(primary_key_columns) = &TTableSchemaProvider::PRIMARY_KEY_COLUMNS {
+                Some((
+                    primary_key_name,
+                    PrimaryKeySchema::from_vec_of_str(primary_key_columns),
+                ))
+            } else {
+                panic!(
+                    "Provided primary key name {}, but there are no primary key columns defined.",
+                    primary_key_name
+                )
+            }
+        } else {
+            None
+        };
+
+        let indexes = TTableSchemaProvider::get_indexes();
+
+        let table_schema = TableSchema::new(table_name, primary_key, columns, indexes);
 
         let started = DateTimeAsMicroseconds::now();
 

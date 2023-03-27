@@ -1,57 +1,30 @@
-use std::collections::BTreeMap;
+use core::panic;
+use std::collections::HashMap;
 
-use super::{TableColumn, DEFAULT_SCHEMA};
+use super::{IndexSchema, PrimaryKeySchema, TableColumn, DEFAULT_SCHEMA};
 
 #[derive(Debug, Clone)]
 pub struct TableSchema {
     pub table_name: &'static str,
-    pub primary_key_name: Option<String>,
+    pub primary_key: Option<(String, PrimaryKeySchema)>,
     pub columns: Vec<TableColumn>,
+    pub indexes: Option<HashMap<String, IndexSchema>>,
 }
 
 impl TableSchema {
     pub fn new(
         table_name: &'static str,
-        primary_key_name: Option<String>,
+        primary_key: Option<(String, PrimaryKeySchema)>,
+
         columns: Vec<TableColumn>,
+        indexes: Option<HashMap<String, IndexSchema>>,
     ) -> Self {
         Self {
             table_name,
-            primary_key_name,
+            primary_key,
             columns,
+            indexes,
         }
-    }
-
-    fn get_primary_key_fields(&self) -> Option<Vec<TableColumn>> {
-        let mut by_primary_key = BTreeMap::new();
-        let mut amount = 0;
-
-        for table_column in &self.columns {
-            if let Some(primary_key) = table_column.is_primary_key {
-                if !by_primary_key.contains_key(&primary_key) {
-                    by_primary_key.insert(primary_key, Vec::new());
-                }
-
-                by_primary_key
-                    .get_mut(&primary_key)
-                    .unwrap()
-                    .push(table_column.clone());
-
-                amount += 1;
-            }
-        }
-
-        if by_primary_key.is_empty() {
-            return None;
-        }
-
-        let mut result = Vec::with_capacity(amount);
-
-        for (_, columns) in by_primary_key {
-            result.extend(columns);
-        }
-
-        Some(result)
     }
 
     pub fn generate_create_table_script(&self) -> String {
@@ -78,12 +51,22 @@ impl TableSchema {
             no += 1;
         }
 
-        if let Some(primary_key_name) = self.primary_key_name.as_ref() {
+        if let Some((primary_key_name, primary_key_schema)) = &self.primary_key {
             result.push_str(",\n");
             result.push_str("  constraint ");
             result.push_str(primary_key_name);
             result.push_str("\n    primary key (");
-            result.push_str(self.generate_primary_key_sql_columns().as_str());
+
+            if let Some(primary_key_columns) = primary_key_schema.generate_primary_key_sql_columns()
+            {
+                result.push_str(primary_key_columns.as_str());
+            } else {
+                panic!(
+                    "Somehow primary key {} columns were not found in table {} schema",
+                    primary_key_name, &self.table_name
+                )
+            }
+
             result.push_str(")");
         } else {
             panic!(
@@ -112,67 +95,6 @@ impl TableSchema {
         panic!(
             "Somehow column {} was not found in table schema",
             column_name
-        )
-    }
-
-    pub fn generate_update_primary_key_sql(&self, has_primary_key_in_db: bool) -> Vec<String> {
-        if !has_primary_key_in_db {
-            let schema = DEFAULT_SCHEMA;
-            let table_name = self.table_name;
-            let primary_key_columns = self.generate_primary_key_sql_columns();
-            if let Some(primary_key) = &self.primary_key_name {
-                return vec![format!(
-                    "alter table {schema}.{table_name} add constraint {primary_key} primary key ({primary_key_columns});")
-                ];
-            } else {
-                panic!(
-                    "Somehow primary key was not found in table schema {}",
-                    self.table_name
-                );
-            }
-        }
-
-        if let Some(primary_key) = &self.primary_key_name {
-            let schema = DEFAULT_SCHEMA;
-            let table_name = self.table_name;
-
-            let mut result = Vec::with_capacity(2);
-            result.push(format!(
-                "alter table {schema}.{table_name} drop constraint {primary_key};"
-            ));
-
-            let primary_key_columns = self.generate_primary_key_sql_columns();
-            result.push(format!(
-                "alter table {schema}.{table_name} add constraint {primary_key} primary key ({primary_key_columns});"
-            ));
-
-            return result;
-        }
-
-        panic!(
-            "Somehow primary key was not found in table schema {}",
-            self.table_name
-        )
-    }
-
-    fn generate_primary_key_sql_columns(&self) -> String {
-        if let Some(primary_key_columns) = self.get_primary_key_fields() {
-            let mut result = String::new();
-            let mut no = 0;
-            for column in primary_key_columns {
-                if no > 0 {
-                    result.push_str(", ");
-                }
-                result.push_str(column.name.as_str());
-                no += 1;
-            }
-
-            return result;
-        }
-
-        panic!(
-            "Somehow primary key columns was not found in table {} with primary_key {:?}",
-            self.table_name, self.primary_key_name
         )
     }
 }
