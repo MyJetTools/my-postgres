@@ -23,7 +23,7 @@ pub struct MyPostgres {
 }
 
 impl MyPostgres {
-    pub async fn new(
+    pub fn new(
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -43,7 +43,7 @@ impl MyPostgres {
         }
     }
 
-    pub async fn with_shared_connection(
+    pub fn with_shared_connection(
         connection: Arc<PostgresConnection>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
