@@ -70,6 +70,7 @@ pub async fn sync_schema(
                         has_updates = true;
                     }
                 } else {
+                    println!("Index {} not found. Creating", index_name);
                     create_index(conn_string, table_schema, index_name, index_schema).await;
                     has_updates = true;
                 }
@@ -358,6 +359,8 @@ async fn create_index(
 ) {
     let sql = index_schema.generate_create_index_sql(&table_schema.table_name, index_name);
 
+    println!("Executing sql: {}", sql);
+
     #[cfg(feature = "with-logs-and-telemetry")]
     conn_string
         .execute_sql(&sql, &[], "create_new_index", None)
@@ -378,6 +381,8 @@ async fn update_index(
     index_schema: &IndexSchema,
 ) {
     let sql = format!("drop index {index_name};");
+
+    println!("Executing sql: {}", sql);
 
     #[cfg(feature = "with-logs-and-telemetry")]
     conn_string
