@@ -85,7 +85,7 @@ impl MyPostgres {
 
         let started = DateTimeAsMicroseconds::now();
 
-        while let Err(err) = crate::table_schema::sync_schema(
+        while let Err(err) = crate::sync_table_schema::sync_schema(
             &self.connection,
             &table_schema,
             #[cfg(feature = "with-logs-and-telemetry")]

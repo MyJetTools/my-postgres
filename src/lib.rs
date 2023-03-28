@@ -4,6 +4,7 @@ mod count_result;
 mod db_row;
 mod error;
 mod my_postgres;
+pub mod sync_table_schema;
 
 mod postgres_settings;
 pub mod sql_insert;
