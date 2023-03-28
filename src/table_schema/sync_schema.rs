@@ -67,12 +67,28 @@ pub async fn sync_schema(
                 if let Some(index_from_db) = indexes_from_db.get(index_name) {
                     if !index_schema.is_the_same_with(index_from_db) {
                         println!("Index {} is the synchronized", index_name);
-                        update_index(conn_string, table_schema, index_name, index_schema).await;
+                        update_index(
+                            conn_string,
+                            table_schema,
+                            index_name,
+                            index_schema,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            logger,
+                        )
+                        .await;
                         has_updates = true;
                     }
                 } else {
                     println!("Index {} not found. Creating", index_name);
-                    create_index(conn_string, table_schema, index_name, index_schema).await;
+                    create_index(
+                        conn_string,
+                        table_schema,
+                        index_name,
+                        index_schema,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        logger,
+                    )
+                    .await;
                     has_updates = true;
                 }
             }
@@ -357,16 +373,27 @@ async fn create_index(
     table_schema: &TableSchema,
     index_name: &str,
     index_schema: &IndexSchema,
+    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
+        dyn rust_extensions::Logger + Sync + Send + 'static,
+    >,
 ) {
     let sql = index_schema.generate_create_index_sql(&table_schema.table_name, index_name);
 
     println!("Executing sql: {}", sql);
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    conn_string
-        .execute_sql(&sql, &[], "create_new_index", None)
-        .await
-        .unwrap();
+    {
+        logger.write_warning(
+            "create_index".to_string(),
+            format!("Executing sql: {}", sql),
+            None,
+        );
+
+        conn_string
+            .execute_sql(&sql, &[], "create_new_index", None)
+            .await
+            .unwrap();
+    }
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     conn_string
@@ -380,16 +407,26 @@ async fn update_index(
     table_schema: &TableSchema,
     index_name: &str,
     index_schema: &IndexSchema,
+    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
+        dyn rust_extensions::Logger + Sync + Send + 'static,
+    >,
 ) {
     let sql = format!("drop index {index_name};");
 
     println!("Executing sql: {}", sql);
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    conn_string
-        .execute_sql(&sql, &[], "create_new_index", None)
-        .await
-        .unwrap();
+    {
+        logger.write_warning(
+            "update_index".to_string(),
+            format!("Executing sql: {}", sql),
+            None,
+        );
+        conn_string
+            .execute_sql(&sql, &[], "create_new_index", None)
+            .await
+            .unwrap();
+    }
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     conn_string
@@ -397,5 +434,13 @@ async fn update_index(
         .await
         .unwrap();
 
-    create_index(conn_string, table_schema, index_name, index_schema).await;
+    create_index(
+        conn_string,
+        table_schema,
+        index_name,
+        index_schema,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        logger,
+    )
+    .await;
 }

@@ -378,8 +378,11 @@ async fn establish_connection_loop(
                 #[cfg(feature = "with-logs-and-telemetry")]
                 &logger,
             )
-            .await
+            .await;
         }
+
+        let mut write_access = client.write().await;
+        write_access.take();
     }
 }
 
@@ -437,7 +440,7 @@ async fn create_and_start_no_tls(
         Err(err) => {
             #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
-                "{}: Postgres SQL Connection is closed with Err: {:?}",
+                "{}: Can not establish postgres connection with Err: {:?}",
                 DateTimeAsMicroseconds::now().to_rfc3339(),
                 err
             );
@@ -445,7 +448,7 @@ async fn create_and_start_no_tls(
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.write_fatal_error(
                 "CreatingPostgres".to_string(),
-                format!("Invalid connection string. {:?}", err),
+                format!("Can not establish postgres connection. {:?}", err),
                 None,
             );
             tokio::time::sleep(Duration::from_secs(1)).await;
