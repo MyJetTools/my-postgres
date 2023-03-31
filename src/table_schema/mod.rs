@@ -2,9 +2,9 @@ mod index_schema;
 mod primary_key_schema;
 mod schema_difference;
 
+mod sql_type_provider;
 mod table_column;
 mod table_column_type;
-mod table_column_type_provider;
 mod table_schema;
 mod table_schema_provider;
 
@@ -17,4 +17,4 @@ pub use table_schema_provider::*;
 pub const DEFAULT_SCHEMA: &str = "public";
 pub use index_schema::*;
 pub use primary_key_schema::*;
-pub use table_column_type_provider::*;
+pub use sql_type_provider::*;
