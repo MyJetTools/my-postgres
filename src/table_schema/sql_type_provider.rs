@@ -74,6 +74,12 @@ impl SqlTypeProvider for String {
     }
 }
 
+impl<T> SqlTypeProvider for Vec<T> {
+    fn get_sql_type(&self, _metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Json
+    }
+}
+
 impl SqlTypeProvider for bool {
     fn get_sql_type(&self, _metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::Boolean
