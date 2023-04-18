@@ -14,7 +14,19 @@ impl SqlTypeProvider for u8 {
     }
 }
 
+impl SqlTypeProvider for Option<u8> {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::SmallInt
+    }
+}
+
 impl SqlTypeProvider for i8 {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::SmallInt
+    }
+}
+
+impl SqlTypeProvider for Option<i8> {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::SmallInt
     }
@@ -69,6 +81,12 @@ impl SqlTypeProvider for isize {
 }
 
 impl SqlTypeProvider for String {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Text
+    }
+}
+
+impl SqlTypeProvider for Option<String> {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::Text
     }
