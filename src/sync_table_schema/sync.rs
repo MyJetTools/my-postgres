@@ -10,6 +10,7 @@ pub async fn sync_schema(
     >,
 ) -> Result<(), MyPostgresError> {
     loop {
+        println!("Syncing table schema: {}", table_schema.table_name);
         if super::sync_table_fields(
             conn_string,
             table_schema,
@@ -60,6 +61,14 @@ pub async fn sync_schema(
                 None,
             );
         }
+
+        println!(
+            "Synchronization iteration for table schema {} is finished",
+            table_schema.table_name
+        );
+
+        println!("--------------------------------------------------");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
         return Ok(());
     }
