@@ -111,12 +111,16 @@ async fn get_primary_key_fields_from_db(
 ) -> Result<PrimaryKeySchema, MyPostgresError> {
     // cSpell: disable
     let sql = format!(
-        r#"SELECT a.attname AS name
-        FROM
-            pg_class AS c
-            JOIN pg_index AS i ON c.oid = i.indrelid AND i.indisprimary
-            JOIN pg_attribute AS a ON c.oid = a.attrelid AND a.attnum = ANY(i.indkey)
-        WHERE c.oid = '{table_name}'::regclass"#
+        r#"SELECT column_name
+        FROM information_schema.key_column_usage
+        WHERE constraint_name = (
+          SELECT constraint_name
+          FROM information_schema.table_constraints
+          WHERE table_name = '{table_name}'
+          AND constraint_type = 'PRIMARY KEY'
+        )
+        AND table_name = '{table_name}'
+        ORDER BY ordinal_position;"#
     );
 
     // cSpell: enable
