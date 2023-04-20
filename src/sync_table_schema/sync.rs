@@ -12,7 +12,9 @@ pub async fn sync_schema(
     loop {
         println!("--------------------------------------------------");
         println!("Syncing table schema: {}", table_schema.table_name);
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        if std::env::var("DEBUG").is_ok() {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
         if super::sync_table_fields(
             conn_string,
             table_schema,
