@@ -80,6 +80,18 @@ impl SqlTypeProvider for isize {
     }
 }
 
+impl SqlTypeProvider for f32 {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Real
+    }
+}
+
+impl SqlTypeProvider for f64 {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Double
+    }
+}
+
 impl SqlTypeProvider for String {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::Text
