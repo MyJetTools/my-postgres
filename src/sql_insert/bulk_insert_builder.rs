@@ -1,3 +1,5 @@
+use rust_extensions::date_time::DateTimeAsMicroseconds;
+
 use crate::{SqlUpdateValueWrapper, SqlValue};
 
 use super::SqlInsertModel;
@@ -25,6 +27,11 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
     let mut model_no = 0;
     let mut params = Vec::new();
     for model in models {
+        if TInsertModel::get_e_tag_insert_field_name().is_some() {
+            let value = DateTimeAsMicroseconds::now();
+            model.set_e_tag_insert_value(value.unix_microseconds);
+        }
+
         if model_no > 0 {
             result.push(',');
         }

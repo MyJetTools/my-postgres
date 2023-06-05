@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use rust_extensions::date_time::DateTimeAsMicroseconds;
+
 use crate::{SqlUpdateValueWrapper, SqlValue};
 
 use super::SqlInsertModel;
@@ -10,6 +12,11 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     params: &mut Vec<SqlValue<'s>>,
     mut params_with_index: Option<HashMap<&'static str, usize>>,
 ) -> (String, Option<HashMap<&'static str, usize>>) {
+    if TSqlInsertModel::get_e_tag_insert_field_name().is_some() {
+        let value = DateTimeAsMicroseconds::now();
+        insert_model.set_e_tag_insert_value(value.unix_microseconds);
+    }
+
     let mut result = String::new();
 
     result.push_str("INSERT INTO ");
