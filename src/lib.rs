@@ -4,6 +4,7 @@ mod count_result;
 mod db_row;
 mod error;
 mod my_postgres;
+mod sql_concurrent_ops;
 pub mod sync_table_schema;
 
 mod postgres_settings;
@@ -21,3 +22,6 @@ pub mod sql_delete;
 pub mod sql_update;
 pub mod sql_where;
 pub mod table_schema;
+
+mod update_conflict_type;
+pub use update_conflict_type::*;

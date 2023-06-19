@@ -3,6 +3,7 @@ mod value;
 pub use value::*;
 mod bulk_insert_builder;
 mod bulk_insert_or_update_builder;
+
 mod insert_if_not_exists_builder;
 mod insert_or_update_builder;
 mod model;

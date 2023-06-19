@@ -12,7 +12,7 @@ pub fn build_insert<'s, TSqlInsertModel: SqlInsertModel<'s>>(
     params: &mut Vec<SqlValue<'s>>,
     mut params_with_index: Option<HashMap<&'static str, usize>>,
 ) -> (String, Option<HashMap<&'static str, usize>>) {
-    if TSqlInsertModel::get_e_tag_field_name().is_some() {
+    if TSqlInsertModel::get_e_tag_column_name().is_some() {
         let value = DateTimeAsMicroseconds::now();
         insert_model.set_e_tag_value(value.unix_microseconds);
     }

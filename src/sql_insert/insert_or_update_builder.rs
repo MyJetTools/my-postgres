@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use crate::{sql_update::SqlUpdateModel, SqlValue};
+use crate::{sql_update::SqlUpdateModel, SqlValue, UpdateConflictType};
 
 use super::SqlInsertModel;
 
 pub fn build_insert_or_update<'s, TSqlInsertModel: SqlInsertModel<'s> + SqlUpdateModel<'s>>(
     table_name: &str,
-    primary_key_name: &str,
+    update_conflict_type: &UpdateConflictType<'s>,
     model: &'s TSqlInsertModel,
 ) -> (String, Vec<SqlValue<'s>>) {
     let mut params = Vec::new();
@@ -15,9 +15,7 @@ pub fn build_insert_or_update<'s, TSqlInsertModel: SqlInsertModel<'s> + SqlUpdat
     let (mut sql, update_fields) =
         super::build_insert(table_name, model, &mut params, Some(update_fields));
 
-    sql.push_str(" ON CONFLICT ON CONSTRAINT ");
-
-    sql.push_str(primary_key_name);
+    update_conflict_type.generate_sql(&mut sql);
 
     sql.push_str(" DO UPDATE SET ");
 

@@ -27,7 +27,7 @@ pub fn build_bulk_insert<'s, TInsertModel: SqlInsertModel<'s>>(
     let mut model_no = 0;
     let mut params = Vec::new();
     for model in models {
-        if TInsertModel::get_e_tag_field_name().is_some() {
+        if TInsertModel::get_e_tag_column_name().is_some() {
             let value = DateTimeAsMicroseconds::now();
             model.set_e_tag_value(value.unix_microseconds);
         }

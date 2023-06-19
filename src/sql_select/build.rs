@@ -16,8 +16,7 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     sql.push_str(table_name);
 
     if let Some(where_model) = where_model {
-        sql.push_str(" WHERE ");
-        where_model.fill_where(&mut sql, &mut params);
+        where_model.build_where(&mut sql, &mut params);
     }
 
     if let Some(order_by_fields) = order_by_fields {
@@ -29,15 +28,7 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     }
 
     if let Some(where_model) = where_model {
-        if let Some(limit) = where_model.get_limit() {
-            sql.push_str(" LIMIT ");
-            sql.push_str(limit.to_string().as_str());
-        }
-
-        if let Some(offset) = where_model.get_offset() {
-            sql.push_str(" OFFSET ");
-            sql.push_str(offset.to_string().as_str());
-        }
+        where_model.fill_limit_and_offset(&mut sql);
     }
 
     (sql, params)

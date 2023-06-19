@@ -14,6 +14,7 @@ use crate::{
     sql_where::SqlWhereModel,
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
     MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
+    UpdateConflictType,
 };
 
 pub struct MyPostgres {
@@ -138,9 +139,9 @@ impl MyPostgres {
 
         sql.push_str(" FROM ");
         sql.push_str(table_name);
-        sql.push_str(" WHERE ");
 
-        where_model.fill_where(&mut sql, &mut params);
+        where_model.build_where(&mut sql, &mut params);
+        where_model.fill_limit_and_offset(&mut sql);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -594,7 +595,7 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        pk_name: &str,
+        update_conflict_type: UpdateConflictType<'s>,
         entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -604,8 +605,11 @@ impl MyPostgres {
             entities.len()
         );
 
-        let sql_with_params =
-            crate::sql_insert::build_bulk_insert_if_update(table_name, pk_name, entities);
+        let sql_with_params = crate::sql_insert::build_bulk_insert_if_update(
+            table_name,
+            &update_conflict_type,
+            entities,
+        );
 
         self.connection
             .execute_bulk_sql(
@@ -623,13 +627,14 @@ impl MyPostgres {
     >(
         &self,
         table_name: &str,
-        pk_name: &str,
+        update_conflict_type: UpdateConflictType<'s>,
         entity: &'s TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
-        let (sql, params) = crate::sql_insert::build_insert_or_update(table_name, pk_name, entity);
+        let (sql, params) =
+            crate::sql_insert::build_insert_or_update(table_name, &update_conflict_type, entity);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -705,5 +710,43 @@ impl MyPostgres {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn concurrent_insert_or_update<
+        's,
+        TModel: SqlInsertModel<'s>,
+        TWhereModel: SqlWhereModel<'s>,
+    >(
+        &self,
+        table_name: &str,
+        update_conflict_type: UpdateConflictType<'s>,
+        insert_model: &'s TModel,
+        where_model: &'s TWhereModel,
+    ) -> Result<Option<TModel>, MyPostgresError> {
+        let process_name = "concurrent_insert_or_update";
+        let (sql, params) = crate::sql_concurrent_ops::build_concurrent_insert_or_update(
+            table_name,
+            insert_model,
+            where_model,
+            update_conflict_type,
+        );
+
+        let mut params_to_invoke = Vec::with_capacity(params.len());
+
+        for param in &params {
+            params_to_invoke.push(param.get_value());
+        }
+
+        self.connection
+            .execute_sql(
+                sql.as_str(),
+                &params_to_invoke,
+                &process_name,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
+
+        todo!("Implement")
     }
 }

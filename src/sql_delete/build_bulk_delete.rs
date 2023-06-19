@@ -13,10 +13,10 @@ pub fn build_bulk_delete<'s, TSqlWhereModel: crate::sql_where::SqlWhereModel<'s>
     let mut params = Vec::new();
 
     if where_models.len() == 1 {
-        where_models
-            .get(0)
-            .unwrap()
-            .fill_where(&mut sql, &mut params);
+        let where_model = where_models.get(0).unwrap();
+
+        where_model.build_where(&mut sql, &mut params);
+        where_model.fill_limit_and_offset(&mut sql);
     } else {
         let mut no = 0;
         for where_model in where_models {
@@ -24,8 +24,10 @@ pub fn build_bulk_delete<'s, TSqlWhereModel: crate::sql_where::SqlWhereModel<'s>
                 sql.push_str(" OR ");
             }
             sql.push('(');
-            where_model.fill_where(&mut sql, &mut params);
+            where_model.build_where(&mut sql, &mut params);
             sql.push(')');
+
+            where_model.fill_limit_and_offset(&mut sql);
             no += 1;
         }
     }
