@@ -14,11 +14,12 @@ pub trait SqlWhereModel<'s> {
 
     fn build_where(&self, sql: &mut String, params: &mut Vec<SqlValue<'s>>) {
         let mut no = 0;
-        sql.push_str(" WHERE ");
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
             if no > 0 {
                 sql.push_str(" AND ");
+            } else {
+                sql.push_str(" WHERE ");
             }
 
             no += 1;
