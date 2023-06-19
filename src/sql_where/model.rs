@@ -2,17 +2,17 @@ use crate::{SqlValue, SqlValueMetadata, SqlWhereValueWriter};
 
 pub struct WhereFieldData<'s> {
     pub field_name: &'s str,
-    pub op: Option<&'s str>,
+    pub op: Option<&'static str>,
     pub value: &'s dyn SqlWhereValueWriter<'s>,
     pub meta_data: Option<SqlValueMetadata>,
 }
 pub trait SqlWhereModel<'s> {
-    fn get_where_field_name_data(&self, no: usize) -> Option<WhereFieldData<'s>>;
+    fn get_where_field_name_data(&'s self, no: usize) -> Option<WhereFieldData<'s>>;
 
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where(&self, sql: &mut String, params: &mut Vec<SqlValue<'s>>) {
+    fn build_where(&'s self, sql: &mut String, params: &mut Vec<SqlValue<'s>>) {
         let mut no = 0;
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
