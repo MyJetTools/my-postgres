@@ -27,7 +27,7 @@ pub trait SqlWhereModel<'s> {
             if let Some(op) = field_data.op {
                 sql.push_str(op);
             } else {
-                sql.push('=');
+                sql.push_str(field_data.value.get_default_operator());
             }
             field_data.value.write(sql, params, &field_data.meta_data);
         }
