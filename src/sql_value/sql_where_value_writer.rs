@@ -216,6 +216,29 @@ impl<'s> SqlWhereValueWriter<'s> for i32 {
     }
 }
 
+impl<'s> SqlWhereValueWriter<'s> for Option<i32> {
+    fn write(
+        &'s self,
+        sql: &mut String,
+        _: &mut Vec<SqlValue<'s>>,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        if let Some(value) = self {
+            sql.push_str(value.to_string().as_str());
+        } else {
+            sql.push_str("NULL");
+        }
+    }
+
+    fn get_default_operator(&self) -> &str {
+        if self.is_some() {
+            "="
+        } else {
+            " IS "
+        }
+    }
+}
+
 impl<'s> SqlWhereValueWriter<'s> for u64 {
     fn write(
         &'s self,
