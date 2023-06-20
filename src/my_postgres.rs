@@ -420,8 +420,7 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let mut params = Vec::new();
-        let (sql, _) = entity.build_insert_sql(table_name, &mut params, None);
+        let (sql, params) = entity.build_insert_sql(table_name);
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
 
@@ -450,8 +449,7 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let mut params = Vec::new();
-        let (mut sql, _) = entity.build_insert_sql(table_name, &mut params, None);
+        let (mut sql, params) = entity.build_insert_sql(table_name);
         sql.push_str(" ON CONFLICT DO NOTHING");
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
@@ -688,7 +686,7 @@ impl MyPostgres {
 
     pub async fn concurrent_insert_or_update<
         's,
-        TModel: SqlInsertModel<'s>,
+        TModel: SqlInsertModel<'s> + SqlUpdateModel<'s>,
         TWhereModel: SqlWhereModel<'s>,
     >(
         &self,

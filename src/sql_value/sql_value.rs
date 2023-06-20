@@ -26,11 +26,7 @@ pub enum SqlWhereValueWrapper<'s> {
     },
 }
 
-pub enum SqlUpdateValueWrapper<'s> {
-    Ignore,
-    Null,
-    Value {
-        metadata: Option<SqlValueMetadata>,
-        value: &'s dyn SqlUpdateValueWriter<'s>,
-    },
+pub struct SqlUpdateValueWrapper<'s> {
+    pub metadata: Option<SqlValueMetadata>,
+    pub value: Option<&'s dyn SqlUpdateValueWriter<'s>>,
 }

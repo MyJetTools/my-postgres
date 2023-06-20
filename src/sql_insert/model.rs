@@ -1,103 +1,81 @@
-use std::collections::HashMap;
-
 use crate::{sql_update::SqlUpdateModel, SqlUpdateValueWrapper};
 
 pub trait SqlInsertModel<'s> {
     fn get_fields_amount() -> usize;
-    fn get_field_name(no: usize) -> &'static str;
+    fn get_field_name(no: usize) -> (&'static str, Option<&'static str>);
     fn get_field_value(&'s self, no: usize) -> SqlUpdateValueWrapper<'s>;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;
     fn set_e_tag_value(&self, value: i64);
 
-    fn generate_insert_fields(
+    fn generate_insert_fields(sql: &mut String) {
+        let mut no = 0;
+        for field_no in 0..Self::get_fields_amount() {
+            if no > 0 {
+                sql.push(',');
+            }
+            no += 1;
+            let (field_name, additional_field_name) = Self::get_field_name(field_no);
+            sql.push_str(field_name);
+            if let Some(additional_field_name) = additional_field_name {
+                sql.push(',');
+                sql.push_str(additional_field_name);
+                no += 1;
+            }
+        }
+    }
+
+    fn generate_insert_fields_values(
         &'s self,
         sql: &mut String,
         params: &mut Vec<crate::SqlValue<'s>>,
-        params_with_index: &mut Option<std::collections::HashMap<&'static str, usize>>,
     ) {
-        sql.push_str(" (");
-
-        let mut no = 0;
-
-        let mut values = Vec::new();
-
         for field_no in 0..Self::get_fields_amount() {
-            let sql_value = self.get_field_value(field_no);
+            let update_value = self.get_field_value(field_no);
 
-            match &sql_value {
-                SqlUpdateValueWrapper::Ignore => {}
-                SqlUpdateValueWrapper::Value {
-                    value: _,
-                    metadata: _,
-                } => {
-                    if no > 0 {
+            match &update_value.value {
+                Some(value) => {
+                    if field_no > 0 {
                         sql.push(',');
                     }
-                    no += 1;
-                    let field_name = Self::get_field_name(field_no);
-                    sql.push_str(field_name);
-                    values.push((field_name, sql_value));
+
+                    value.write(sql, params, &update_value.metadata);
                 }
-                SqlUpdateValueWrapper::Null => {}
-            }
-        }
-        sql.push_str(") VALUES (");
-        no = 0;
-        for (field_name, sql_value) in values {
-            match sql_value {
-                SqlUpdateValueWrapper::Ignore => {}
-                SqlUpdateValueWrapper::Null => {
-                    if no > 0 {
+                None => {
+                    if field_no > 0 {
                         sql.push(',');
                     }
-                    no += 1;
 
                     sql.push_str("NULL");
                 }
-                SqlUpdateValueWrapper::Value { metadata, value } => {
-                    if no > 0 {
-                        sql.push(',');
-                    }
-                    no += 1;
-
-                    let pos = sql.len();
-                    value.write(sql, params, &metadata);
-
-                    if let Some(params_with_index) = params_with_index {
-                        let param = &sql[pos..];
-
-                        if param.starts_with('$') {
-                            params_with_index.insert(field_name, params.len());
-                        }
-                    }
-                }
             }
         }
-
-        sql.push(')');
     }
 
-    fn build_insert_sql(
-        &'s self,
-        table_name: &str,
-        params: &mut Vec<crate::SqlValue<'s>>,
-        mut params_with_index: Option<HashMap<&'static str, usize>>,
-    ) -> (String, Option<HashMap<&'static str, usize>>) {
+    fn build_insert_sql(&'s self, table_name: &str) -> (String, Vec<crate::SqlValue<'s>>) {
         if Self::get_e_tag_column_name().is_some() {
             let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
             self.set_e_tag_value(value.unix_microseconds);
         }
 
-        let mut result = String::new();
+        let mut sql = String::new();
 
-        result.push_str("INSERT INTO ");
-        result.push_str(table_name);
+        let mut params = Vec::new();
 
-        Self::generate_insert_fields(self, &mut result, params, &mut params_with_index);
+        sql.push_str("INSERT INTO ");
+        sql.push_str(table_name);
+        sql.push('(');
 
-        (result, params_with_index)
+        Self::generate_insert_fields(&mut sql);
+
+        sql.push_str(") VALUES (");
+
+        self.generate_insert_fields_values(&mut sql, &mut params);
+
+        sql.push(')');
+
+        (sql, params)
     }
 
     fn build_bulk_insert_sql(
@@ -110,14 +88,7 @@ pub trait SqlInsertModel<'s> {
         result.push_str(table_name);
         result.push_str(" (");
 
-        let fields_amount = Self::get_fields_amount();
-
-        for no in 0..fields_amount {
-            if no > 0 {
-                result.push(',');
-            }
-            result.push_str(Self::get_field_name(no));
-        }
+        Self::generate_insert_fields(&mut result);
 
         result.push_str(") VALUES ");
         let mut model_no = 0;
@@ -133,30 +104,7 @@ pub trait SqlInsertModel<'s> {
             }
             model_no += 1;
             result.push('(');
-
-            let mut written_no = 0;
-
-            for no in 0..fields_amount {
-                match model.get_field_value(no) {
-                    SqlUpdateValueWrapper::Ignore => {}
-                    SqlUpdateValueWrapper::Value { value, metadata } => {
-                        if written_no > 0 {
-                            result.push(',');
-                        }
-
-                        written_no += 1;
-                        value.write(&mut result, &mut params, &metadata);
-                    }
-                    SqlUpdateValueWrapper::Null => {
-                        if written_no > 0 {
-                            result.push(',');
-                        }
-
-                        written_no += 1;
-                        result.push_str("NULL");
-                    }
-                }
-            }
+            model.generate_insert_fields_values(&mut result, &mut params);
 
             result.push(')');
         }
@@ -169,17 +117,13 @@ pub trait SqlInsertModel<'s> {
         update_conflict_type: &crate::UpdateConflictType<'s>,
         model: &'s TSqlInsertModel,
     ) -> (String, Vec<crate::SqlValue<'s>>) {
-        let mut params = Vec::new();
-
-        let update_fields = HashMap::new();
-        let (mut sql, update_fields) =
-            model.build_insert_sql(table_name, &mut params, Some(update_fields));
+        let (mut sql, params) = model.build_insert_sql(table_name);
 
         update_conflict_type.generate_sql(&mut sql);
 
         sql.push_str(" DO UPDATE SET ");
 
-        model.build_update_sql_part(&mut sql, &mut params, update_fields.as_ref());
+        model.fill_upsert_sql_part(&mut sql);
 
         (sql, params)
     }
