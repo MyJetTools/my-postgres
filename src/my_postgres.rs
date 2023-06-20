@@ -722,6 +722,7 @@ impl MyPostgres {
         update_conflict_type: UpdateConflictType<'s>,
         insert_model: &'s TModel,
         where_model: &'s TWhereModel,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TModel>, MyPostgresError> {
         let process_name = "concurrent_insert_or_update";
         let (sql, params) = crate::sql_concurrent_ops::build_concurrent_insert_or_update(
