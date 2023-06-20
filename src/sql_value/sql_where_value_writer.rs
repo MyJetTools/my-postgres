@@ -11,6 +11,8 @@ pub trait SqlWhereValueWriter<'s> {
     );
 
     fn get_default_operator(&self) -> &str;
+
+    fn is_none(&self) -> bool;
 }
 
 impl<'s> SqlWhereValueWriter<'s> for String {
@@ -28,6 +30,10 @@ impl<'s> SqlWhereValueWriter<'s> for String {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for &'s str {
@@ -44,6 +50,10 @@ impl<'s> SqlWhereValueWriter<'s> for &'s str {
 
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -78,6 +88,10 @@ impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for bool {
@@ -96,6 +110,10 @@ impl<'s> SqlWhereValueWriter<'s> for bool {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u8 {
@@ -111,6 +129,10 @@ impl<'s> SqlWhereValueWriter<'s> for u8 {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i8 {
@@ -124,6 +146,10 @@ impl<'s> SqlWhereValueWriter<'s> for i8 {
     }
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -140,6 +166,10 @@ impl<'s> SqlWhereValueWriter<'s> for u16 {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for f32 {
@@ -154,6 +184,10 @@ impl<'s> SqlWhereValueWriter<'s> for f32 {
 
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -170,6 +204,9 @@ impl<'s> SqlWhereValueWriter<'s> for f64 {
     fn get_default_operator(&self) -> &str {
         "="
     }
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i16 {
@@ -183,6 +220,10 @@ impl<'s> SqlWhereValueWriter<'s> for i16 {
     }
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -199,6 +240,10 @@ impl<'s> SqlWhereValueWriter<'s> for u32 {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i32 {
@@ -213,6 +258,10 @@ impl<'s> SqlWhereValueWriter<'s> for i32 {
 
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -237,6 +286,10 @@ impl<'s> SqlWhereValueWriter<'s> for Option<i32> {
             " IS "
         }
     }
+
+    fn is_none(&self) -> bool {
+        self.is_none()
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u64 {
@@ -252,6 +305,10 @@ impl<'s> SqlWhereValueWriter<'s> for u64 {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i64 {
@@ -266,6 +323,10 @@ impl<'s> SqlWhereValueWriter<'s> for i64 {
 
     fn get_default_operator(&self) -> &str {
         "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -288,6 +349,10 @@ impl<'s> SqlWhereValueWriter<'s> for tokio_postgres::types::IsNull {
 
     fn get_default_operator(&self) -> &str {
         " IS "
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }
 
@@ -327,5 +392,9 @@ impl<'s, T: SqlWhereValueWriter<'s>> SqlWhereValueWriter<'s> for Vec<T> {
         } else {
             return " IN ";
         }
+    }
+
+    fn is_none(&self) -> bool {
+        false
     }
 }

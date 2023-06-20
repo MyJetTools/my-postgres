@@ -17,6 +17,10 @@ impl<'s> SqlWhereValueWriter<'s> for RawField {
     fn get_default_operator(&self) -> &str {
         "="
     }
+
+    fn is_none(&self) -> bool {
+        false
+    }
 }
 
 impl<'s> SqlUpdateValueWriter<'s> for RawField {

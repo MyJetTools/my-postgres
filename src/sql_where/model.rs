@@ -4,6 +4,7 @@ pub struct WhereFieldData<'s> {
     pub field_name: &'s str,
     pub op: Option<&'static str>,
     pub value: &'s dyn SqlWhereValueWriter<'s>,
+    pub ignore_if_none: bool,
     pub meta_data: Option<SqlValueMetadata>,
 }
 pub trait SqlWhereModel<'s> {
@@ -16,6 +17,10 @@ pub trait SqlWhereModel<'s> {
         let mut no = 0;
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
+            if field_data.ignore_if_none && field_data.value.is_none() {
+                continue;
+            }
+
             if no > 0 {
                 sql.push_str(" AND ");
             } else {
