@@ -177,9 +177,8 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (sql, params) = crate::sql_select::build(
+        let (sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
             table_name,
-            |sql| TEntity::fill_select_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -222,9 +221,8 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (mut sql, params) = crate::sql_select::build(
+        let (mut sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
             table_name,
-            |sql| TEntity::fill_select_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -319,9 +317,8 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (sql, params) = crate::sql_select::build(
+        let (sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
             table_name,
-            |sql| TEntity::fill_select_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),
@@ -357,9 +354,8 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (mut sql, params) = crate::sql_select::build(
+        let (mut sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
             table_name,
-            |sql| TEntity::fill_select_fields(sql),
             where_model,
             TEntity::get_order_by_fields(),
             TEntity::get_group_by_fields(),

@@ -1,8 +1,10 @@
 use crate::{sql_where::SqlWhereModel, SqlValue};
 
-pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
+use super::SelectEntity;
+
+pub fn build<'s, TSelectModel: SelectEntity, TWhereModel: SqlWhereModel<'s>>(
     table_name: &str,
-    fill_select: TFillSelect,
+
     where_model: Option<&'s TWhereModel>,
     order_by_fields: Option<&str>,
     group_by_fields: Option<&str>,
@@ -11,7 +13,7 @@ pub fn build<'s, TFillSelect: Fn(&mut String), TWhereModel: SqlWhereModel<'s>>(
     let mut params = Vec::new();
 
     sql.push_str("SELECT ");
-    fill_select(&mut sql);
+    TSelectModel::fill_select_fields(&mut sql);
     sql.push_str(" FROM ");
     sql.push_str(table_name);
 

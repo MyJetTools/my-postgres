@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::{sql_where::SqlWhereModel, SqlUpdateValueWrapper, SqlValue};
+use crate::{sql_where::SqlWhereModel, SqlValue};
 
 use super::SqlUpdateModel;
 
@@ -17,7 +15,7 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
 
     let mut params = Vec::new();
 
-    build_update_part(&mut result, &mut params, update_model, None);
+    update_model.build_update_sql(&mut result, &mut params, None);
 
     where_model.build_where(&mut result, &mut params);
 
@@ -26,38 +24,4 @@ pub fn build<'s, TSqlUpdateModel: SqlUpdateModel<'s>, TSqlWhereModel: SqlWhereMo
     //crate::sql_where::build(&mut result, where_model, &mut params);
 
     (result, params)
-}
-
-pub fn build_update_part<'s, TSqlUpdateModel: SqlUpdateModel<'s>>(
-    result: &mut String,
-    params: &mut Vec<SqlValue<'s>>,
-    update_model: &'s TSqlUpdateModel,
-    cached_fields: Option<HashMap<&'static str, usize>>,
-) {
-    for i in 0..TSqlUpdateModel::get_fields_amount() {
-        if i > 0 {
-            result.push(',');
-        }
-        let update_data = update_model.get_field_value(i);
-
-        result.push_str(update_data.name);
-        result.push_str("=");
-
-        if let Some(cached_fields) = &cached_fields {
-            if let Some(value) = cached_fields.get(update_data.name) {
-                result.push_str("$");
-                result.push_str(value.to_string().as_str());
-                continue;
-            }
-        }
-        match update_data.value {
-            SqlUpdateValueWrapper::Ignore => {}
-            SqlUpdateValueWrapper::Null => {
-                result.push_str("NULL");
-            }
-            SqlUpdateValueWrapper::Value { metadata, value } => {
-                value.write(result, params, &metadata);
-            }
-        }
-    }
 }
