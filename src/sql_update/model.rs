@@ -41,6 +41,13 @@ pub trait SqlUpdateModel<'s> {
             sql.push_str(update_data.name);
             sql.push_str("=EXCLUDED.");
             sql.push_str(update_data.name);
+
+            if let Some(additional_name) = update_data.related_name {
+                sql.push(',');
+                sql.push_str(additional_name);
+                sql.push_str("=EXCLUDED.");
+                sql.push_str(additional_name);
+            }
         }
     }
 
