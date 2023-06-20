@@ -1,14 +1,18 @@
 use crate::{SqlValue, SqlValueMetadata, SqlWhereValueWriter};
 
+pub enum WhereFieldDataWrapper<'s> {
+    Ignore,
+    Value(WhereFieldData<'s>),
+}
+
 pub struct WhereFieldData<'s> {
     pub field_name: &'s str,
     pub op: Option<&'static str>,
     pub value: &'s dyn SqlWhereValueWriter<'s>,
-    pub ignore_if_none: bool,
     pub meta_data: Option<SqlValueMetadata>,
 }
 pub trait SqlWhereModel<'s> {
-    fn get_where_field_name_data(&'s self, no: usize) -> Option<WhereFieldData<'s>>;
+    fn get_where_field_name_data(&'s self, no: usize) -> Option<WhereFieldDataWrapper<'s>>;
 
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
@@ -19,26 +23,28 @@ pub trait SqlWhereModel<'s> {
         let mut rendered_no = 0;
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
-            if field_data.ignore_if_none && field_data.value.is_none() {
-                no += 1;
-                continue;
-            }
+            match field_data {
+                WhereFieldDataWrapper::Ignore => {
+                    no += 1;
+                }
+                WhereFieldDataWrapper::Value(field_data) => {
+                    if rendered_no > 0 {
+                        sql.push_str(" AND ");
+                    } else {
+                        sql.push_str(" WHERE ");
+                    }
 
-            if rendered_no > 0 {
-                sql.push_str(" AND ");
-            } else {
-                sql.push_str(" WHERE ");
+                    no += 1;
+                    rendered_no += 1;
+                    sql.push_str(field_data.field_name);
+                    if let Some(op) = field_data.op {
+                        sql.push_str(op);
+                    } else {
+                        sql.push_str(field_data.value.get_default_operator());
+                    }
+                    field_data.value.write(sql, params, &field_data.meta_data);
+                }
             }
-
-            no += 1;
-            rendered_no += 1;
-            sql.push_str(field_data.field_name);
-            if let Some(op) = field_data.op {
-                sql.push_str(op);
-            } else {
-                sql.push_str(field_data.value.get_default_operator());
-            }
-            field_data.value.write(sql, params, &field_data.meta_data);
         }
     }
 
