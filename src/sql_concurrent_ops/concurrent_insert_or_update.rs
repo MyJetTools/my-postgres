@@ -16,7 +16,7 @@ pub fn build_concurrent_insert_or_update<
     let update_fields = HashMap::new();
 
     let (mut sql, update_fields) =
-        crate::sql_insert::build_insert(table_name, insert_model, &mut params, Some(update_fields));
+        insert_model.build_insert_sql(table_name, &mut params, Some(update_fields));
 
     update_conflict_type.generate_sql(&mut sql);
 

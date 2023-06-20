@@ -421,7 +421,7 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let mut params = Vec::new();
-        let (sql, _) = crate::sql_insert::build_insert(table_name, entity, &mut params, None);
+        let (sql, _) = entity.build_insert_sql(table_name, &mut params, None);
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
 
@@ -451,7 +451,8 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let mut params = Vec::new();
-        let sql = crate::sql_insert::build_insert_if_not_exists(table_name, entity, &mut params);
+        let (mut sql, _) = entity.build_insert_sql(table_name, &mut params, None);
+        sql.push_str(" ON CONFLICT DO NOTHING");
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
 
@@ -480,7 +481,7 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let (sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
+        let (sql, params) = TEntity::build_bulk_insert_sql(table_name, entities);
 
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
@@ -509,7 +510,7 @@ impl MyPostgres {
         entities: &'s [TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let (mut sql, params) = crate::sql_insert::build_bulk_insert(table_name, entities);
+        let (mut sql, params) = TEntity::build_bulk_insert_sql(table_name, entities);
 
         sql.push_str(" ON CONFLICT DO NOTHING");
 
@@ -581,11 +582,8 @@ impl MyPostgres {
             entities.len()
         );
 
-        let sql_with_params = crate::sql_insert::build_bulk_insert_if_update(
-            table_name,
-            &update_conflict_type,
-            entities,
-        );
+        let sql_with_params =
+            TEntity::build_bulk_insert_or_update_sql(table_name, &update_conflict_type, entities);
 
         self.connection
             .execute_bulk_sql(
@@ -610,7 +608,7 @@ impl MyPostgres {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
         let (sql, params) =
-            crate::sql_insert::build_insert_or_update(table_name, &update_conflict_type, entity);
+            TEntity::build_insert_or_update_sql(table_name, &update_conflict_type, entity);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
