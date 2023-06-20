@@ -60,7 +60,7 @@ pub trait SqlUpdateModel<'s> {
         self.build_update_sql_part(&mut result, &mut params, None);
 
         if let Some(where_model) = where_model {
-            where_model.build_where(&mut result, &mut params, true);
+            where_model.build_where_sql_part(&mut result, &mut params, true);
 
             where_model.fill_limit_and_offset(&mut result);
         }

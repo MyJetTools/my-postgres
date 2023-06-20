@@ -34,7 +34,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
             sql.push_str(" FROM ");
             sql.push_str(self.table_name);
 
-            where_model.build_where(&mut sql, &mut params, true);
+            where_model.build_where_sql_part(&mut sql, &mut params, true);
             where_model.fill_limit_and_offset(&mut sql);
 
             sql.push('\n');

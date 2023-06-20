@@ -25,7 +25,7 @@ pub trait SelectEntity {
         sql.push_str(table_name);
 
         if let Some(where_model) = where_model {
-            where_model.build_where(&mut sql, &mut params, true);
+            where_model.build_where_sql_part(&mut sql, &mut params, true);
         }
 
         if let Some(order_by_fields) = Self::get_group_by_fields() {

@@ -13,7 +13,7 @@ pub trait SqlWhereModel<'s> {
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where(
+    fn build_where_sql_part(
         &'s self,
         sql: &mut String,
         params: &mut Vec<SqlValue<'s>>,
@@ -79,7 +79,7 @@ pub trait SqlWhereModel<'s> {
         sql.push_str(table_name);
 
         let mut params = Vec::new();
-        self.build_where(&mut sql, &mut params, true);
+        self.build_where_sql_part(&mut sql, &mut params, true);
         self.fill_limit_and_offset(&mut sql);
         (sql, params)
     }
@@ -104,7 +104,7 @@ pub trait SqlWhereModel<'s> {
                 sql.push_str(" OR ");
             }
             sql.push('(');
-            where_model.build_where(&mut sql, &mut params, true);
+            where_model.build_where_sql_part(&mut sql, &mut params, true);
             sql.push(')');
 
             where_model.fill_limit_and_offset(&mut sql);
