@@ -19,7 +19,7 @@ pub trait SqlWhereModel<'s> {
         let mut rendered_no = 0;
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
-            if field_data.value.is_none() && field_data.ignore_if_none {
+            if field_data.value.is_none() {
                 if !field_data.ignore_if_none {
                     if rendered_no > 0 {
                         sql.push_str(" AND ");
