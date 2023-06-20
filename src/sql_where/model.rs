@@ -13,7 +13,12 @@ pub trait SqlWhereModel<'s> {
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where(&'s self, sql: &mut String, params: &mut Vec<SqlValue<'s>>) {
+    fn build_where(
+        &'s self,
+        sql: &mut String,
+        params: &mut Vec<SqlValue<'s>>,
+        include_where: bool,
+    ) {
         let mut no = 0;
 
         let mut rendered_no = 0;
@@ -24,7 +29,9 @@ pub trait SqlWhereModel<'s> {
                     if rendered_no > 0 {
                         sql.push_str(" AND ");
                     } else {
-                        sql.push_str(" WHERE ");
+                        if include_where {
+                            sql.push_str(" WHERE ");
+                        }
                     }
 
                     sql.push_str(field_data.field_name);
@@ -63,5 +70,47 @@ pub trait SqlWhereModel<'s> {
             sql.push_str(" OFFSET ");
             sql.push_str(offset.to_string().as_str());
         }
+    }
+
+    fn build_delete_sql(&'s self, table_name: &str) -> (String, Vec<SqlValue<'s>>) {
+        let mut sql = String::new();
+
+        sql.push_str("DELETE FROM ");
+        sql.push_str(table_name);
+
+        let mut params = Vec::new();
+        self.build_where(&mut sql, &mut params, true);
+        self.fill_limit_and_offset(&mut sql);
+        (sql, params)
+    }
+
+    fn build_bulk_delete_sql(
+        where_models: &'s [impl SqlWhereModel<'s>],
+        table_name: &str,
+    ) -> (String, Vec<SqlValue<'s>>) {
+        if where_models.len() == 1 {
+            let where_model = where_models.get(0).unwrap();
+            return where_model.build_delete_sql(table_name);
+        }
+        let mut sql = String::new();
+
+        sql.push_str("DELETE FROM ");
+        sql.push_str(table_name);
+        sql.push_str(" WHERE ");
+        let mut params = Vec::new();
+        let mut no = 0;
+        for where_model in where_models {
+            if no > 0 {
+                sql.push_str(" OR ");
+            }
+            sql.push('(');
+            where_model.build_where(&mut sql, &mut params, true);
+            sql.push(')');
+
+            where_model.fill_limit_and_offset(&mut sql);
+            no += 1;
+        }
+
+        (sql, params)
     }
 }

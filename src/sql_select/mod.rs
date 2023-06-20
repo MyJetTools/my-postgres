@@ -1,4 +1,3 @@
-mod build;
 mod bulk_select_builder;
 mod from_db_row;
 
@@ -7,7 +6,6 @@ mod model;
 mod select_part_value;
 mod select_with_params;
 mod to_sql_string;
-pub use build::*;
 pub use bulk_select_builder::*;
 pub use from_db_row::*;
 pub use model::*;

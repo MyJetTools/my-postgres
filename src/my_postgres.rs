@@ -140,7 +140,7 @@ impl MyPostgres {
         sql.push_str(" FROM ");
         sql.push_str(table_name);
 
-        where_model.build_where(&mut sql, &mut params);
+        where_model.build_where(&mut sql, &mut params, true);
         where_model.fill_limit_and_offset(&mut sql);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
@@ -177,12 +177,7 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
-            table_name,
-            where_model,
-            TEntity::get_order_by_fields(),
-            TEntity::get_group_by_fields(),
-        );
+        let (sql, params) = TEntity::build_select_sql(table_name, where_model);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -221,12 +216,7 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (mut sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
-            table_name,
-            where_model,
-            TEntity::get_order_by_fields(),
-            TEntity::get_group_by_fields(),
-        );
+        let (mut sql, params) = TEntity::build_select_sql(table_name, where_model);
 
         post_processing(&mut sql);
 
@@ -317,12 +307,7 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
-            table_name,
-            where_model,
-            TEntity::get_order_by_fields(),
-            TEntity::get_group_by_fields(),
-        );
+        let (sql, params) = TEntity::build_select_sql(table_name, where_model);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -354,12 +339,7 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (mut sql, params) = crate::sql_select::build::<TEntity, TWhereModel>(
-            table_name,
-            where_model,
-            TEntity::get_order_by_fields(),
-            TEntity::get_group_by_fields(),
-        );
+        let (mut sql, params) = TEntity::build_select_sql(table_name, where_model);
 
         post_processing(&mut sql);
 
@@ -563,7 +543,7 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let (sql, params) = crate::sql_update::build(table_name, entity, entity);
+        let (sql, params) = entity.build_update_sql(table_name, Some(entity));
         let process_name = format!("update_db_entity into table {}", table_name);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
@@ -657,7 +637,7 @@ impl MyPostgres {
         where_model: &'s TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let (sql, params) = crate::sql_delete::build_delete(table_name, where_model);
+        let (sql, params) = where_model.build_delete_sql(table_name);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -687,7 +667,7 @@ impl MyPostgres {
     ) -> Result<(), MyPostgresError> {
         let process_name = format!("bulk_delete from table {}", table_name);
 
-        let (sql, params) = crate::sql_delete::build_bulk_delete(table_name, entities);
+        let (sql, params) = TEntity::build_bulk_delete_sql(entities, table_name);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 

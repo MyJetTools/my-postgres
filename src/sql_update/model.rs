@@ -1,3 +1,5 @@
+use crate::sql_where::SqlWhereModel;
+
 use super::SqlUpdateValue;
 
 pub trait SqlUpdateModel<'s> {
@@ -8,7 +10,7 @@ pub trait SqlUpdateModel<'s> {
     fn get_e_tag_value(&self) -> Option<i64>;
     fn set_e_tag_value(&self, value: i64);
 
-    fn build_update_sql(
+    fn build_update_sql_part(
         &'s self,
         sql: &mut String,
         params: &mut Vec<crate::SqlValue<'s>>,
@@ -40,5 +42,31 @@ pub trait SqlUpdateModel<'s> {
                 }
             }
         }
+    }
+
+    fn build_update_sql(
+        &'s self,
+        table_name: &str,
+        where_model: Option<&'s impl SqlWhereModel<'s>>,
+    ) -> (String, Vec<crate::SqlValue<'s>>) {
+        let mut result = String::new();
+
+        result.push_str("UPDATE ");
+        result.push_str(table_name);
+        result.push_str(" SET ");
+
+        let mut params = Vec::new();
+
+        self.build_update_sql_part(&mut result, &mut params, None);
+
+        if let Some(where_model) = where_model {
+            where_model.build_where(&mut result, &mut params, true);
+
+            where_model.fill_limit_and_offset(&mut result);
+        }
+
+        //crate::sql_where::build(&mut result, where_model, &mut params);
+
+        (result, params)
     }
 }

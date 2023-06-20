@@ -18,7 +18,7 @@ pub fn build<'s, TSelectModel: SelectEntity, TWhereModel: SqlWhereModel<'s>>(
     sql.push_str(table_name);
 
     if let Some(where_model) = where_model {
-        where_model.build_where(&mut sql, &mut params);
+        where_model.build_where(&mut sql, &mut params, true);
     }
 
     if let Some(order_by_fields) = order_by_fields {

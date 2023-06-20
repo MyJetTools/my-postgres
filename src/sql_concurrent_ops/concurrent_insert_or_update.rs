@@ -24,7 +24,7 @@ pub fn build_concurrent_insert_or_update<
 
     fill_update_part(&mut sql, update_fields.as_ref().unwrap());
 
-    where_model.build_where(&mut sql, &mut params);
+    where_model.build_where(&mut sql, &mut params, true);
     where_model.fill_limit_and_offset(&mut sql);
 
     (sql, params)
