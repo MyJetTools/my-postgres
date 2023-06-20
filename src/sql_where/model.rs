@@ -16,18 +16,22 @@ pub trait SqlWhereModel<'s> {
     fn build_where(&'s self, sql: &mut String, params: &mut Vec<SqlValue<'s>>) {
         let mut no = 0;
 
+        let mut rendered_no = 0;
+
         while let Some(field_data) = self.get_where_field_name_data(no) {
             if field_data.ignore_if_none && field_data.value.is_none() {
+                no += 1;
                 continue;
             }
 
-            if no > 0 {
+            if rendered_no > 0 {
                 sql.push_str(" AND ");
             } else {
                 sql.push_str(" WHERE ");
             }
 
             no += 1;
+            rendered_no += 1;
             sql.push_str(field_data.field_name);
             if let Some(op) = field_data.op {
                 sql.push_str(op);
