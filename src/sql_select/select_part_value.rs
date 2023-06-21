@@ -158,10 +158,7 @@ impl<T> SelectValueProvider for Vec<T> {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(
-            format!("{}>> '{}'", field_name, "{}").into(),
-            Some(field_name.into()),
-        );
+        sql.push_json(field_name);
     }
 }
 
@@ -171,10 +168,7 @@ impl<TKey, TValue> SelectValueProvider for HashMap<TKey, TValue> {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(
-            format!("{}>> '{}'", field_name, "{}").into(),
-            Some(field_name.into()),
-        );
+        sql.push_json(field_name);
     }
 }
 

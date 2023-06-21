@@ -18,6 +18,13 @@ impl SelectBuilder {
         self.items.push(SelectFieldValue { value, alias })
     }
 
+    pub fn push_json(&mut self, field_name: &'static str) {
+        self.items.push(SelectFieldValue {
+            value: format!("{}>> '{}'", field_name, "{}").into(),
+            alias: Some(field_name.into()),
+        })
+    }
+
     pub fn build_select_part(&self, sql: &mut String) {
         let mut no = 0;
         for item in &self.items {
