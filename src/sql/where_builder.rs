@@ -9,10 +9,31 @@ pub enum SqlWhereValue<'s> {
 }
 
 impl<'s> SqlWhereValue<'s> {
-    pub fn unwrap_is_index(&self) -> usize {
+    pub fn unwrap_as_index(&self) -> usize {
         match self {
             SqlWhereValue::Index(index) => *index,
             _ => panic!("unwrap_is_index"),
+        }
+    }
+
+    pub fn unwrap_as_non_string_value(&self) -> &StrOrString<'s> {
+        match self {
+            SqlWhereValue::NonStringValue(value) => value,
+            _ => panic!("unwrap_is_index"),
+        }
+    }
+
+    pub fn unwrap_as_string_value(&self) -> &StrOrString<'s> {
+        match self {
+            SqlWhereValue::StringValue(value) => value,
+            _ => panic!("unwrap_is_index"),
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            SqlWhereValue::None => true,
+            _ => false,
         }
     }
 
