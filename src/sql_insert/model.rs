@@ -10,6 +10,7 @@ pub trait SqlInsertModel<'s> {
     fn set_e_tag_value(&self, value: i64);
 
     fn generate_insert_fields(sql: &mut String) {
+        sql.push('(');
         let mut no = 0;
         for field_no in 0..Self::get_fields_amount() {
             if no > 0 {
@@ -24,6 +25,8 @@ pub trait SqlInsertModel<'s> {
                 no += 1;
             }
         }
+
+        sql.push(')');
     }
 
     fn generate_insert_fields_values(
@@ -31,6 +34,7 @@ pub trait SqlInsertModel<'s> {
         sql: &mut String,
         params: &mut Vec<crate::SqlValue<'s>>,
     ) {
+        sql.push('(');
         for field_no in 0..Self::get_fields_amount() {
             let update_value = self.get_field_value(field_no);
 
@@ -51,6 +55,7 @@ pub trait SqlInsertModel<'s> {
                 }
             }
         }
+        sql.push(')');
     }
 
     fn build_insert_sql(&'s self, table_name: &str) -> (String, Vec<crate::SqlValue<'s>>) {
@@ -65,17 +70,31 @@ pub trait SqlInsertModel<'s> {
 
         sql.push_str("INSERT INTO ");
         sql.push_str(table_name);
-        sql.push('(');
-
         Self::generate_insert_fields(&mut sql);
-
-        sql.push_str(") VALUES (");
-
+        sql.push_str(" VALUES ");
         self.generate_insert_fields_values(&mut sql, &mut params);
 
-        sql.push(')');
-
         (sql, params)
+    }
+
+    fn fill_bulk_insert_values_sql(
+        models: &'s [impl SqlInsertModel<'s>],
+        sql: &mut String,
+        params: &mut Vec<crate::SqlValue<'s>>,
+    ) {
+        let mut model_no = 0;
+        for model in models {
+            if Self::get_e_tag_column_name().is_some() {
+                let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
+                model.set_e_tag_value(value.unix_microseconds);
+            }
+
+            if model_no > 0 {
+                sql.push(',');
+            }
+            model_no += 1;
+            model.generate_insert_fields_values(sql, params);
+        }
     }
 
     fn build_bulk_insert_sql(
@@ -86,28 +105,14 @@ pub trait SqlInsertModel<'s> {
 
         result.push_str("INSERT INTO ");
         result.push_str(table_name);
-        result.push_str(" (");
 
         Self::generate_insert_fields(&mut result);
 
-        result.push_str(") VALUES ");
-        let mut model_no = 0;
+        result.push_str(" VALUES ");
+
         let mut params = Vec::new();
-        for model in models {
-            if Self::get_e_tag_column_name().is_some() {
-                let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
-                model.set_e_tag_value(value.unix_microseconds);
-            }
 
-            if model_no > 0 {
-                result.push(',');
-            }
-            model_no += 1;
-            result.push('(');
-            model.generate_insert_fields_values(&mut result, &mut params);
-
-            result.push(')');
-        }
+        Self::fill_bulk_insert_values_sql(models, &mut result, &mut params);
 
         (result, params)
     }
@@ -123,7 +128,7 @@ pub trait SqlInsertModel<'s> {
 
         sql.push_str(" DO UPDATE SET ");
 
-        model.fill_upsert_sql_part(&mut sql);
+        TSqlInsertModel::fill_upsert_sql_part(&mut sql);
 
         (sql, params)
     }
@@ -132,19 +137,16 @@ pub trait SqlInsertModel<'s> {
         table_name: &str,
         update_conflict_type: &crate::UpdateConflictType<'s>,
         insert_or_update_models: &'s [TSqlInsertModel],
-    ) -> Vec<(String, Vec<crate::SqlValue<'s>>)> {
-        let mut sql = Vec::new();
+    ) -> (String, Vec<crate::SqlValue<'s>>) {
+        let (mut sql, params) = Self::build_bulk_insert_sql(table_name, insert_or_update_models);
 
-        for model in insert_or_update_models {
-            set_e_tag(model);
-            sql.push(TSqlInsertModel::build_insert_or_update_sql(
-                table_name,
-                update_conflict_type,
-                model,
-            ));
-        }
+        update_conflict_type.generate_sql(&mut sql);
 
-        sql
+        sql.push_str(" DO UPDATE SET ");
+
+        TSqlInsertModel::fill_upsert_sql_part(&mut sql);
+
+        (sql, params)
     }
 }
 

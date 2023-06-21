@@ -580,17 +580,26 @@ impl MyPostgres {
             entities.len()
         );
 
-        let sql_with_params =
+        let (sql, params) =
             TEntity::build_bulk_insert_or_update_sql(table_name, &update_conflict_type, entities);
 
+        let mut params_to_invoke = Vec::with_capacity(params.len());
+
+        for param in &params {
+            params_to_invoke.push(param.get_value());
+        }
+
         self.connection
-            .execute_bulk_sql(
-                sql_with_params,
+            .execute_sql(
+                &sql,
+                params_to_invoke.as_slice(),
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await
+            .await?;
+
+        Ok(())
     }
 
     pub async fn insert_or_update_db_entity<

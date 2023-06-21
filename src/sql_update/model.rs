@@ -3,6 +3,7 @@ use crate::sql_where::SqlWhereModel;
 use super::SqlUpdateValue;
 
 pub trait SqlUpdateModel<'s> {
+    fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
     fn get_field_value(&'s self, no: usize) -> SqlUpdateValue<'s>;
     fn get_fields_amount() -> usize;
 
@@ -31,18 +32,18 @@ pub trait SqlUpdateModel<'s> {
         }
     }
 
-    fn fill_upsert_sql_part(&'s self, sql: &mut String) {
+    fn fill_upsert_sql_part(sql: &mut String) {
         for i in 0..Self::get_fields_amount() {
             if i > 0 {
                 sql.push(',');
             }
-            let update_data = self.get_field_value(i);
+            let (column_name, related_name) = Self::get_column_name(i);
 
-            sql.push_str(update_data.name);
+            sql.push_str(column_name);
             sql.push_str("=EXCLUDED.");
-            sql.push_str(update_data.name);
+            sql.push_str(column_name);
 
-            if let Some(additional_name) = update_data.related_name {
+            if let Some(additional_name) = related_name {
                 sql.push(',');
                 sql.push_str(additional_name);
                 sql.push_str("=EXCLUDED.");

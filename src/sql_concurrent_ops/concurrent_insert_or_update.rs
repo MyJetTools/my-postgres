@@ -19,7 +19,7 @@ pub fn build_concurrent_insert_or_update<
 
     sql.push_str(" DO UPDATE SET ");
 
-    insert_model.fill_upsert_sql_part(&mut sql);
+    TSqlInsertModel::fill_upsert_sql_part(&mut sql);
 
     where_model.build_where_sql_part(&mut sql, &mut params, true);
     where_model.fill_limit_and_offset(&mut sql);
