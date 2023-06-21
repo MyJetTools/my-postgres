@@ -2,129 +2,200 @@ use std::collections::HashMap;
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::SqlValueMetadata;
+use crate::{sql::SelectBuilder, SqlValueMetadata};
 
-pub trait SelectPartValue {
-    fn fill_select_part(sql: &mut String, field_name: &str, metadata: &Option<SqlValueMetadata>);
+pub trait SelectValueProvider {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        metadata: &Option<SqlValueMetadata>,
+    );
 }
 
-impl SelectPartValue for String {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for String {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl<'s> SelectPartValue for &'s str {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl<'s> SelectValueProvider for &'s str {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for usize {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for usize {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for i64 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for i64 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for u64 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for u64 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for i32 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for i32 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for u32 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for u32 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for i16 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for i16 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for u16 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for u16 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for i8 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for i8 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for u8 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for u8 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for f64 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for f64 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for f32 {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for f32 {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl SelectPartValue for bool {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
+impl SelectValueProvider for bool {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(field_name.into(), None);
     }
 }
 
-impl<T> SelectPartValue for Vec<T> {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
-        sql.push_str(" #>> '{}' as \"");
-        sql.push_str(field_name);
-        sql.push('"');
+impl<T> SelectValueProvider for Vec<T> {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(
+            format!("{}>> '{}'", field_name, "{}").into(),
+            Some(field_name.into()),
+        );
     }
 }
 
-impl<TKey, TValue> SelectPartValue for HashMap<TKey, TValue> {
-    fn fill_select_part(sql: &mut String, field_name: &str, _metadata: &Option<SqlValueMetadata>) {
-        sql.push_str(field_name);
-        sql.push_str(" #>> '{}' as \"");
-        sql.push_str(field_name);
-        sql.push('"');
+impl<TKey, TValue> SelectValueProvider for HashMap<TKey, TValue> {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(
+            format!("{}>> '{}'", field_name, "{}").into(),
+            Some(field_name.into()),
+        );
     }
 }
 
-impl SelectPartValue for DateTimeAsMicroseconds {
-    fn fill_select_part(sql: &mut String, field_name: &str, metadata: &Option<SqlValueMetadata>) {
+impl SelectValueProvider for DateTimeAsMicroseconds {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        metadata: &Option<SqlValueMetadata>,
+    ) {
         if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "timestamp" {
-                    sql.push_str("(extract(EPOCH FROM ");
-                    sql.push_str(field_name);
-                    sql.push_str(") * 1000000)::bigint \"");
-                    sql.push_str(field_name);
-                    sql.push('"');
+                    sql.push(
+                        format!("(extract(EPOCH FROM {}) * 1000000)::bigint", field_name).into(),
+                        Some(field_name.into()),
+                    );
                     return;
                 }
 
                 if sql_type == "bigint" {
-                    sql.push_str(field_name);
+                    sql.push(field_name.into(), None);
                     return;
                 }
 
