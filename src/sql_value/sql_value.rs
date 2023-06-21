@@ -1,4 +1,4 @@
-use crate::{SqlUpdateValueWriter, SqlValueMetadata, SqlWhereValueWriter};
+use crate::{SqlValueMetadata, SqlWhereValueWriter};
 
 #[derive(Debug)]
 pub enum SqlValue<'s> {
