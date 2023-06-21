@@ -96,6 +96,10 @@ impl<'s> WhereBuilder<'s> {
         self.conditions.len() > 0
     }
 
+    pub fn get(&self, index: usize) -> Option<&WhereCondition<'s>> {
+        self.conditions.get(index)
+    }
+
     pub fn build(&self, sql: &mut String) {
         let mut result = String::new();
         let mut index = 0;
