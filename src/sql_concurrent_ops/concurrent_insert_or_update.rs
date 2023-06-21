@@ -21,7 +21,12 @@ pub fn build_concurrent_insert_or_update<
 
     TSqlInsertModel::fill_upsert_sql_part(&mut sql);
 
-    where_model.build_where_sql_part(&mut sql, &mut params, true);
+    let where_builder = where_model.build_where_sql_part(&mut params);
+    if where_builder.has_conditions() {
+        sql.push_str(" WHERE ");
+        where_builder.build(&mut sql);
+    }
+
     where_model.fill_limit_and_offset(&mut sql);
 
     (sql, params)

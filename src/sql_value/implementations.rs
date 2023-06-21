@@ -1,20 +1,21 @@
-use crate::{SqlUpdateValueWriter, SqlValue, SqlValueMetadata, SqlWhereValueWriter};
+use crate::{
+    sql::SqlWhereValue, SqlUpdateValueWriter, SqlValue, SqlValueMetadata, SqlWhereValueWriter,
+};
 
 pub struct RawField {
     pub value: String,
 }
 
 impl<'s> SqlWhereValueWriter<'s> for RawField {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.value.as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.value.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 

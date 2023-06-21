@@ -1,33 +1,30 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{SqlValue, SqlValueMetadata};
+use crate::{sql::SqlWhereValue, SqlValue, SqlValueMetadata};
 
 pub trait SqlWhereValueWriter<'s> {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         params: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    );
+    ) -> SqlWhereValue<'s>;
 
-    fn get_default_operator(&self) -> &str;
+    fn get_default_operator(&self) -> &'static str;
 
     fn is_none(&self) -> bool;
 }
 
 impl<'s> SqlWhereValueWriter<'s> for String {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         params.push(SqlValue::Ref(self));
-        sql.push('$');
-        sql.push_str(params.len().to_string().as_str());
+        SqlWhereValue::Index(params.len())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -37,18 +34,16 @@ impl<'s> SqlWhereValueWriter<'s> for String {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for &'s str {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         params.push(SqlValue::Ref(self));
-        sql.push('$');
-        sql.push_str(params.len().to_string().as_str());
+        SqlWhereValue::Index(params.len())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -58,24 +53,21 @@ impl<'s> SqlWhereValueWriter<'s> for &'s str {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         if let Some(metadata) = &metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "bigint" {
-                    sql.push_str(self.unix_microseconds.to_string().as_str());
-                    return;
+                    return SqlWhereValue::NonStringValue(
+                        self.unix_microseconds.to_string().into(),
+                    );
                 }
 
                 if sql_type == "timestamp" {
-                    sql.push('\'');
-                    sql.push_str(self.to_rfc3339().as_str());
-                    sql.push('\'');
-                    return;
+                    return SqlWhereValue::StringValue(self.to_rfc3339().into());
                 }
 
                 panic!("Unknown sql type: {}", sql_type);
@@ -85,7 +77,7 @@ impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
         panic!("DateTimeAsMicroseconds requires sql_type");
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -95,19 +87,18 @@ impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for bool {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         match self {
-            true => sql.push_str("true"),
-            false => sql.push_str("false"),
+            true => SqlWhereValue::NonStringValue("true".into()),
+            false => SqlWhereValue::NonStringValue("false".into()),
         }
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -117,16 +108,15 @@ impl<'s> SqlWhereValueWriter<'s> for bool {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u8 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -136,15 +126,14 @@ impl<'s> SqlWhereValueWriter<'s> for u8 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i8 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -154,16 +143,15 @@ impl<'s> SqlWhereValueWriter<'s> for i8 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u16 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -173,16 +161,15 @@ impl<'s> SqlWhereValueWriter<'s> for u16 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for f32 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -192,16 +179,15 @@ impl<'s> SqlWhereValueWriter<'s> for f32 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for f64 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
     fn is_none(&self) -> bool {
@@ -210,15 +196,14 @@ impl<'s> SqlWhereValueWriter<'s> for f64 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i16 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -228,16 +213,15 @@ impl<'s> SqlWhereValueWriter<'s> for i16 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u32 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -247,16 +231,15 @@ impl<'s> SqlWhereValueWriter<'s> for u32 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i32 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -266,16 +249,15 @@ impl<'s> SqlWhereValueWriter<'s> for i32 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for u64 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -285,16 +267,15 @@ impl<'s> SqlWhereValueWriter<'s> for u64 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for i64 {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.to_string().as_str());
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         "="
     }
 
@@ -304,23 +285,22 @@ impl<'s> SqlWhereValueWriter<'s> for i64 {
 }
 
 impl<'s> SqlWhereValueWriter<'s> for tokio_postgres::types::IsNull {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
-        _params: &mut Vec<SqlValue<'s>>,
+        _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         match self {
             tokio_postgres::types::IsNull::Yes => {
-                sql.push_str("NULL");
+                return SqlWhereValue::NonStringValue("NULL".into());
             }
             tokio_postgres::types::IsNull::No => {
-                sql.push_str("NOT NULL");
+                return SqlWhereValue::NonStringValue("NOT NULL".into());
             }
         }
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         " IS "
     }
 
@@ -330,34 +310,29 @@ impl<'s> SqlWhereValueWriter<'s> for tokio_postgres::types::IsNull {
 }
 
 impl<'s, T: SqlWhereValueWriter<'s>> SqlWhereValueWriter<'s> for Vec<T> {
-    fn write(
+    fn get_where_value(
         &'s self,
-        sql: &mut String,
         params: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> SqlWhereValue {
         if self.len() == 1 {
-            self.get(0).unwrap().write(sql, params, metadata);
-            return;
+            return self.get(0).unwrap().get_where_value(params, metadata);
         }
 
         if self.len() > 0 {
-            sql.push('(');
-
-            let mut no = 0;
+            let mut result = Vec::with_capacity(self.len());
             for itm in self {
-                if no > 0 {
-                    sql.push_str(",");
-                }
-                itm.write(sql, params, metadata);
-                no += 1;
+                let item = itm.get_where_value(params, metadata);
+                result.push(item);
             }
 
-            sql.push(')');
+            return SqlWhereValue::VecOfValues(Box::new(result));
         }
+
+        SqlWhereValue::None
     }
 
-    fn get_default_operator(&self) -> &str {
+    fn get_default_operator(&self) -> &'static str {
         if self.len() == 0 {
             return "";
         } else if self.len() == 1 {

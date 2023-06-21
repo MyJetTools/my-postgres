@@ -140,7 +140,12 @@ impl MyPostgres {
         sql.push_str(" FROM ");
         sql.push_str(table_name);
 
-        where_model.build_where_sql_part(&mut sql, &mut params, true);
+        let where_condition = where_model.build_where_sql_part(&mut params);
+
+        if where_condition.has_conditions() {
+            sql.push_str(" WHERE ");
+            where_condition.build(&mut sql);
+        }
         where_model.fill_limit_and_offset(&mut sql);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());

@@ -1,64 +1,53 @@
-use crate::{SqlValue, SqlValueMetadata, SqlWhereValueWriter};
+use crate::{sql::WhereBuilder, SqlValue, SqlValueMetadata, SqlWhereValueWriter};
 
 pub struct WhereFieldData<'s> {
-    pub field_name: &'s str,
+    pub field_name: &'static str,
     pub op: Option<&'static str>,
     pub ignore_if_none: bool,
     pub value: Option<&'s dyn SqlWhereValueWriter<'s>>,
     pub meta_data: Option<SqlValueMetadata>,
 }
+
+const NULL_VALUE: &'static str = "NULL";
 pub trait SqlWhereModel<'s> {
     fn get_where_field_name_data(&'s self, no: usize) -> Option<WhereFieldData<'s>>;
 
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where_sql_part(
-        &'s self,
-        sql: &mut String,
-        params: &mut Vec<SqlValue<'s>>,
-        include_where: bool,
-    ) {
+    fn build_where_sql_part(&'s self, params: &mut Vec<SqlValue<'s>>) -> WhereBuilder {
         let mut no = 0;
 
-        let mut rendered_no = 0;
+        let mut result = WhereBuilder::new();
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
-            if field_data.value.is_none() {
-                if !field_data.ignore_if_none {
-                    if rendered_no > 0 {
-                        sql.push_str(" AND ");
+            match field_data.value {
+                Some(value) => {
+                    let where_value = value.get_where_value(params, &field_data.meta_data);
+
+                    let op = if let Some(op) = field_data.op {
+                        op
                     } else {
-                        if include_where {
-                            sql.push_str(" WHERE ");
-                        }
-                    }
+                        value.get_default_operator()
+                    };
 
-                    sql.push_str(field_data.field_name);
-                    sql.push_str(" IS NULL")
+                    result.push_where_condition(field_data.field_name, op, where_value);
                 }
-                no += 1;
-                continue;
-            }
-
-            let value = field_data.value.unwrap();
-
-            if rendered_no > 0 {
-                sql.push_str(" AND ");
-            } else {
-                sql.push_str(" WHERE ");
+                None => {
+                    if !field_data.ignore_if_none {
+                        result.push_where_condition(
+                            field_data.field_name,
+                            " IS ",
+                            crate::sql::SqlWhereValue::NonStringValue(NULL_VALUE.into()),
+                        );
+                    }
+                }
             }
 
             no += 1;
-            rendered_no += 1;
-            sql.push_str(field_data.field_name);
-            if let Some(op) = field_data.op {
-                sql.push_str(op);
-            } else {
-                sql.push_str(value.get_default_operator());
-            }
-            value.write(sql, params, &field_data.meta_data);
         }
+
+        result
     }
 
     fn fill_limit_and_offset(&self, sql: &mut String) {
@@ -79,7 +68,11 @@ pub trait SqlWhereModel<'s> {
         sql.push_str(table_name);
 
         let mut params = Vec::new();
-        self.build_where_sql_part(&mut sql, &mut params, true);
+
+        let where_builder = self.build_where_sql_part(&mut params);
+
+        where_builder.build(&mut sql);
+
         self.fill_limit_and_offset(&mut sql);
         (sql, params)
     }
@@ -100,15 +93,21 @@ pub trait SqlWhereModel<'s> {
         let mut params = Vec::new();
         let mut no = 0;
         for where_model in where_models {
-            if no > 0 {
-                sql.push_str(" OR ");
-            }
-            sql.push('(');
-            where_model.build_where_sql_part(&mut sql, &mut params, true);
-            sql.push(')');
+            let where_builder = where_model.build_where_sql_part(&mut params);
 
-            where_model.fill_limit_and_offset(&mut sql);
-            no += 1;
+            if where_builder.has_conditions() {
+                if no > 0 {
+                    sql.push_str(" OR ");
+                }
+
+                sql.push('(');
+
+                where_builder.build(&mut sql);
+                sql.push(')');
+
+                where_model.fill_limit_and_offset(&mut sql);
+                no += 1;
+            }
         }
 
         (sql, params)
