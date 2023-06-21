@@ -149,10 +149,10 @@ impl SelectBuilder {
         }
     }
 
-    pub fn build_select_sql<'s>(
+    pub fn build_select_sql<'s, TSqlWhereModel: SqlWhereModel<'s>>(
         &self,
         table_name: &str,
-        where_model: Option<&'s impl SqlWhereModel<'s>>,
+        where_model: Option<&'s TSqlWhereModel>,
     ) -> (String, Vec<crate::SqlValue<'s>>) {
         let mut sql = String::new();
         let mut params = Vec::new();
