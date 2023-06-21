@@ -159,6 +159,8 @@ impl SelectBuilder {
 
         sql.push_str("SELECT ");
 
+        self.fill_select_fields(&mut sql);
+
         sql.push_str(" FROM ");
         sql.push_str(table_name);
 
