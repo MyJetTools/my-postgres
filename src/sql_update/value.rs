@@ -1,7 +1,6 @@
-use crate::SqlUpdateValueWrapper;
+use crate::{SqlUpdateValueWriter, SqlValueMetadata};
 
 pub struct SqlUpdateValue<'s> {
-    pub name: &'static str,
-    pub related_name: Option<&'static str>,
-    pub value: SqlUpdateValueWrapper<'s>,
+    pub metadata: Option<SqlValueMetadata>,
+    pub value: Option<&'s dyn SqlUpdateValueWriter<'s>>,
 }
