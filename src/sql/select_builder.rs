@@ -1,3 +1,5 @@
+use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel};
+
 pub enum SelectFieldValue {
     LineNo(usize),
     Field(&'static str),
@@ -76,11 +78,27 @@ impl SelectFieldValue {
 
 pub struct SelectBuilder {
     items: Vec<SelectFieldValue>,
+    order_by_columns: Option<&'static str>,
+    group_by_columns: Option<&'static str>,
 }
 
 impl SelectBuilder {
     pub fn new() -> Self {
-        Self { items: Vec::new() }
+        Self {
+            items: Vec::new(),
+            order_by_columns: None,
+            group_by_columns: None,
+        }
+    }
+
+    pub fn from_select_model<TSelectEntity: SelectEntity>() -> Self {
+        let mut builder = Self::new();
+        TSelectEntity::fill_select_fields(&mut builder);
+
+        builder.group_by_columns = TSelectEntity::get_group_by_fields();
+        builder.order_by_columns = TSelectEntity::get_order_by_fields();
+
+        builder
     }
 
     pub fn push(&mut self, value: SelectFieldValue) {
@@ -129,5 +147,42 @@ impl SelectBuilder {
 
             no += 1;
         }
+    }
+
+    pub fn build_select_sql<'s>(
+        &self,
+        table_name: &str,
+        where_model: Option<&'s impl SqlWhereModel<'s>>,
+    ) -> (String, Vec<crate::SqlValue<'s>>) {
+        let mut sql = String::new();
+        let mut params = Vec::new();
+
+        sql.push_str("SELECT ");
+
+        sql.push_str(" FROM ");
+        sql.push_str(table_name);
+
+        if let Some(where_model) = where_model {
+            let where_condition = where_model.build_where_sql_part(&mut params);
+
+            if where_condition.has_conditions() {
+                sql.push_str(" WHERE ");
+                where_condition.build(&mut sql);
+            }
+        }
+
+        if let Some(order_by_fields) = self.order_by_columns {
+            sql.push_str(order_by_fields);
+        }
+
+        if let Some(group_by_fields) = self.group_by_columns {
+            sql.push_str(group_by_fields);
+        }
+
+        if let Some(where_model) = where_model {
+            where_model.fill_limit_and_offset(&mut sql);
+        }
+
+        (sql, params)
     }
 }

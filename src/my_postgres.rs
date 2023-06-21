@@ -8,6 +8,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
     count_result::CountResult,
+    sql::SelectBuilder,
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
@@ -182,7 +183,9 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (sql, params) = TEntity::build_select_sql(table_name, where_model);
+        let select_builder = SelectBuilder::from_select_model::<TEntity>();
+
+        let (sql, params) = select_builder.build_select_sql(table_name, where_model);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -221,7 +224,9 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let (mut sql, params) = TEntity::build_select_sql(table_name, where_model);
+        let select_builder = SelectBuilder::from_select_model::<TEntity>();
+
+        let (mut sql, params) = select_builder.build_select_sql(table_name, where_model);
 
         post_processing(&mut sql);
 
@@ -312,7 +317,9 @@ impl MyPostgres {
         where_model: Option<&'s TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (sql, params) = TEntity::build_select_sql(table_name, where_model);
+        let select_builder = SelectBuilder::from_select_model::<TEntity>();
+
+        let (sql, params) = select_builder.build_select_sql(table_name, where_model);
 
         let mut params_to_invoke = Vec::with_capacity(params.len());
 
@@ -344,7 +351,9 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let (mut sql, params) = TEntity::build_select_sql(table_name, where_model);
+        let select_builder = SelectBuilder::from_select_model::<TEntity>();
+
+        let (mut sql, params) = select_builder.build_select_sql(table_name, where_model);
 
         post_processing(&mut sql);
 
