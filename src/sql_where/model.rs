@@ -23,8 +23,7 @@ pub trait SqlWhereModel<'s> {
         while let Some(field_data) = self.get_where_field_name_data(no) {
             match field_data.value {
                 Some(value) => {
-                    let (where_value, where_related_value) =
-                        value.get_where_value(params, &field_data.meta_data);
+                    let where_value = value.get_where_value(params, &field_data.meta_data);
 
                     let op = if let Some(op) = field_data.op {
                         op
@@ -33,24 +32,6 @@ pub trait SqlWhereModel<'s> {
                     };
 
                     result.push_where_condition(field_data.field_name, op, where_value);
-
-                    if let Some(meta_data) = &field_data.meta_data {
-                        if let Some(related_field_name) = meta_data.related_column_name {
-                            if let Some(where_related_value) = where_related_value {
-                                let op = if let Some(op) = field_data.op {
-                                    op
-                                } else {
-                                    value.get_default_operator()
-                                };
-
-                                result.push_where_condition(
-                                    related_field_name,
-                                    op,
-                                    where_related_value,
-                                );
-                            }
-                        }
-                    }
                 }
                 None => {
                     if !field_data.ignore_if_none {
