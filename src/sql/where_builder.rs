@@ -138,14 +138,13 @@ impl<'s> WhereBuilder<'s> {
     }
 
     pub fn build(&self, sql: &mut String) {
-        let mut result = String::new();
         let mut index = 0;
         for condition in &self.conditions {
             if index > 0 {
-                result.push_str(" AND ");
+                sql.push_str(" AND ");
             }
-            result.push_str(condition.db_column_name);
-            result.push_str(condition.op);
+            sql.push_str(condition.db_column_name);
+            sql.push_str(condition.op);
             condition.value.push_value(sql);
             index += 1;
         }
