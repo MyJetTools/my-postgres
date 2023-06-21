@@ -15,6 +15,14 @@ impl<'s> SqlValue<'s> {
             SqlValue::ValueAsStaticStr(value) => value,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            SqlValue::ValueAsString(value) => value.clone(),
+            SqlValue::Ref(value) => format!("{:?}", value),
+            SqlValue::ValueAsStaticStr(value) => value.to_string(),
+        }
+    }
 }
 
 pub enum SqlWhereValueWrapper<'s> {
