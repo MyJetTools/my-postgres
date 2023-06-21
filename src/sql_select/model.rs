@@ -1,4 +1,4 @@
-use crate::sql_where::SqlWhereModel;
+use crate::{sql::SelectBuilder, sql_where::SqlWhereModel};
 
 use super::BulkSelectBuilder;
 
@@ -8,7 +8,7 @@ pub trait BulkSelectEntity {
 
 pub trait SelectEntity {
     fn from(row: &tokio_postgres::Row) -> Self;
-    fn fill_select_fields(sql: &mut String);
+    fn fill_select_fields(select_builder: &mut SelectBuilder);
     fn get_order_by_fields() -> Option<&'static str>;
     fn get_group_by_fields() -> Option<&'static str>;
 
@@ -20,7 +20,9 @@ pub trait SelectEntity {
         let mut params = Vec::new();
 
         sql.push_str("SELECT ");
-        Self::fill_select_fields(&mut sql);
+
+        let mut select_builder = SelectBuilder::new();
+        Self::fill_select_fields(&mut select_builder);
         sql.push_str(" FROM ");
         sql.push_str(table_name);
 

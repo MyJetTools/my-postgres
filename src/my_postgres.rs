@@ -379,7 +379,7 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgresError> {
         let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
-        let (sql, params) = sql_builder.build_sql(|sql| TEntity::fill_select_fields(sql));
+        let (sql, params) = sql_builder.build_sql::<TEntity>();
 
         let response = {
             let mut params_to_invoke = Vec::with_capacity(params.len());
