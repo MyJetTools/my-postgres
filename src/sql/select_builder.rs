@@ -1,5 +1,3 @@
-use rust_extensions::StrOrString;
-
 pub enum SelectFieldValue {
     LineNo(usize),
     Field(&'static str),
@@ -21,7 +19,7 @@ impl SelectBuilder {
         self.items.push(value)
     }
 
-    pub fn build_select_part(&self, sql: &mut String) {
+    pub fn fill_select_fields(&self, sql: &mut String) {
         let mut no = 0;
         for value in &self.items {
             if no > 0 {
