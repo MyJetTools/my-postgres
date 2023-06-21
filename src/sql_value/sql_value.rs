@@ -19,7 +19,15 @@ impl<'s> SqlValue<'s> {
     pub fn to_string(&self) -> String {
         match self {
             SqlValue::ValueAsString(value) => value.clone(),
-            SqlValue::Ref(value) => format!("{:?}", value),
+            SqlValue::Ref(value) => {
+                let result = format!("{:?}", value);
+
+                if result.starts_with('"') {
+                    return result[1..result.len() - 1].to_string();
+                }
+
+                result
+            }
             SqlValue::ValueAsStaticStr(value) => value.to_string(),
         }
     }
