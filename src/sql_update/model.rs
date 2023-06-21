@@ -1,10 +1,11 @@
-use crate::sql_where::SqlWhereModel;
-
-use super::SqlUpdateValue;
+use crate::{sql_where::SqlWhereModel, SqlUpdateValueWrapper};
 
 pub trait SqlUpdateModel<'s> {
     fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&'s self, no: usize) -> SqlUpdateValue<'s>;
+    fn get_field_value(
+        &'s self,
+        no: usize,
+    ) -> (SqlUpdateValueWrapper<'s>, Option<SqlUpdateValueWrapper>);
     fn get_fields_amount() -> usize;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
@@ -16,17 +17,36 @@ pub trait SqlUpdateModel<'s> {
             if i > 0 {
                 sql.push(',');
             }
-            let update_data = self.get_field_value(i);
 
-            sql.push_str(update_data.name);
+            let (column_name, related_column_name) = Self::get_column_name(i);
+            let (update_data, update_related_data) = self.get_field_value(i);
+
+            sql.push_str(column_name);
             sql.push_str("=");
 
-            match &update_data.value.value {
+            match &update_data.value {
                 Some(value) => {
-                    value.write(sql, params, &update_data.value.metadata);
+                    value.write(sql, params, &update_data.metadata);
                 }
                 None => {
                     sql.push_str("NULL");
+                }
+            }
+
+            if let Some(additional_column_name) = related_column_name {
+                if let Some(update_related_data) = update_related_data {
+                    sql.push(',');
+                    sql.push_str(additional_column_name);
+                    sql.push_str("=");
+
+                    match &update_related_data.value {
+                        Some(value) => {
+                            value.write(sql, params, &update_related_data.metadata);
+                        }
+                        None => {
+                            sql.push_str("NULL");
+                        }
+                    }
                 }
             }
         }
