@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use crate::{
+    sql::SqlValues,
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
     MyPostgresError, PostgresConnection,
 };
@@ -103,7 +104,7 @@ async fn create_table(
     conn_string
         .execute_sql(
             &create_table_sql,
-            &[],
+            SqlValues::empty(),
             "create_table",
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -126,11 +127,13 @@ async fn get_db_fields(
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     let result = conn_string
-        .execute_sql_as_vec(&sql, &[], "get_db_fields", |db_row| TableColumn {
-            name: db_row.get("column_name"),
-            sql_type: get_sql_type(db_row),
-            is_nullable: get_is_nullable(db_row),
-            default: None,
+        .execute_sql_as_vec(&sql, SqlValues::empty(), "get_db_fields", |db_row| {
+            TableColumn {
+                name: db_row.get("column_name"),
+                sql_type: get_sql_type(db_row),
+                is_nullable: get_is_nullable(db_row),
+                default: None,
+            }
         })
         .await?;
 
@@ -191,7 +194,7 @@ async fn add_column_to_table(
     conn_string
         .execute_sql(
             &add_column_sql,
-            &[],
+            SqlValues::empty(),
             "add_column_to_table",
             #[cfg(feature = "with-logs-and-telemetry")]
             None,

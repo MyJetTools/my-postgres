@@ -1,4 +1,5 @@
 use crate::{
+    sql::SqlValues,
     table_schema::{PrimaryKeySchema, TableSchema},
     MyPostgresError, PostgresConnection,
 };
@@ -95,7 +96,7 @@ async fn update_primary_key(
         conn_string
             .execute_sql(
                 &sql,
-                &[],
+                SqlValues::empty(),
                 "update_primary_key",
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
@@ -128,7 +129,7 @@ async fn get_primary_key_fields_from_db(
     let result = conn_string
         .execute_sql_as_vec(
             &sql,
-            &[],
+            SqlValues::empty(),
             "get_db_fields",
             |db_row| {
                 let result: String = db_row.get(0);

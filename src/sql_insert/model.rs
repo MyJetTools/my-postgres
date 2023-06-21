@@ -1,9 +1,12 @@
-use crate::sql_update::{SqlUpdateModel, SqlUpdateValue};
+use crate::{
+    sql::SqlValues,
+    sql_update::{SqlUpdateModel, SqlUpdateValue},
+};
 
 pub trait SqlInsertModel<'s> {
     fn get_fields_amount() -> usize;
     fn get_field_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&'s self, no: usize) -> SqlUpdateValue<'s>;
+    fn get_field_value(&'s self, no: usize) -> (SqlUpdateValue<'s>, Option<SqlUpdateValue>);
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;
@@ -29,14 +32,10 @@ pub trait SqlInsertModel<'s> {
         sql.push(')');
     }
 
-    fn generate_insert_fields_values(
-        &'s self,
-        sql: &mut String,
-        params: &mut Vec<crate::SqlValue<'s>>,
-    ) {
+    fn generate_insert_fields_values(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         sql.push('(');
         for field_no in 0..Self::get_fields_amount() {
-            let update_value = self.get_field_value(field_no);
+            let (update_value, update_related_data) = self.get_field_value(field_no);
 
             match &update_value.value {
                 Some(value) => {
@@ -44,7 +43,8 @@ pub trait SqlInsertModel<'s> {
                         sql.push(',');
                     }
 
-                    value.write(sql, params, &update_value.metadata);
+                    let value = value.get_value_to_update(params, &update_value.metadata);
+                    value.write(sql)
                 }
                 None => {
                     if field_no > 0 {
@@ -54,11 +54,26 @@ pub trait SqlInsertModel<'s> {
                     sql.push_str("NULL");
                 }
             }
+
+            if let Some(update_related_data) = update_related_data {
+                match &update_related_data.value {
+                    Some(value) => {
+                        sql.push(',');
+                        let value =
+                            value.get_value_to_update(params, &update_related_data.metadata);
+
+                        value.write(sql)
+                    }
+                    None => {
+                        sql.push_str(",NULL");
+                    }
+                }
+            }
         }
         sql.push(')');
     }
 
-    fn build_insert_sql(&'s self, table_name: &str) -> (String, Vec<crate::SqlValue<'s>>) {
+    fn build_insert_sql(&'s self, table_name: &str) -> (String, SqlValues<'s>) {
         if Self::get_e_tag_column_name().is_some() {
             let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
             self.set_e_tag_value(value.unix_microseconds);
@@ -66,7 +81,7 @@ pub trait SqlInsertModel<'s> {
 
         let mut sql = String::new();
 
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         sql.push_str("INSERT INTO ");
         sql.push_str(table_name);
@@ -80,7 +95,7 @@ pub trait SqlInsertModel<'s> {
     fn fill_bulk_insert_values_sql(
         models: &'s [impl SqlInsertModel<'s>],
         sql: &mut String,
-        params: &mut Vec<crate::SqlValue<'s>>,
+        params: &mut SqlValues<'s>,
     ) {
         let mut model_no = 0;
         for model in models {
@@ -100,7 +115,7 @@ pub trait SqlInsertModel<'s> {
     fn build_bulk_insert_sql(
         table_name: &str,
         models: &'s [impl SqlInsertModel<'s>],
-    ) -> (String, Vec<crate::SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         let mut result = String::new();
 
         result.push_str("INSERT INTO ");
@@ -110,7 +125,7 @@ pub trait SqlInsertModel<'s> {
 
         result.push_str(" VALUES ");
 
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         Self::fill_bulk_insert_values_sql(models, &mut result, &mut params);
 
@@ -121,7 +136,7 @@ pub trait SqlInsertModel<'s> {
         table_name: &str,
         update_conflict_type: &crate::UpdateConflictType<'s>,
         model: &'s TSqlInsertModel,
-    ) -> (String, Vec<crate::SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         let (mut sql, params) = model.build_insert_sql(table_name);
 
         update_conflict_type.generate_sql(&mut sql);
@@ -137,7 +152,7 @@ pub trait SqlInsertModel<'s> {
         table_name: &str,
         update_conflict_type: &crate::UpdateConflictType<'s>,
         insert_or_update_models: &'s [TSqlInsertModel],
-    ) -> (String, Vec<crate::SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         let (mut sql, params) = Self::build_bulk_insert_sql(table_name, insert_or_update_models);
 
         update_conflict_type.generate_sql(&mut sql);

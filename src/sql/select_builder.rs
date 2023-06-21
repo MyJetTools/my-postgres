@@ -1,5 +1,7 @@
 use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel};
 
+use super::SqlValues;
+
 pub enum SelectFieldValue {
     LineNo(usize),
     Field(&'static str),
@@ -153,9 +155,9 @@ impl SelectBuilder {
         &self,
         table_name: &str,
         where_model: Option<&'s TSqlWhereModel>,
-    ) -> (String, Vec<crate::SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         let mut sql = String::new();
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         sql.push_str("SELECT ");
 

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    sql::SqlValues,
     table_schema::{IndexSchema, TableSchema, DEFAULT_SCHEMA},
     MyPostgresError, PostgresConnection,
 };
@@ -93,7 +94,7 @@ async fn create_index(
     conn_string
         .execute_sql(
             &sql,
-            &[],
+            SqlValues::empty(),
             "create_new_index",
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -127,7 +128,7 @@ async fn update_index(
     conn_string
         .execute_sql(
             &sql,
-            &[],
+            SqlValues::empty(),
             "create_new_index",
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -161,7 +162,7 @@ async fn get_indexes_from_db(
     let result = conn_string
         .execute_sql_as_vec(
             &sql,
-            &[],
+            SqlValues::empty(),
             "get_db_fields",
             |db_row| {
                 let index_name: String = db_row.get("indexname");

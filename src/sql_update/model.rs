@@ -1,4 +1,4 @@
-use crate::sql_where::SqlWhereModel;
+use crate::{sql::SqlValues, sql_where::SqlWhereModel};
 
 use super::SqlUpdateValue;
 
@@ -11,7 +11,7 @@ pub trait SqlUpdateModel<'s> {
     fn get_e_tag_value(&self) -> Option<i64>;
     fn set_e_tag_value(&self, value: i64);
 
-    fn build_update_sql_part(&'s self, sql: &mut String, params: &mut Vec<crate::SqlValue<'s>>) {
+    fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         for i in 0..Self::get_fields_amount() {
             if i > 0 {
                 sql.push(',');
@@ -25,7 +25,8 @@ pub trait SqlUpdateModel<'s> {
 
             match &update_data.value {
                 Some(value) => {
-                    value.write(sql, params, &update_data.metadata);
+                    let value = value.get_value_to_update(params, &update_data.metadata);
+                    value.write(sql);
                 }
                 None => {
                     sql.push_str("NULL");
@@ -40,7 +41,10 @@ pub trait SqlUpdateModel<'s> {
 
                     match &update_related_data.value {
                         Some(value) => {
-                            value.write(sql, params, &update_related_data.metadata);
+                            let value =
+                                value.get_value_to_update(params, &update_related_data.metadata);
+
+                            value.write(sql)
                         }
                         None => {
                             sql.push_str("NULL");
@@ -75,14 +79,14 @@ pub trait SqlUpdateModel<'s> {
         &'s self,
         table_name: &str,
         where_model: Option<&'s impl SqlWhereModel<'s>>,
-    ) -> (String, Vec<crate::SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         let mut result = String::new();
 
         result.push_str("UPDATE ");
         result.push_str(table_name);
         result.push_str(" SET ");
 
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         self.build_update_sql_part(&mut result, &mut params);
 

@@ -1,5 +1,6 @@
 use crate::{
-    sql::SqlWhereValue, SqlUpdateValueWriter, SqlValue, SqlValueMetadata, SqlWhereValueProvider,
+    sql::{SqlValues, SqlWhereValue},
+    SqlUpdateValue, SqlUpdateValueProvider, SqlValueMetadata, SqlWhereValueProvider,
 };
 
 pub struct RawField {
@@ -9,7 +10,7 @@ pub struct RawField {
 impl<'s> SqlWhereValueProvider<'s> for RawField {
     fn get_where_value(
         &'s self,
-        _params: &mut Vec<SqlValue<'s>>,
+        _params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.value.as_str().into())
@@ -24,13 +25,12 @@ impl<'s> SqlWhereValueProvider<'s> for RawField {
     }
 }
 
-impl<'s> SqlUpdateValueWriter<'s> for RawField {
-    fn write(
+impl<'s> SqlUpdateValueProvider<'s> for RawField {
+    fn get_value_to_update(
         &'s self,
-        sql: &mut String,
-        _params: &mut Vec<SqlValue<'s>>,
+        _params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
-        sql.push_str(self.value.as_str());
+    ) -> SqlUpdateValue<'s> {
+        SqlUpdateValue::NonStringValue(self.value.as_str().into())
     }
 }

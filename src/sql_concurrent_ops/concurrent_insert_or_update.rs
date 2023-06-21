@@ -1,6 +1,6 @@
 use crate::{
-    sql_insert::SqlInsertModel, sql_update::SqlUpdateModel, sql_where::SqlWhereModel, SqlValue,
-    UpdateConflictType,
+    sql::SqlValues, sql_insert::SqlInsertModel, sql_update::SqlUpdateModel,
+    sql_where::SqlWhereModel, UpdateConflictType,
 };
 
 pub fn build_concurrent_insert_or_update<
@@ -12,7 +12,7 @@ pub fn build_concurrent_insert_or_update<
     insert_model: &'s TSqlInsertModel,
     where_model: &'s TSqlWhereModel,
     update_conflict_type: UpdateConflictType<'s>,
-) -> (String, Vec<SqlValue<'s>>) {
+) -> (String, SqlValues<'s>) {
     let (mut sql, mut params) = insert_model.build_insert_sql(table_name);
 
     update_conflict_type.generate_sql(&mut sql);

@@ -1,4 +1,7 @@
-use crate::{sql::WhereBuilder, SqlValue, SqlValueMetadata, SqlWhereValueProvider};
+use crate::{
+    sql::{SqlValues, WhereBuilder},
+    SqlValueMetadata, SqlWhereValueProvider,
+};
 
 pub struct WhereFieldData<'s> {
     pub field_name: &'static str,
@@ -15,7 +18,7 @@ pub trait SqlWhereModel<'s> {
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where_sql_part(&'s self, params: &mut Vec<SqlValue<'s>>) -> WhereBuilder {
+    fn build_where_sql_part(&'s self, params: &mut crate::sql::SqlValues<'s>) -> WhereBuilder {
         let mut no = 0;
 
         let mut result = WhereBuilder::new();
@@ -61,13 +64,13 @@ pub trait SqlWhereModel<'s> {
         }
     }
 
-    fn build_delete_sql(&'s self, table_name: &str) -> (String, Vec<SqlValue<'s>>) {
+    fn build_delete_sql(&'s self, table_name: &str) -> (String, SqlValues<'s>) {
         let mut sql = String::new();
 
         sql.push_str("DELETE FROM ");
         sql.push_str(table_name);
 
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         let where_builder = self.build_where_sql_part(&mut params);
 
@@ -80,7 +83,7 @@ pub trait SqlWhereModel<'s> {
     fn build_bulk_delete_sql(
         where_models: &'s [impl SqlWhereModel<'s>],
         table_name: &str,
-    ) -> (String, Vec<SqlValue<'s>>) {
+    ) -> (String, SqlValues<'s>) {
         if where_models.len() == 1 {
             let where_model = where_models.get(0).unwrap();
             return where_model.build_delete_sql(table_name);
@@ -90,7 +93,7 @@ pub trait SqlWhereModel<'s> {
         sql.push_str("DELETE FROM ");
         sql.push_str(table_name);
         sql.push_str(" WHERE ");
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
         let mut no = 0;
         for where_model in where_models {
             let where_builder = where_model.build_where_sql_part(&mut params);

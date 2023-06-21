@@ -22,7 +22,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{MyPostgresError, PostgresSettings, SqlValue};
+use crate::{sql::SqlValues, MyPostgresError, PostgresSettings, SqlValue};
 
 pub struct PostgresConnectionInstance {
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
@@ -74,10 +74,10 @@ impl PostgresConnectionInstance {
         self.connected.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    pub async fn execute_sql(
+    pub async fn execute_sql<'s>(
         &self,
         sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        params: &'s SqlValues<'s>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -89,7 +89,9 @@ impl PostgresConnectionInstance {
 
         let connection_access = connection_access.as_ref().unwrap();
 
-        let execution = connection_access.execute(sql, params);
+        let params = params.get_values_to_invoke();
+
+        let execution = connection_access.execute(sql, params.as_slice());
 
         if std::env::var("DEBUG").is_ok() {
             println!("SQL: {}", sql);
@@ -171,10 +173,10 @@ impl PostgresConnectionInstance {
         self.handle_error(result)
     }
 
-    pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
+    pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        params: &SqlValues<'s>,
         process_name: &str,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
@@ -194,7 +196,8 @@ impl PostgresConnectionInstance {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let execution = connection_access.query(sql, params);
+        let params = params.get_values_to_invoke();
+        let execution = connection_access.query(sql, params.as_slice());
 
         let result = execute_with_timeout(
             process_name,

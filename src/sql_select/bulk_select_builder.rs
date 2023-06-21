@@ -1,4 +1,7 @@
-use crate::{sql::SelectBuilder, sql_where::SqlWhereModel, SqlValue};
+use crate::{
+    sql::{SelectBuilder, SqlValues},
+    sql_where::SqlWhereModel,
+};
 
 use super::SelectEntity;
 
@@ -15,9 +18,9 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
         }
     }
 
-    pub fn build_sql<TSelectEntity: SelectEntity>(&'s self) -> (String, Vec<SqlValue<'s>>) {
+    pub fn build_sql<TSelectEntity: SelectEntity>(&'s self) -> (String, SqlValues<'s>) {
         let mut sql = String::new();
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
 
         let mut line_no = 0;
 

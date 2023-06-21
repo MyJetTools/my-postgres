@@ -1,11 +1,11 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{sql::SqlWhereValue, SqlValue, SqlValueMetadata};
+use crate::{sql::SqlWhereValue, SqlValueMetadata};
 
 pub trait SqlWhereValueProvider<'s> {
     fn get_where_value(
         &'s self,
-        params: &mut Vec<SqlValue<'s>>,
+        params: &mut crate::sql::SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s>;
 
@@ -17,11 +17,11 @@ pub trait SqlWhereValueProvider<'s> {
 impl<'s> SqlWhereValueProvider<'s> for String {
     fn get_where_value(
         &'s self,
-        params: &mut Vec<SqlValue<'s>>,
+        params: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
-        params.push(SqlValue::Ref(self));
-        SqlWhereValue::Index(params.len())
+        let index = params.push(self);
+        SqlWhereValue::Index(index)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -36,11 +36,12 @@ impl<'s> SqlWhereValueProvider<'s> for String {
 impl<'s> SqlWhereValueProvider<'s> for &'s str {
     fn get_where_value(
         &'s self,
-        params: &mut Vec<SqlValue<'s>>,
+        params: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
-        params.push(SqlValue::Ref(self));
-        SqlWhereValue::Index(params.len())
+        let src = *self;
+        let index = params.push(src);
+        SqlWhereValue::Index(index)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -55,7 +56,7 @@ impl<'s> SqlWhereValueProvider<'s> for &'s str {
 impl<'s> SqlWhereValueProvider<'s> for DateTimeAsMicroseconds {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         if let Some(metadata) = &metadata {
@@ -89,7 +90,7 @@ impl<'s> SqlWhereValueProvider<'s> for DateTimeAsMicroseconds {
 impl<'s> SqlWhereValueProvider<'s> for bool {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         match self {
@@ -110,7 +111,7 @@ impl<'s> SqlWhereValueProvider<'s> for bool {
 impl<'s> SqlWhereValueProvider<'s> for u8 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -128,7 +129,7 @@ impl<'s> SqlWhereValueProvider<'s> for u8 {
 impl<'s> SqlWhereValueProvider<'s> for i8 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -145,7 +146,7 @@ impl<'s> SqlWhereValueProvider<'s> for i8 {
 impl<'s> SqlWhereValueProvider<'s> for u16 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -163,7 +164,7 @@ impl<'s> SqlWhereValueProvider<'s> for u16 {
 impl<'s> SqlWhereValueProvider<'s> for f32 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -181,7 +182,7 @@ impl<'s> SqlWhereValueProvider<'s> for f32 {
 impl<'s> SqlWhereValueProvider<'s> for f64 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -198,7 +199,7 @@ impl<'s> SqlWhereValueProvider<'s> for f64 {
 impl<'s> SqlWhereValueProvider<'s> for i16 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -215,7 +216,7 @@ impl<'s> SqlWhereValueProvider<'s> for i16 {
 impl<'s> SqlWhereValueProvider<'s> for u32 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -233,7 +234,7 @@ impl<'s> SqlWhereValueProvider<'s> for u32 {
 impl<'s> SqlWhereValueProvider<'s> for i32 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -251,7 +252,7 @@ impl<'s> SqlWhereValueProvider<'s> for i32 {
 impl<'s> SqlWhereValueProvider<'s> for u64 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -269,7 +270,7 @@ impl<'s> SqlWhereValueProvider<'s> for u64 {
 impl<'s> SqlWhereValueProvider<'s> for i64 {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         SqlWhereValue::NonStringValue(self.to_string().into())
@@ -287,7 +288,7 @@ impl<'s> SqlWhereValueProvider<'s> for i64 {
 impl<'s> SqlWhereValueProvider<'s> for tokio_postgres::types::IsNull {
     fn get_where_value(
         &'s self,
-        _: &mut Vec<SqlValue<'s>>,
+        _: &mut crate::sql::SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         match self {
@@ -312,7 +313,7 @@ impl<'s> SqlWhereValueProvider<'s> for tokio_postgres::types::IsNull {
 impl<'s, T: SqlWhereValueProvider<'s>> SqlWhereValueProvider<'s> for Vec<T> {
     fn get_where_value(
         &'s self,
-        params: &mut Vec<SqlValue<'s>>,
+        params: &mut crate::sql::SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue<'s> {
         if self.len() == 1 {

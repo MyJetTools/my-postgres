@@ -7,7 +7,8 @@ use rust_extensions::Logger;
 use tokio_postgres::Row;
 
 use crate::{
-    ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings, SqlValue,
+    sql::SqlValues, ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
+    SqlValue,
 };
 
 pub enum PostgresConnection {
@@ -49,10 +50,10 @@ impl PostgresConnection {
             logger,
         ))
     }
-    pub async fn execute_sql(
+    pub async fn execute_sql<'s>(
         &self,
         sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        params: &'s SqlValues<'s>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -116,10 +117,10 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
+    pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+        params: &SqlValues<'s>,
         process_name: &str,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,

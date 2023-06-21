@@ -8,7 +8,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    sql::SelectBuilder,
+    sql::{SelectBuilder, SqlValues},
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
@@ -134,7 +134,7 @@ impl MyPostgres {
     ) -> Result<Option<TResult>, MyPostgresError> {
         let mut sql = String::new();
 
-        let mut params = Vec::new();
+        let mut params = SqlValues::new();
         sql.push_str("SELECT COUNT(*)::");
         sql.push_str(TResult::get_postgres_type());
 
@@ -149,17 +149,11 @@ impl MyPostgres {
         }
         where_model.fill_limit_and_offset(&mut sql);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         let mut result = self
             .connection
             .execute_sql_as_vec(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 sql.as_str(),
                 |row| TResult::from_db_row(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -187,17 +181,11 @@ impl MyPostgres {
 
         let (sql, params) = select_builder.build_select_sql(table_name, where_model);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         let mut result = self
             .connection
             .execute_sql_as_vec(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 sql.as_str(),
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -230,17 +218,11 @@ impl MyPostgres {
 
         post_processing(&mut sql);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         let mut result = self
             .connection
             .execute_sql_as_vec(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 sql.as_str(),
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -265,7 +247,7 @@ impl MyPostgres {
         let params = if let Some(params) = params {
             params
         } else {
-            &[]
+            SqlValues::empty()
         };
 
         self.connection
@@ -292,7 +274,7 @@ impl MyPostgres {
         let params = if let Some(params) = params {
             params
         } else {
-            &[]
+            SqlValues::empty()
         };
 
         self.connection
@@ -321,16 +303,10 @@ impl MyPostgres {
 
         let (sql, params) = select_builder.build_select_sql(table_name, where_model);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql_as_vec(
                 sql.as_str(),
-                params_to_invoke.as_slice(),
+                &params,
                 sql.as_str(),
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -357,16 +333,10 @@ impl MyPostgres {
 
         post_processing(&mut sql);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql_as_vec(
                 sql.as_str(),
-                params_to_invoke.as_slice(),
+                &params,
                 sql.as_str(),
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -391,16 +361,10 @@ impl MyPostgres {
         let (sql, params) = sql_builder.build_sql::<TEntity>();
 
         let response = {
-            let mut params_to_invoke = Vec::with_capacity(params.len());
-
-            for param in &params {
-                params_to_invoke.push(param.get_value());
-            }
-
             self.connection
                 .execute_sql_as_vec(
                     sql.as_str(),
-                    &params_to_invoke,
+                    &params,
                     process_name.as_str(),
                     |row| TEntity::from(row),
                     #[cfg(feature = "with-logs-and-telemetry")]
@@ -438,16 +402,10 @@ impl MyPostgres {
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -468,16 +426,10 @@ impl MyPostgres {
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -497,16 +449,10 @@ impl MyPostgres {
 
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -531,16 +477,10 @@ impl MyPostgres {
             table_name
         );
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -559,16 +499,10 @@ impl MyPostgres {
         let (sql, params) = entity.build_update_sql(table_name, Some(entity));
         let process_name = format!("update_db_entity into table {}", table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -597,16 +531,10 @@ impl MyPostgres {
         let (sql, params) =
             TEntity::build_bulk_insert_or_update_sql(table_name, &update_conflict_type, entities);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 &sql,
-                params_to_invoke.as_slice(),
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -631,16 +559,10 @@ impl MyPostgres {
         let (sql, params) =
             TEntity::build_insert_or_update_sql(table_name, &update_conflict_type, entity);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 process_name.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -658,16 +580,10 @@ impl MyPostgres {
     ) -> Result<(), MyPostgresError> {
         let (sql, params) = where_model.build_delete_sql(table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                params_to_invoke.as_slice(),
+                &params,
                 sql.as_str(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -688,16 +604,10 @@ impl MyPostgres {
 
         let (sql, params) = TEntity::build_bulk_delete_sql(entities, table_name);
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 &process_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -727,16 +637,10 @@ impl MyPostgres {
             update_conflict_type,
         );
 
-        let mut params_to_invoke = Vec::with_capacity(params.len());
-
-        for param in &params {
-            params_to_invoke.push(param.get_value());
-        }
-
         self.connection
             .execute_sql(
                 sql.as_str(),
-                &params_to_invoke,
+                &params,
                 &process_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
