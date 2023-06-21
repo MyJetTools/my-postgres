@@ -9,6 +9,13 @@ pub enum SqlWhereValue<'s> {
 }
 
 impl<'s> SqlWhereValue<'s> {
+    pub fn unwrap_is_index(&self) -> usize {
+        match self {
+            SqlWhereValue::Index(index) => *index,
+            _ => panic!("unwrap_is_index"),
+        }
+    }
+
     pub fn push_value(&self, sql: &mut String) -> bool {
         match &self {
             SqlWhereValue::Index(index_value) => {
