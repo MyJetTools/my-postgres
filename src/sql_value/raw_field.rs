@@ -11,8 +11,11 @@ impl<'s> SqlWhereValueProvider<'s> for RawField {
         &'s self,
         _params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.value.as_str().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (
+            SqlWhereValue::NonStringValue(self.value.as_str().into()),
+            None,
+        )
     }
 
     fn get_default_operator(&self) -> &'static str {

@@ -7,7 +7,7 @@ pub trait SqlWhereValueProvider<'s> {
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue<'s>;
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>);
 
     fn get_default_operator(&self) -> &'static str;
 
@@ -19,9 +19,9 @@ impl<'s> SqlWhereValueProvider<'s> for String {
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         params.push(SqlValue::Ref(self));
-        SqlWhereValue::Index(params.len())
+        (SqlWhereValue::Index(params.len()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -38,9 +38,9 @@ impl<'s> SqlWhereValueProvider<'s> for &'s str {
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         params.push(SqlValue::Ref(self));
-        SqlWhereValue::Index(params.len())
+        (SqlWhereValue::Index(params.len()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -57,17 +57,18 @@ impl<'s> SqlWhereValueProvider<'s> for DateTimeAsMicroseconds {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         if let Some(metadata) = &metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "bigint" {
-                    return SqlWhereValue::NonStringValue(
-                        self.unix_microseconds.to_string().into(),
+                    return (
+                        SqlWhereValue::NonStringValue(self.unix_microseconds.to_string().into()),
+                        None,
                     );
                 }
 
                 if sql_type == "timestamp" {
-                    return SqlWhereValue::StringValue(self.to_rfc3339().into());
+                    return (SqlWhereValue::StringValue(self.to_rfc3339().into()), None);
                 }
 
                 panic!("Unknown sql type: {}", sql_type);
@@ -91,10 +92,10 @@ impl<'s> SqlWhereValueProvider<'s> for bool {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         match self {
-            true => SqlWhereValue::NonStringValue("true".into()),
-            false => SqlWhereValue::NonStringValue("false".into()),
+            true => (SqlWhereValue::NonStringValue("true".into()), None),
+            false => (SqlWhereValue::NonStringValue("false".into()), None),
         }
     }
 
@@ -112,8 +113,8 @@ impl<'s> SqlWhereValueProvider<'s> for u8 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -130,8 +131,8 @@ impl<'s> SqlWhereValueProvider<'s> for i8 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
     fn get_default_operator(&self) -> &'static str {
         "="
@@ -147,8 +148,8 @@ impl<'s> SqlWhereValueProvider<'s> for u16 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -165,8 +166,8 @@ impl<'s> SqlWhereValueProvider<'s> for f32 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -183,8 +184,8 @@ impl<'s> SqlWhereValueProvider<'s> for f64 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -200,8 +201,8 @@ impl<'s> SqlWhereValueProvider<'s> for i16 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
     fn get_default_operator(&self) -> &'static str {
         "="
@@ -217,8 +218,8 @@ impl<'s> SqlWhereValueProvider<'s> for u32 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -235,8 +236,8 @@ impl<'s> SqlWhereValueProvider<'s> for i32 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -253,8 +254,8 @@ impl<'s> SqlWhereValueProvider<'s> for u64 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -271,8 +272,8 @@ impl<'s> SqlWhereValueProvider<'s> for i64 {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
+        (SqlWhereValue::NonStringValue(self.to_string().into()), None)
     }
 
     fn get_default_operator(&self) -> &'static str {
@@ -289,13 +290,13 @@ impl<'s> SqlWhereValueProvider<'s> for tokio_postgres::types::IsNull {
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         match self {
             tokio_postgres::types::IsNull::Yes => {
-                return SqlWhereValue::NonStringValue("NULL".into());
+                return (SqlWhereValue::NonStringValue("NULL".into()), None);
             }
             tokio_postgres::types::IsNull::No => {
-                return SqlWhereValue::NonStringValue("NOT NULL".into());
+                return (SqlWhereValue::NonStringValue("NOT NULL".into()), None);
             }
         }
     }
@@ -314,7 +315,7 @@ impl<'s, T: SqlWhereValueProvider<'s>> SqlWhereValueProvider<'s> for Vec<T> {
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
+    ) -> (SqlWhereValue<'s>, Option<SqlWhereValue<'s>>) {
         if self.len() == 1 {
             return self.get(0).unwrap().get_where_value(params, metadata);
         }
@@ -323,13 +324,13 @@ impl<'s, T: SqlWhereValueProvider<'s>> SqlWhereValueProvider<'s> for Vec<T> {
             let mut result = Vec::with_capacity(self.len());
             for itm in self {
                 let item = itm.get_where_value(params, metadata);
-                result.push(item);
+                result.push(item.0);
             }
 
-            return SqlWhereValue::VecOfValues(Box::new(result));
+            return (SqlWhereValue::VecOfValues(Box::new(result)), None);
         }
 
-        SqlWhereValue::None
+        (SqlWhereValue::None, None)
     }
 
     fn get_default_operator(&self) -> &'static str {
