@@ -1,8 +1,11 @@
 use rust_extensions::StrOrString;
 
-pub struct SelectFieldValue {
-    pub value: StrOrString<'static>,
-    pub alias: Option<StrOrString<'static>>,
+pub enum SelectFieldValue {
+    LineNo(usize),
+    Field(&'static str),
+    Json(&'static str),
+    DateTimeAsBigint(&'static str),
+    DateTimeAsTimestamp(&'static str),
 }
 
 pub struct SelectBuilder {
@@ -14,29 +17,40 @@ impl SelectBuilder {
         Self { items: Vec::new() }
     }
 
-    pub fn push(&mut self, value: StrOrString<'static>, alias: Option<StrOrString<'static>>) {
-        self.items.push(SelectFieldValue { value, alias })
-    }
-
-    pub fn push_json(&mut self, field_name: &'static str) {
-        self.items.push(SelectFieldValue {
-            value: format!("{}>> '{}'", field_name, "{}").into(),
-            alias: Some(field_name.into()),
-        })
+    pub fn push(&mut self, value: SelectFieldValue) {
+        self.items.push(value)
     }
 
     pub fn build_select_part(&self, sql: &mut String) {
         let mut no = 0;
-        for item in &self.items {
+        for value in &self.items {
             if no > 0 {
                 sql.push_str(",");
             }
 
-            sql.push_str(item.value.as_str());
-
-            if let Some(alias) = item.alias.as_ref() {
-                sql.push_str(" as ");
-                sql.push_str(alias.as_str());
+            match value {
+                SelectFieldValue::Field(field_name) => {
+                    sql.push_str(field_name);
+                }
+                SelectFieldValue::Json(field_name) => {
+                    sql.push_str(field_name);
+                    sql.push_str(" #>> '{}' as \"");
+                    sql.push_str(field_name);
+                    sql.push('"');
+                }
+                SelectFieldValue::DateTimeAsTimestamp(field_name) => {
+                    sql.push_str("(extract(EPOCH FROM ");
+                    sql.push_str(field_name);
+                    sql.push_str(") * 1000000)::bigint as \"");
+                    sql.push_str(field_name);
+                    sql.push('"');
+                }
+                SelectFieldValue::DateTimeAsBigint(field_name) => {
+                    sql.push_str(field_name);
+                }
+                SelectFieldValue::LineNo(line_no) => {
+                    sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
+                }
             }
 
             no += 1;

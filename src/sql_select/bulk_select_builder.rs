@@ -29,7 +29,7 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
 
             sql.push_str("SELECT ");
 
-            select_builder.push(format!("{}::int", line_no).into(), Some("line_no".into()));
+            select_builder.push(crate::sql::SelectFieldValue::LineNo(line_no));
 
             TSelectEntity::fill_select_fields(&mut select_builder);
 

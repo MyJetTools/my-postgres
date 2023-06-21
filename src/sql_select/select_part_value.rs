@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{sql::SelectBuilder, SqlValueMetadata};
+use crate::{
+    sql::{SelectBuilder, SelectFieldValue},
+    SqlValueMetadata,
+};
 
 pub trait SelectValueProvider {
     fn fill_select_part(
@@ -18,7 +21,7 @@ impl SelectValueProvider for String {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -28,7 +31,7 @@ impl<'s> SelectValueProvider for &'s str {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -38,7 +41,7 @@ impl SelectValueProvider for usize {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -48,7 +51,7 @@ impl SelectValueProvider for i64 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -58,7 +61,7 @@ impl SelectValueProvider for u64 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -68,7 +71,7 @@ impl SelectValueProvider for i32 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -78,7 +81,7 @@ impl SelectValueProvider for u32 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -88,7 +91,7 @@ impl SelectValueProvider for i16 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -98,7 +101,7 @@ impl SelectValueProvider for u16 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -108,7 +111,7 @@ impl SelectValueProvider for i8 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -118,7 +121,7 @@ impl SelectValueProvider for u8 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -128,7 +131,7 @@ impl SelectValueProvider for f64 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -138,7 +141,7 @@ impl SelectValueProvider for f32 {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -148,7 +151,7 @@ impl SelectValueProvider for bool {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(field_name.into(), None);
+        sql.push(SelectFieldValue::Field(field_name));
     }
 }
 
@@ -158,7 +161,7 @@ impl<T> SelectValueProvider for Vec<T> {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push_json(field_name);
+        sql.push(SelectFieldValue::Json(field_name));
     }
 }
 
@@ -168,7 +171,7 @@ impl<TKey, TValue> SelectValueProvider for HashMap<TKey, TValue> {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push_json(field_name);
+        sql.push(SelectFieldValue::Json(field_name));
     }
 }
 
@@ -181,15 +184,13 @@ impl SelectValueProvider for DateTimeAsMicroseconds {
         if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "timestamp" {
-                    sql.push(
-                        format!("(extract(EPOCH FROM {}) * 1000000)::bigint", field_name).into(),
-                        Some(field_name.into()),
-                    );
+                    sql.push(SelectFieldValue::DateTimeAsTimestamp(field_name));
                     return;
                 }
 
                 if sql_type == "bigint" {
-                    sql.push(field_name.into(), None);
+                    sql.push(SelectFieldValue::DateTimeAsBigint(field_name));
+
                     return;
                 }
 
