@@ -1,18 +1,18 @@
 use crate::{
-    sql::SqlWhereValue, SqlUpdateValueWriter, SqlValue, SqlValueMetadata, SqlWhereValueWriter,
+    sql::SqlWhereValue, SqlUpdateValueWriter, SqlValue, SqlValueMetadata, SqlWhereValueProvider,
 };
 
 pub struct RawField {
     pub value: String,
 }
 
-impl<'s> SqlWhereValueWriter<'s> for RawField {
+impl<'s> SqlWhereValueProvider<'s> for RawField {
     fn get_where_value(
         &'s self,
         _params: &mut Vec<SqlValue<'s>>,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.value.to_string().into())
+        SqlWhereValue::NonStringValue(self.value.as_str().into())
     }
 
     fn get_default_operator(&self) -> &'static str {

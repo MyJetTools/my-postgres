@@ -1,10 +1,10 @@
-use crate::{sql::WhereBuilder, SqlValue, SqlValueMetadata, SqlWhereValueWriter};
+use crate::{sql::WhereBuilder, SqlValue, SqlValueMetadata, SqlWhereValueProvider};
 
 pub struct WhereFieldData<'s> {
     pub field_name: &'static str,
     pub op: Option<&'static str>,
     pub ignore_if_none: bool,
-    pub value: Option<&'s dyn SqlWhereValueWriter<'s>>,
+    pub value: Option<&'s dyn SqlWhereValueProvider<'s>>,
     pub meta_data: Option<SqlValueMetadata>,
 }
 

@@ -2,7 +2,7 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{sql::SqlWhereValue, SqlValue, SqlValueMetadata};
 
-pub trait SqlWhereValueWriter<'s> {
+pub trait SqlWhereValueProvider<'s> {
     fn get_where_value(
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
@@ -14,7 +14,7 @@ pub trait SqlWhereValueWriter<'s> {
     fn is_none(&self) -> bool;
 }
 
-impl<'s> SqlWhereValueWriter<'s> for String {
+impl<'s> SqlWhereValueProvider<'s> for String {
     fn get_where_value(
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
@@ -33,7 +33,7 @@ impl<'s> SqlWhereValueWriter<'s> for String {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for &'s str {
+impl<'s> SqlWhereValueProvider<'s> for &'s str {
     fn get_where_value(
         &'s self,
         params: &mut Vec<SqlValue<'s>>,
@@ -52,7 +52,7 @@ impl<'s> SqlWhereValueWriter<'s> for &'s str {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
+impl<'s> SqlWhereValueProvider<'s> for DateTimeAsMicroseconds {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -86,7 +86,7 @@ impl<'s> SqlWhereValueWriter<'s> for DateTimeAsMicroseconds {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for bool {
+impl<'s> SqlWhereValueProvider<'s> for bool {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -107,7 +107,7 @@ impl<'s> SqlWhereValueWriter<'s> for bool {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u8 {
+impl<'s> SqlWhereValueProvider<'s> for u8 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -125,7 +125,7 @@ impl<'s> SqlWhereValueWriter<'s> for u8 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i8 {
+impl<'s> SqlWhereValueProvider<'s> for i8 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -142,25 +142,7 @@ impl<'s> SqlWhereValueWriter<'s> for i8 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u16 {
-    fn get_where_value(
-        &'s self,
-        _: &mut Vec<SqlValue<'s>>,
-        _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
-    }
-
-    fn get_default_operator(&self) -> &'static str {
-        "="
-    }
-
-    fn is_none(&self) -> bool {
-        false
-    }
-}
-
-impl<'s> SqlWhereValueWriter<'s> for f32 {
+impl<'s> SqlWhereValueProvider<'s> for u16 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -178,41 +160,7 @@ impl<'s> SqlWhereValueWriter<'s> for f32 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for f64 {
-    fn get_where_value(
-        &'s self,
-        _: &mut Vec<SqlValue<'s>>,
-        _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
-    }
-
-    fn get_default_operator(&self) -> &'static str {
-        "="
-    }
-    fn is_none(&self) -> bool {
-        false
-    }
-}
-
-impl<'s> SqlWhereValueWriter<'s> for i16 {
-    fn get_where_value(
-        &'s self,
-        _: &mut Vec<SqlValue<'s>>,
-        _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.to_string().into())
-    }
-    fn get_default_operator(&self) -> &'static str {
-        "="
-    }
-
-    fn is_none(&self) -> bool {
-        false
-    }
-}
-
-impl<'s> SqlWhereValueWriter<'s> for u32 {
+impl<'s> SqlWhereValueProvider<'s> for f32 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -230,7 +178,41 @@ impl<'s> SqlWhereValueWriter<'s> for u32 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i32 {
+impl<'s> SqlWhereValueProvider<'s> for f64 {
+    fn get_where_value(
+        &'s self,
+        _: &mut Vec<SqlValue<'s>>,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
+    }
+
+    fn get_default_operator(&self) -> &'static str {
+        "="
+    }
+    fn is_none(&self) -> bool {
+        false
+    }
+}
+
+impl<'s> SqlWhereValueProvider<'s> for i16 {
+    fn get_where_value(
+        &'s self,
+        _: &mut Vec<SqlValue<'s>>,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
+    }
+    fn get_default_operator(&self) -> &'static str {
+        "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
+    }
+}
+
+impl<'s> SqlWhereValueProvider<'s> for u32 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -248,7 +230,7 @@ impl<'s> SqlWhereValueWriter<'s> for i32 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for u64 {
+impl<'s> SqlWhereValueProvider<'s> for i32 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -266,7 +248,7 @@ impl<'s> SqlWhereValueWriter<'s> for u64 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for i64 {
+impl<'s> SqlWhereValueProvider<'s> for u64 {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -284,7 +266,25 @@ impl<'s> SqlWhereValueWriter<'s> for i64 {
     }
 }
 
-impl<'s> SqlWhereValueWriter<'s> for tokio_postgres::types::IsNull {
+impl<'s> SqlWhereValueProvider<'s> for i64 {
+    fn get_where_value(
+        &'s self,
+        _: &mut Vec<SqlValue<'s>>,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> SqlWhereValue {
+        SqlWhereValue::NonStringValue(self.to_string().into())
+    }
+
+    fn get_default_operator(&self) -> &'static str {
+        "="
+    }
+
+    fn is_none(&self) -> bool {
+        false
+    }
+}
+
+impl<'s> SqlWhereValueProvider<'s> for tokio_postgres::types::IsNull {
     fn get_where_value(
         &'s self,
         _: &mut Vec<SqlValue<'s>>,
@@ -309,7 +309,7 @@ impl<'s> SqlWhereValueWriter<'s> for tokio_postgres::types::IsNull {
     }
 }
 
-impl<'s, T: SqlWhereValueWriter<'s>> SqlWhereValueWriter<'s> for Vec<T> {
+impl<'s, T: SqlWhereValueProvider<'s>> SqlWhereValueProvider<'s> for Vec<T> {
     fn get_where_value(
         &'s self,
         params: &mut Vec<SqlValue<'s>>,

@@ -1,5 +1,3 @@
-use crate::{SqlValueMetadata, SqlWhereValueWriter};
-
 #[derive(Debug)]
 pub enum SqlValue<'s> {
     ValueAsString(String),
@@ -31,13 +29,4 @@ impl<'s> SqlValue<'s> {
             SqlValue::ValueAsStaticStr(value) => value.to_string(),
         }
     }
-}
-
-pub enum SqlWhereValueWrapper<'s> {
-    Ignore,
-    Null,
-    Value {
-        metadata: Option<SqlValueMetadata>,
-        value: &'s dyn SqlWhereValueWriter<'s>,
-    },
 }
