@@ -1,5 +1,6 @@
 use rust_extensions::StrOrString;
 
+#[derive(Debug)]
 pub enum SqlWhereValue<'s> {
     None,
     Index(usize),
@@ -19,14 +20,22 @@ impl<'s> SqlWhereValue<'s> {
     pub fn unwrap_as_non_string_value(&self) -> &StrOrString<'s> {
         match self {
             SqlWhereValue::NonStringValue(value) => value,
-            _ => panic!("unwrap_is_index"),
+            SqlWhereValue::None => panic!("Type is None"),
+            SqlWhereValue::Index(value) => panic!("Type is Index: {:?}", value),
+            SqlWhereValue::StringValue(value) => panic!("Type is StringValue: {}", value.as_str()),
+            SqlWhereValue::VecOfValues(value) => panic!("Type is VecOfValues: {:?}", value),
         }
     }
 
     pub fn unwrap_as_string_value(&self) -> &StrOrString<'s> {
         match self {
             SqlWhereValue::StringValue(value) => value,
-            _ => panic!("unwrap_is_index"),
+            SqlWhereValue::NonStringValue(value) => {
+                panic!("Type is NonStringValue: {}", value.as_str())
+            }
+            SqlWhereValue::None => panic!("Type is None"),
+            SqlWhereValue::Index(value) => panic!("Type is Index: {:?}", value),
+            SqlWhereValue::VecOfValues(value) => panic!("Type is VecOfValues: {:?}", value),
         }
     }
 
