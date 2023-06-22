@@ -1,28 +1,28 @@
 use rust_extensions::StrOrString;
 
-pub enum SqlUpdateBuilderValue<'s> {
+pub enum SqlUpdateValue<'s> {
     Index(usize),
     StringValue(StrOrString<'s>),
     NonStringValue(StrOrString<'s>),
     Json(usize),
 }
 
-impl<'s> SqlUpdateBuilderValue<'s> {
+impl<'s> SqlUpdateValue<'s> {
     pub fn write(&self, sql: &mut String) {
         match self {
-            SqlUpdateBuilderValue::Index(index) => {
+            SqlUpdateValue::Index(index) => {
                 sql.push_str("$");
                 sql.push_str(index.to_string().as_str());
             }
-            SqlUpdateBuilderValue::StringValue(value) => {
+            SqlUpdateValue::StringValue(value) => {
                 sql.push_str("'");
                 sql.push_str(value.as_str());
                 sql.push_str("'");
             }
-            SqlUpdateBuilderValue::NonStringValue(value) => {
+            SqlUpdateValue::NonStringValue(value) => {
                 sql.push_str(value.as_str());
             }
-            SqlUpdateBuilderValue::Json(index) => {
+            SqlUpdateValue::Json(index) => {
                 sql.push_str("cast($");
                 sql.push_str(index.to_string().as_str());
                 sql.push_str("::text as json)");
