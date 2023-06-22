@@ -11,7 +11,7 @@ pub trait SqlUpdateModel<'s> {
     fn get_e_tag_value(&self) -> Option<i64>;
     fn set_e_tag_value(&self, value: i64);
 
-    fn build_columns_part(sql: &mut String) {
+    fn fill_update_columns(sql: &mut String) {
         let amount = Self::get_fields_amount();
 
         if amount == 1 {
@@ -56,6 +56,8 @@ pub trait SqlUpdateModel<'s> {
     }
 
     fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
+        Self::fill_update_columns(sql);
+        sql.push('=');
         for i in 0..Self::get_fields_amount() {
             if i > 0 {
                 sql.push(',');
