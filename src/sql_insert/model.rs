@@ -49,9 +49,9 @@ pub trait SqlInsertModel<'s> {
                 None => {
                     let (_, related_column_name) = Self::get_column_name(field_no);
                     if related_column_name.is_none() {
-                        sql.push_str(format!("{}NULL", field_no).as_str());
+                        sql.push_str("NULL");
                     } else {
-                        sql.push_str(format!("{}NULL,NULL", field_no).as_str());
+                        sql.push_str("NULL,NULL");
                     }
                 }
             }
