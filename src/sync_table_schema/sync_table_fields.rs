@@ -141,7 +141,7 @@ async fn get_db_fields(
     let result = conn_string
         .execute_sql_as_vec(
             &sql,
-            &[],
+            SqlValues::empty(),
             "get_db_fields",
             |db_row| TableColumn {
                 name: db_row.get("column_name"),
