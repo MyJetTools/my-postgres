@@ -143,4 +143,15 @@ impl<'s> SqlValues<'s> {
     pub fn empty() -> &'static SqlValues<'s> {
         &EMPTY
     }
+
+    pub fn len(&self) -> usize {
+        match self {
+            SqlValues::Values(values) => {
+                return values.len();
+            }
+            SqlValues::Empty => {
+                return 0;
+            }
+        }
+    }
 }
