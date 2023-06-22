@@ -58,7 +58,21 @@ pub trait SqlUpdateModel<'s> {
     fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         Self::fill_update_columns(sql);
         sql.push('=');
-        for i in 0..Self::get_fields_amount() {
+
+        let fields_amount = Self::get_fields_amount();
+
+        let need_parentheses = if fields_amount == 1 {
+            let columns = Self::get_column_name(0);
+            columns.1.is_some()
+        } else {
+            true
+        };
+
+        if need_parentheses {
+            sql.push('(');
+        }
+
+        for i in 0..fields_amount {
             if i > 0 {
                 sql.push(',');
             }
@@ -79,6 +93,10 @@ pub trait SqlUpdateModel<'s> {
                     }
                 }
             }
+        }
+
+        if need_parentheses {
+            sql.push(')');
         }
     }
 
