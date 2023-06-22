@@ -43,10 +43,6 @@ pub trait SqlInsertModel<'s> {
 
             match &update_value.value {
                 Some(value) => {
-                    if field_no > 0 {
-                        sql.push(',');
-                    }
-
                     let value = value.get_update_value(params, &update_value.metadata);
                     value.write(sql)
                 }
