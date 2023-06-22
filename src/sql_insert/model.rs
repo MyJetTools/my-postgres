@@ -5,11 +5,8 @@ use crate::{
 
 pub trait SqlInsertModel<'s> {
     fn get_fields_amount() -> usize;
-    fn get_field_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(
-        &'s self,
-        no: usize,
-    ) -> (SqlUpdateModelValue<'s>, Option<SqlUpdateModelValue>);
+    fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
+    fn get_field_value(&'s self, no: usize) -> SqlUpdateModelValue<'s>;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;
@@ -23,7 +20,7 @@ pub trait SqlInsertModel<'s> {
                 sql.push(',');
             }
             no += 1;
-            let (field_name, additional_field_name) = Self::get_field_name(field_no);
+            let (field_name, additional_field_name) = Self::get_column_name(field_no);
             sql.push_str(field_name);
             if let Some(additional_field_name) = additional_field_name {
                 sql.push(',');
@@ -38,7 +35,11 @@ pub trait SqlInsertModel<'s> {
     fn generate_insert_fields_values(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         sql.push('(');
         for field_no in 0..Self::get_fields_amount() {
-            let (update_value, update_related_data) = self.get_field_value(field_no);
+            let update_value = self.get_field_value(field_no);
+
+            if field_no > 0 {
+                sql.push(',');
+            }
 
             match &update_value.value {
                 Some(value) => {
@@ -50,24 +51,11 @@ pub trait SqlInsertModel<'s> {
                     value.write(sql)
                 }
                 None => {
-                    if field_no > 0 {
-                        sql.push(',');
-                    }
-
-                    sql.push_str("NULL");
-                }
-            }
-
-            if let Some(update_related_data) = update_related_data {
-                match &update_related_data.value {
-                    Some(value) => {
-                        sql.push(',');
-                        let value = value.get_update_value(params, &update_related_data.metadata);
-
-                        value.write(sql)
-                    }
-                    None => {
-                        sql.push_str(",NULL");
+                    let (_, related_column_name) = Self::get_column_name(field_no);
+                    if related_column_name.is_some() {
+                        sql.push_str("NULL");
+                    } else {
+                        sql.push_str("NULL,NULL");
                     }
                 }
             }
