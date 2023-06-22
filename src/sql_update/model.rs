@@ -86,7 +86,7 @@ pub trait SqlUpdateModel<'s> {
                 }
                 None => {
                     let (_, related_column_name) = Self::get_column_name(i);
-                    if related_column_name.is_some() {
+                    if related_column_name.is_none() {
                         sql.push_str("NULL");
                     } else {
                         sql.push_str("NULL,NULL");
