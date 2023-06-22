@@ -8,6 +8,54 @@ pub enum SqlUpdateValue<'s> {
 }
 
 impl<'s> SqlUpdateValue<'s> {
+    pub fn unwrap_as_index(&self) -> usize {
+        match self {
+            SqlUpdateValue::Index(index) => *index,
+            SqlUpdateValue::StringValue(value) => panic!("Type is StringValue: {}", value.as_str()),
+            SqlUpdateValue::NonStringValue(value) => {
+                panic!("Type is NonStringValue: {}", value.as_str())
+            }
+            SqlUpdateValue::Json(value) => {
+                panic!("Type is Json: {}", value)
+            }
+        }
+    }
+
+    pub fn unwrap_as_string_value(&'s self) -> &StrOrString<'s> {
+        match self {
+            SqlUpdateValue::Index(index) => panic!("Type is Index: {}", index),
+            SqlUpdateValue::StringValue(value) => value,
+            SqlUpdateValue::NonStringValue(value) => {
+                panic!("Type is NonStringValue: {}", value.as_str())
+            }
+            SqlUpdateValue::Json(value) => {
+                panic!("Type is Json: {}", value)
+            }
+        }
+    }
+
+    pub fn unwrap_as_non_string_value(&'s self) -> &StrOrString<'s> {
+        match self {
+            SqlUpdateValue::Index(index) => panic!("Type is Index: {}", index),
+            SqlUpdateValue::StringValue(value) => panic!("Type is StringValue: {}", value.as_str()),
+            SqlUpdateValue::NonStringValue(value) => value,
+            SqlUpdateValue::Json(value) => {
+                panic!("Type is Json: {}", value)
+            }
+        }
+    }
+
+    pub fn unwrap_as_json(&self) -> usize {
+        match self {
+            SqlUpdateValue::Index(index) => panic!("Type is Index: {}", index),
+            SqlUpdateValue::StringValue(value) => panic!("Type is StringValue: {}", value.as_str()),
+            SqlUpdateValue::NonStringValue(value) => {
+                panic!("Type is NonStringValue: {}", value.as_str())
+            }
+            SqlUpdateValue::Json(value) => *value,
+        }
+    }
+
     pub fn write(&self, sql: &mut String) {
         match self {
             SqlUpdateValue::Index(index) => {
