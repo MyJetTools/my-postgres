@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub trait SqlUpdateValueProvider<'s> {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         params: &mut SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
@@ -17,7 +17,7 @@ pub trait SqlUpdateValueProvider<'s> {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for String {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -28,7 +28,7 @@ impl<'s> SqlUpdateValueProvider<'s> for String {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for &'s str {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -39,7 +39,7 @@ impl<'s> SqlUpdateValueProvider<'s> for &'s str {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for DateTimeAsMicroseconds {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
@@ -65,7 +65,7 @@ impl<'s> SqlUpdateValueProvider<'s> for DateTimeAsMicroseconds {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for bool {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -78,7 +78,7 @@ impl<'s> SqlUpdateValueProvider<'s> for bool {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for u8 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -88,7 +88,7 @@ impl<'s> SqlUpdateValueProvider<'s> for u8 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for i8 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -98,7 +98,7 @@ impl<'s> SqlUpdateValueProvider<'s> for i8 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for u16 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -108,7 +108,7 @@ impl<'s> SqlUpdateValueProvider<'s> for u16 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for f32 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -118,7 +118,7 @@ impl<'s> SqlUpdateValueProvider<'s> for f32 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for f64 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -128,7 +128,7 @@ impl<'s> SqlUpdateValueProvider<'s> for f64 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for i16 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -138,7 +138,7 @@ impl<'s> SqlUpdateValueProvider<'s> for i16 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for u32 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -148,7 +148,7 @@ impl<'s> SqlUpdateValueProvider<'s> for u32 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for i32 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -158,7 +158,7 @@ impl<'s> SqlUpdateValueProvider<'s> for i32 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for u64 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -168,7 +168,7 @@ impl<'s> SqlUpdateValueProvider<'s> for u64 {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for i64 {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -178,7 +178,7 @@ impl<'s> SqlUpdateValueProvider<'s> for i64 {
 }
 
 impl<'s, T: Serialize> SqlUpdateValueProvider<'s> for Vec<T> {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
@@ -196,7 +196,7 @@ impl<'s, T: Serialize> SqlUpdateValueProvider<'s> for Vec<T> {
 }
 
 impl<'s, TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider<'s> for HashMap<TKey, TVale> {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,

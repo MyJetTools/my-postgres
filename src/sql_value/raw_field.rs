@@ -27,7 +27,7 @@ impl<'s> SqlWhereValueProvider<'s> for RawField {
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for RawField {
-    fn get_value_to_update(
+    fn get_update_value(
         &'s self,
         _params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,

@@ -46,7 +46,7 @@ pub trait SqlInsertModel<'s> {
                         sql.push(',');
                     }
 
-                    let value = value.get_value_to_update(params, &update_value.metadata);
+                    let value = value.get_update_value(params, &update_value.metadata);
                     value.write(sql)
                 }
                 None => {
@@ -62,8 +62,7 @@ pub trait SqlInsertModel<'s> {
                 match &update_related_data.value {
                     Some(value) => {
                         sql.push(',');
-                        let value =
-                            value.get_value_to_update(params, &update_related_data.metadata);
+                        let value = value.get_update_value(params, &update_related_data.metadata);
 
                         value.write(sql)
                     }

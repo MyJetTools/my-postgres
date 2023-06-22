@@ -28,7 +28,7 @@ pub trait SqlUpdateModel<'s> {
 
             match &update_data.value {
                 Some(value) => {
-                    let value = value.get_value_to_update(params, &update_data.metadata);
+                    let value = value.get_update_value(params, &update_data.metadata);
                     value.write(sql);
                 }
                 None => {
@@ -45,7 +45,7 @@ pub trait SqlUpdateModel<'s> {
                     match &update_related_data.value {
                         Some(value) => {
                             let value =
-                                value.get_value_to_update(params, &update_related_data.metadata);
+                                value.get_update_value(params, &update_related_data.metadata);
 
                             value.write(sql)
                         }
