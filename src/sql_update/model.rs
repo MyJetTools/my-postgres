@@ -4,15 +4,56 @@ use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel<'s> {
     fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(
-        &'s self,
-        no: usize,
-    ) -> (SqlUpdateModelValue<'s>, Option<SqlUpdateModelValue>);
+    fn get_field_value(&'s self, no: usize) -> SqlUpdateModelValue<'s>;
     fn get_fields_amount() -> usize;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;
     fn set_e_tag_value(&self, value: i64);
+
+    fn build_columns_part(sql: &mut String) {
+        let amount = Self::get_fields_amount();
+
+        if amount == 1 {
+            let (column_name, related_column_name) = Self::get_column_name(0);
+
+            match related_column_name {
+                Some(related_column_name) => {
+                    sql.push('(');
+                    sql.push_str(column_name);
+                    sql.push(',');
+                    sql.push_str(related_column_name);
+                    sql.push(')');
+                }
+                None => {
+                    sql.push_str(column_name);
+                }
+            }
+
+            return;
+        }
+
+        sql.push('(');
+
+        let mut has_first_column = false;
+        for no in 0..amount {
+            let (column_name, related_column_name) = Self::get_column_name(no);
+
+            if has_first_column {
+                sql.push(',');
+            } else {
+                has_first_column = true;
+            }
+
+            sql.push_str(column_name);
+
+            if let Some(related_column_name) = related_column_name {
+                sql.push(',');
+                sql.push_str(related_column_name);
+            }
+        }
+        sql.push('(');
+    }
 
     fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         for i in 0..Self::get_fields_amount() {
@@ -20,11 +61,7 @@ pub trait SqlUpdateModel<'s> {
                 sql.push(',');
             }
 
-            let (column_name, related_column_name) = Self::get_column_name(i);
-            let (update_data, update_related_data) = self.get_field_value(i);
-
-            sql.push_str(column_name);
-            sql.push_str("=");
+            let update_data = self.get_field_value(i);
 
             match &update_data.value {
                 Some(value) => {
@@ -32,26 +69,11 @@ pub trait SqlUpdateModel<'s> {
                     value.write(sql);
                 }
                 None => {
-                    sql.push_str("NULL");
-                }
-            }
-
-            if let Some(additional_column_name) = related_column_name {
-                if let Some(update_related_data) = update_related_data {
-                    sql.push(',');
-                    sql.push_str(additional_column_name);
-                    sql.push_str("=");
-
-                    match &update_related_data.value {
-                        Some(value) => {
-                            let value =
-                                value.get_update_value(params, &update_related_data.metadata);
-
-                            value.write(sql)
-                        }
-                        None => {
-                            sql.push_str("NULL");
-                        }
+                    let (_, related_column_name) = Self::get_column_name(i);
+                    if related_column_name.is_some() {
+                        sql.push_str("NULL");
+                    } else {
+                        sql.push_str("NULL,NULL");
                     }
                 }
             }
