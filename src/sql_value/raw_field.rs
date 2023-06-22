@@ -1,6 +1,7 @@
 use crate::{
     sql::{SqlValues, SqlWhereValue},
-    SqlUpdateValue, SqlUpdateValueProvider, SqlValueMetadata, SqlWhereValueProvider,
+    sql_update::{SqlUpdateBuilderValue, SqlUpdateValueProvider},
+    SqlValueMetadata, SqlWhereValueProvider,
 };
 
 pub struct RawField {
@@ -30,7 +31,7 @@ impl<'s> SqlUpdateValueProvider<'s> for RawField {
         &'s self,
         _params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.value.as_str().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.value.as_str().into())
     }
 }

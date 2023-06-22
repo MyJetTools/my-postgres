@@ -1,10 +1,13 @@
 use crate::{sql::SqlValues, sql_where::SqlWhereModel};
 
-use super::SqlUpdateValue;
+use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel<'s> {
     fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&'s self, no: usize) -> (SqlUpdateValue<'s>, Option<SqlUpdateValue>);
+    fn get_field_value(
+        &'s self,
+        no: usize,
+    ) -> (SqlUpdateModelValue<'s>, Option<SqlUpdateModelValue>);
     fn get_fields_amount() -> usize;
 
     fn get_e_tag_column_name() -> Option<&'static str>;

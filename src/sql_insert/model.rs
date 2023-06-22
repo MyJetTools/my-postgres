@@ -1,12 +1,15 @@
 use crate::{
     sql::SqlValues,
-    sql_update::{SqlUpdateModel, SqlUpdateValue},
+    sql_update::{SqlUpdateModel, SqlUpdateModelValue},
 };
 
 pub trait SqlInsertModel<'s> {
     fn get_fields_amount() -> usize;
     fn get_field_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&'s self, no: usize) -> (SqlUpdateValue<'s>, Option<SqlUpdateValue>);
+    fn get_field_value(
+        &'s self,
+        no: usize,
+    ) -> (SqlUpdateModelValue<'s>, Option<SqlUpdateModelValue>);
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;

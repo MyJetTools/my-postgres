@@ -1,6 +1,8 @@
-use crate::{SqlUpdateValueProvider, SqlValueMetadata};
+use crate::SqlValueMetadata;
 
-pub struct SqlUpdateValue<'s> {
+use super::SqlUpdateValueProvider;
+
+pub struct SqlUpdateModelValue<'s> {
     pub metadata: Option<SqlValueMetadata>,
     pub value: Option<&'s dyn SqlUpdateValueProvider<'s>>,
 }

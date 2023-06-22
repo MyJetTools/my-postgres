@@ -22,7 +22,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{sql::SqlValues, MyPostgresError, PostgresSettings, SqlValue};
+use crate::{sql::SqlValues, MyPostgresError, PostgresSettings};
 
 pub struct PostgresConnectionInstance {
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
@@ -120,12 +120,14 @@ impl PostgresConnectionInstance {
 
     pub async fn execute_bulk_sql<'s>(
         &self,
-        sql_with_params: Vec<(String, Vec<SqlValue<'s>>)>,
+        sql_with_params: Vec<(String, SqlValues<'s>)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         if std::env::var("DEBUG").is_ok() {
-            println!("SQL: {:?}", sql_with_params);
+            if let Some(first_value) = sql_with_params.get(0) {
+                println!("SQL: {:?}", first_value.0);
+            }
         }
 
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -144,13 +146,9 @@ impl PostgresConnectionInstance {
             let transaction = builder.start().await?;
 
             for (sql, params) in &sql_with_params {
-                let mut params_to_invoke = Vec::with_capacity(params.len());
-
-                for param in params {
-                    params_to_invoke.push(param.get_value());
-                }
-
-                transaction.execute(sql, &params_to_invoke).await?;
+                transaction
+                    .execute(sql, &params.get_values_to_invoke())
+                    .await?;
             }
             transaction.commit()
         };

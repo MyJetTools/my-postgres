@@ -1,47 +1,18 @@
 use std::collections::HashMap;
 
-use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::Serialize;
 
 use crate::{sql::SqlValues, SqlValueMetadata};
 
-pub enum SqlUpdateValue<'s> {
-    Index(usize),
-    StringValue(StrOrString<'s>),
-    NonStringValue(StrOrString<'s>),
-    Json(usize),
-}
-
-impl<'s> SqlUpdateValue<'s> {
-    pub fn write(&self, sql: &mut String) {
-        match self {
-            SqlUpdateValue::Index(index) => {
-                sql.push_str("$");
-                sql.push_str(index.to_string().as_str());
-            }
-            SqlUpdateValue::StringValue(value) => {
-                sql.push_str("'");
-                sql.push_str(value.as_str());
-                sql.push_str("'");
-            }
-            SqlUpdateValue::NonStringValue(value) => {
-                sql.push_str(value.as_str());
-            }
-            SqlUpdateValue::Json(index) => {
-                sql.push_str("cast($");
-                sql.push_str(index.to_string().as_str());
-                sql.push_str("::text as json)");
-            }
-        }
-    }
-}
+use super::SqlUpdateBuilderValue;
 
 pub trait SqlUpdateValueProvider<'s> {
     fn get_value_to_update(
         &'s self,
         params: &mut SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s>;
+    ) -> SqlUpdateBuilderValue<'s>;
 }
 
 impl<'s> SqlUpdateValueProvider<'s> for String {
@@ -49,9 +20,9 @@ impl<'s> SqlUpdateValueProvider<'s> for String {
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         let index = params.push(self.as_str());
-        SqlUpdateValue::Index(index)
+        SqlUpdateBuilderValue::Index(index)
     }
 }
 
@@ -60,9 +31,9 @@ impl<'s> SqlUpdateValueProvider<'s> for &'s str {
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         let index = params.push(*self);
-        SqlUpdateValue::Index(index)
+        SqlUpdateBuilderValue::Index(index)
     }
 }
 
@@ -71,17 +42,17 @@ impl<'s> SqlUpdateValueProvider<'s> for DateTimeAsMicroseconds {
         &'s self,
         _: &mut SqlValues<'s>,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         if let Some(metadata) = &metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "bigint" {
-                    return SqlUpdateValue::NonStringValue(
+                    return SqlUpdateBuilderValue::NonStringValue(
                         self.unix_microseconds.to_string().into(),
                     );
                 }
 
                 if sql_type == "timestamp" {
-                    return SqlUpdateValue::StringValue(self.to_rfc3339().into());
+                    return SqlUpdateBuilderValue::StringValue(self.to_rfc3339().into());
                 }
 
                 panic!("Unknown sql type: {}", sql_type);
@@ -97,10 +68,10 @@ impl<'s> SqlUpdateValueProvider<'s> for bool {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         match self {
-            true => SqlUpdateValue::NonStringValue("true".into()),
-            false => SqlUpdateValue::NonStringValue("false".into()),
+            true => SqlUpdateBuilderValue::NonStringValue("true".into()),
+            false => SqlUpdateBuilderValue::NonStringValue("false".into()),
         }
     }
 }
@@ -110,8 +81,8 @@ impl<'s> SqlUpdateValueProvider<'s> for u8 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -120,8 +91,8 @@ impl<'s> SqlUpdateValueProvider<'s> for i8 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -130,8 +101,8 @@ impl<'s> SqlUpdateValueProvider<'s> for u16 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -140,8 +111,8 @@ impl<'s> SqlUpdateValueProvider<'s> for f32 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -150,8 +121,8 @@ impl<'s> SqlUpdateValueProvider<'s> for f64 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -160,8 +131,8 @@ impl<'s> SqlUpdateValueProvider<'s> for i16 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -170,8 +141,8 @@ impl<'s> SqlUpdateValueProvider<'s> for u32 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -180,8 +151,8 @@ impl<'s> SqlUpdateValueProvider<'s> for i32 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -190,8 +161,8 @@ impl<'s> SqlUpdateValueProvider<'s> for u64 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -200,8 +171,8 @@ impl<'s> SqlUpdateValueProvider<'s> for i64 {
         &'s self,
         _: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        SqlUpdateValue::NonStringValue(self.to_string().into())
+    ) -> SqlUpdateBuilderValue<'s> {
+        SqlUpdateBuilderValue::NonStringValue(self.to_string().into())
     }
 }
 
@@ -210,10 +181,10 @@ impl<'s, T: Serialize> SqlUpdateValueProvider<'s> for Vec<T> {
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         let as_string = serde_json::to_string(self).unwrap();
         let index = params.push(as_string);
-        SqlUpdateValue::Json(index)
+        SqlUpdateBuilderValue::Json(index)
 
         /*
         sql.push_str("cast($");
@@ -228,11 +199,11 @@ impl<'s, TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider<'s> for HashM
         &'s self,
         params: &mut SqlValues<'s>,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateBuilderValue<'s> {
         let as_string = serde_json::to_string(self).unwrap();
         let index = params.push(as_string);
 
-        SqlUpdateValue::Json(index)
+        SqlUpdateBuilderValue::Json(index)
 
         /*
 

@@ -8,7 +8,6 @@ use tokio_postgres::Row;
 
 use crate::{
     sql::SqlValues, ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
-    SqlValue,
 };
 
 pub enum PostgresConnection {
@@ -87,7 +86,7 @@ impl PostgresConnection {
 
     pub async fn execute_bulk_sql<'s>(
         &self,
-        sql_with_params: Vec<(String, Vec<SqlValue<'s>>)>,
+        sql_with_params: Vec<(String, SqlValues<'s>)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
