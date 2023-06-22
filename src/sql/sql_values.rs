@@ -95,7 +95,7 @@ impl<'s> SqlValues<'s> {
             SqlValues::Values(values) => {
                 for (idx, itm) in values.iter().enumerate() {
                     if itm.as_str() == value {
-                        return Some(idx);
+                        return Some(idx + 1);
                     }
                 }
             }
