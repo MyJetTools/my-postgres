@@ -41,20 +41,7 @@ pub trait SqlInsertModel<'s> {
                 sql.push(',');
             }
 
-            match &update_value.value {
-                Some(value) => {
-                    let value = value.get_update_value(params, &update_value.metadata);
-                    value.write(sql)
-                }
-                None => {
-                    let (_, related_column_name) = Self::get_column_name(field_no);
-                    if related_column_name.is_none() {
-                        sql.push_str("NULL");
-                    } else {
-                        sql.push_str("NULL,NULL");
-                    }
-                }
-            }
+            update_value.write_value(sql, params, || Self::get_column_name(field_no));
         }
         sql.push(')');
     }

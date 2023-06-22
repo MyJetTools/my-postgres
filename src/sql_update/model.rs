@@ -78,21 +78,7 @@ pub trait SqlUpdateModel<'s> {
             }
 
             let update_data = self.get_field_value(i);
-
-            match &update_data.value {
-                Some(value) => {
-                    let value = value.get_update_value(params, &update_data.metadata);
-                    value.write(sql);
-                }
-                None => {
-                    let (_, related_column_name) = Self::get_column_name(i);
-                    if related_column_name.is_none() {
-                        sql.push_str("NULL");
-                    } else {
-                        sql.push_str("NULL,NULL");
-                    }
-                }
-            }
+            update_data.write_value(sql, params, || Self::get_column_name(i));
         }
 
         if need_parentheses {
