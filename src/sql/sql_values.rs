@@ -154,4 +154,15 @@ impl<'s> SqlValues<'s> {
             }
         }
     }
+
+    pub fn get(&self, index: usize) -> Option<&SqlString> {
+        match self {
+            SqlValues::Values(values) => {
+                return values.get(index);
+            }
+            SqlValues::Empty => {
+                return None;
+            }
+        }
+    }
 }
