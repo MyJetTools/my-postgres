@@ -153,7 +153,7 @@ pub trait SqlInsertModel<'s> {
     fn fill_upsert_where_condition(&self, sql: &mut String) {
         if let Some(e_tag_column) = Self::get_e_tag_column_name() {
             if let Some(value) = self.get_e_tag_value() {
-                sql.push_str(" WHERE ");
+                sql.push_str(" WHERE EXCLUDED.");
                 sql.push_str(e_tag_column);
                 sql.push('=');
 
