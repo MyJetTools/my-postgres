@@ -106,9 +106,9 @@ pub trait SqlInsertModel<'s> {
     }
 
     fn build_insert_or_update_sql<TSqlInsertModel: SqlInsertModel<'s> + SqlUpdateModel<'s>>(
+        model: &'s TSqlInsertModel,
         table_name: &str,
         update_conflict_type: &crate::UpdateConflictType<'s>,
-        model: &'s TSqlInsertModel,
     ) -> (String, SqlValues<'s>) {
         let (mut sql, params) = model.build_insert_sql(table_name);
 
@@ -117,6 +117,29 @@ pub trait SqlInsertModel<'s> {
         sql.push_str(" DO UPDATE SET ");
 
         TSqlInsertModel::fill_upsert_sql_part(&mut sql);
+
+        (sql, params)
+    }
+
+    fn build_upsert_sql<TSqlInsertModel: SqlInsertModel<'s> + SqlUpdateModel<'s>>(
+        model: &'s TSqlInsertModel,
+        table_name: &str,
+        update_conflict_type: &crate::UpdateConflictType<'s>,
+        e_tag_value: i64,
+    ) -> (String, SqlValues<'s>) {
+        if TSqlInsertModel::get_e_tag_column_name().is_some() {
+            model.set_e_tag_value(e_tag_value);
+        }
+
+        let (mut sql, params) = model.build_insert_sql(table_name);
+
+        update_conflict_type.generate_sql(&mut sql);
+
+        sql.push_str(" DO UPDATE SET ");
+
+        TSqlInsertModel::fill_upsert_sql_part(&mut sql);
+
+        model.fill_upsert_where_condition(&mut sql);
 
         (sql, params)
     }
@@ -136,11 +159,16 @@ pub trait SqlInsertModel<'s> {
 
         (sql, params)
     }
-}
 
-fn set_e_tag<'s, TSqlInsertModel: SqlInsertModel<'s>>(model: &TSqlInsertModel) {
-    if TSqlInsertModel::get_e_tag_column_name().is_some() {
-        let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
-        model.set_e_tag_value(value.unix_microseconds);
+    fn fill_upsert_where_condition(&self, sql: &mut String) {
+        if let Some(e_tag_column) = Self::get_e_tag_column_name() {
+            if let Some(value) = self.get_e_tag_value() {
+                sql.push_str(" WHERE ");
+                sql.push_str(e_tag_column);
+                sql.push('=');
+
+                sql.push_str(value.to_string().as_str());
+            }
+        }
     }
 }

@@ -557,7 +557,7 @@ impl MyPostgres {
         let process_name = format!("insert_or_update_db_entity into table {}", table_name);
 
         let (sql, params) =
-            TEntity::build_insert_or_update_sql(table_name, &update_conflict_type, entity);
+            TEntity::build_insert_or_update_sql(entity, table_name, &update_conflict_type);
 
         self.connection
             .execute_sql(

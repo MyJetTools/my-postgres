@@ -7,10 +7,6 @@ pub trait SqlUpdateModel<'s> {
     fn get_field_value(&'s self, no: usize) -> SqlUpdateModelValue<'s>;
     fn get_fields_amount() -> usize;
 
-    fn get_e_tag_column_name() -> Option<&'static str>;
-    fn get_e_tag_value(&self) -> Option<i64>;
-    fn set_e_tag_value(&self, value: i64);
-
     fn fill_update_columns(sql: &mut String) {
         let amount = Self::get_fields_amount();
 
@@ -55,10 +51,7 @@ pub trait SqlUpdateModel<'s> {
         sql.push('(');
     }
 
-    fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
-        Self::fill_update_columns(sql);
-        sql.push('=');
-
+    fn fill_update_values(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
         let fields_amount = Self::get_fields_amount();
 
         let need_parentheses = if fields_amount == 1 {
@@ -84,6 +77,12 @@ pub trait SqlUpdateModel<'s> {
         if need_parentheses {
             sql.push(')');
         }
+    }
+
+    fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
+        Self::fill_update_columns(sql);
+        sql.push('=');
+        self.fill_update_values(sql, params);
     }
 
     fn fill_upsert_sql_part(sql: &mut String) {
@@ -131,8 +130,6 @@ pub trait SqlUpdateModel<'s> {
 
             where_model.fill_limit_and_offset(&mut result);
         }
-
-        //crate::sql_where::build(&mut result, where_model, &mut params);
 
         (result, params)
     }
