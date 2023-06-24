@@ -47,11 +47,6 @@ pub trait SqlInsertModel<'s> {
     }
 
     fn build_insert_sql(&'s self, table_name: &str) -> (String, SqlValues<'s>) {
-        if Self::get_e_tag_column_name().is_some() {
-            let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
-            self.set_e_tag_value(value.unix_microseconds);
-        }
-
         let mut sql = String::new();
 
         let mut params = SqlValues::new();
@@ -72,11 +67,6 @@ pub trait SqlInsertModel<'s> {
     ) {
         let mut model_no = 0;
         for model in models {
-            if Self::get_e_tag_column_name().is_some() {
-                let value = rust_extensions::date_time::DateTimeAsMicroseconds::now();
-                model.set_e_tag_value(value.unix_microseconds);
-            }
-
             if model_no > 0 {
                 sql.push(',');
             }
