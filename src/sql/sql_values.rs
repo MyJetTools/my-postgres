@@ -1,7 +1,9 @@
+use super::sql_string::SqlString;
+
 const EMPTY: SqlValues = SqlValues::Empty;
 const EMPTY_VALUES: Vec<&'static (dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
 pub enum SqlValues {
-    Values(Vec<String>),
+    Values(Vec<SqlString>),
     Empty,
 }
 
@@ -25,7 +27,8 @@ impl SqlValues {
         None
     }
 
-    pub fn push(&mut self, value: String) -> usize {
+    pub fn push(&mut self, value: impl Into<SqlString>) -> usize {
+        let value: SqlString = value.into();
         if let Some(result) = self.get_index_from_cache(value.as_str()) {
             return result;
         }
@@ -74,7 +77,7 @@ impl SqlValues {
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<&String> {
+    pub fn get(&self, index: usize) -> Option<&SqlString> {
         match self {
             SqlValues::Values(values) => {
                 return values.get(index);

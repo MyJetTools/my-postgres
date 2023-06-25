@@ -22,7 +22,7 @@ impl SqlUpdateValueProvider for String {
         params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
-        let index = params.push(self.to_string());
+        let index = params.push(self);
         SqlUpdateValue::Index(index, None)
     }
 }

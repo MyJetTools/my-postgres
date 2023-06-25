@@ -10,6 +10,7 @@ mod sql_values;
 mod update_value;
 pub use select_builder::*;
 mod sql_data;
+mod sql_string;
 mod where_builder;
 pub use build_bulk_insert_or_update_sql::*;
 pub use build_bulk_insert_sql::*;
