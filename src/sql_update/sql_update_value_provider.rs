@@ -22,7 +22,7 @@ impl SqlUpdateValueProvider for String {
         params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
-        let index = params.push(self);
+        let index = params.push(self.into());
         SqlUpdateValue::Index(index, None)
     }
 }
@@ -33,7 +33,7 @@ impl<'s> SqlUpdateValueProvider for &'s str {
         params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
-        let index = params.push(self.to_string());
+        let index = params.push((*self).into());
         SqlUpdateValue::Index(index, None)
     }
 }
@@ -184,7 +184,7 @@ impl<T: Serialize> SqlUpdateValueProvider for Vec<T> {
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         let as_string = serde_json::to_string(self).unwrap();
-        let index = params.push(as_string);
+        let index = params.push(as_string.into());
         SqlUpdateValue::Json(index)
 
         /*
@@ -202,7 +202,7 @@ impl<TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider for HashMap<TKey,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         let as_string = serde_json::to_string(self).unwrap();
-        let index = params.push(as_string);
+        let index = params.push(as_string.into());
 
         SqlUpdateValue::Json(index)
 

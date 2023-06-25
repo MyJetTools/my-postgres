@@ -27,7 +27,7 @@ impl SqlValues {
         None
     }
 
-    pub fn push(&mut self, value: impl Into<SqlString>) -> usize {
+    pub fn push(&mut self, value: SqlString) -> usize {
         let value: SqlString = value.into();
         if let Some(result) = self.get_index_from_cache(value.as_str()) {
             return result;
@@ -45,6 +45,10 @@ impl SqlValues {
                 panic!("SqlValues is read only")
             }
         }
+    }
+
+    pub fn push_static_str(&mut self, value: &'static str) -> usize {
+        self.push(SqlString::from_static_str(value))
     }
 
     pub fn get_values_to_invoke(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {

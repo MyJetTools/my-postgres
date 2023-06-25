@@ -20,7 +20,7 @@ impl SqlWhereValueProvider for String {
         params: &mut crate::sql::SqlValues,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue {
-        let index = params.push(self.to_string());
+        let index = params.push(self.into());
         SqlWhereValue::Index(index)
     }
 
@@ -39,7 +39,7 @@ impl<'s> SqlWhereValueProvider for &'s str {
         params: &mut crate::sql::SqlValues,
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlWhereValue {
-        let index = params.push(self.to_string());
+        let index = params.push((*self).into());
         SqlWhereValue::Index(index)
     }
 
