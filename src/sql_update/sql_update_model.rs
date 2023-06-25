@@ -1,10 +1,10 @@
-use crate::{sql::SqlValues, sql_where::SqlWhereModel};
+use crate::sql::SqlValues;
 
 use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel<'s> {
     fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&'s self, no: usize) -> SqlUpdateModelValue<'s>;
+    fn get_field_value(&self, no: usize) -> SqlUpdateModelValue<'s>;
     fn get_fields_amount() -> usize;
 
     fn fill_update_columns(sql: &mut String) {
@@ -51,7 +51,7 @@ pub trait SqlUpdateModel<'s> {
         sql.push('(');
     }
 
-    fn fill_update_values(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
+    fn fill_update_values(&self, sql: &mut String, params: &mut SqlValues<'s>) {
         let fields_amount = Self::get_fields_amount();
 
         let need_parentheses = if fields_amount == 1 {
@@ -79,7 +79,7 @@ pub trait SqlUpdateModel<'s> {
         }
     }
 
-    fn build_update_sql_part(&'s self, sql: &mut String, params: &mut SqlValues<'s>) {
+    fn build_update_sql_part(&self, sql: &mut String, params: &mut SqlValues<'s>) {
         Self::fill_update_columns(sql);
         sql.push('=');
         self.fill_update_values(sql, params);
@@ -105,8 +105,9 @@ pub trait SqlUpdateModel<'s> {
         }
     }
 
+    /*
     fn build_update_sql(
-        &'s self,
+        &self,
         table_name: &str,
         where_model: Option<&'s impl SqlWhereModel<'s>>,
     ) -> (String, SqlValues<'s>) {
@@ -133,4 +134,5 @@ pub trait SqlUpdateModel<'s> {
 
         (result, params)
     }
+     */
 }

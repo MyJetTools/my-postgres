@@ -5,7 +5,6 @@ mod db_row;
 mod error;
 mod my_postgres;
 pub mod sql;
-mod sql_concurrent_ops;
 
 pub mod sync_table_schema;
 

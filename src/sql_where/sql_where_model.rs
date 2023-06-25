@@ -13,15 +13,15 @@ pub struct WhereFieldData<'s> {
 
 const NULL_VALUE: &'static str = "NULL";
 pub trait SqlWhereModel<'s> {
-    fn get_where_field_name_data(&'s self, no: usize) -> Option<WhereFieldData<'s>>;
+    fn get_where_field_name_data(&self, no: usize) -> Option<WhereFieldData<'s>>;
 
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where_sql_part(&'s self, params: &mut crate::sql::SqlValues<'s>) -> WhereBuilder {
+    fn build_where_sql_part(&self, params: &mut crate::sql::SqlValues<'s>) -> WhereBuilder<'s> {
         let mut no = 0;
 
-        let mut result = WhereBuilder::new();
+        let mut result: WhereBuilder = WhereBuilder::new();
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
             match field_data.value {
