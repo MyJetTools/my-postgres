@@ -12,10 +12,10 @@ pub trait SelectEntity {
     fn get_order_by_fields() -> Option<&'static str>;
     fn get_group_by_fields() -> Option<&'static str>;
 
-    fn build_bulk_select<'s, TWhereModel: SqlWhereModel<'s>>(
+    fn build_bulk_select<TWhereModel: SqlWhereModel>(
         table_name: &'static str,
         where_models: Vec<TWhereModel>,
-    ) -> BulkSelectBuilder<'s, TWhereModel> {
+    ) -> BulkSelectBuilder<TWhereModel> {
         BulkSelectBuilder::new(table_name, where_models)
     }
 

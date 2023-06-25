@@ -1,28 +1,45 @@
 use crate::sql_insert::SqlInsertModel;
 
-use super::SqlValues;
+use super::{SqlData, SqlValues};
 
-pub fn build_insert_sql<'s, TInsertSql: SqlInsertModel<'s>>(
+pub fn build_insert_sql<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     table_name: &str,
-) -> (String, SqlValues<'s>) {
+) -> SqlData {
     let mut sql = String::new();
 
-    let mut params = SqlValues::new();
+    let mut values = SqlValues::new();
 
     sql.push_str("INSERT INTO ");
     sql.push_str(table_name);
     TInsertSql::generate_insert_fields(&mut sql);
     sql.push_str(" VALUES ");
-    generate_insert_fields_values(model, &mut sql, &mut params);
+    generate_insert_fields_values(model, &mut sql, &mut values);
 
-    (sql, params)
+    SqlData { sql, values }
 }
 
-pub fn generate_insert_fields_values<'s, TInsertSql: SqlInsertModel<'s>>(
+pub fn build_insert_sql_owned<TInsertSql: SqlInsertModel>(
+    model: TInsertSql,
+    table_name: &str,
+) -> SqlData {
+    let mut sql = String::new();
+
+    let mut values = SqlValues::new();
+
+    sql.push_str("INSERT INTO ");
+    sql.push_str(table_name);
+    TInsertSql::generate_insert_fields(&mut sql);
+    sql.push_str(" VALUES ");
+    generate_insert_fields_values(&model, &mut sql, &mut values);
+
+    SqlData { sql, values }
+}
+
+pub fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     sql: &mut String,
-    params: &mut SqlValues<'s>,
+    params: &mut SqlValues,
 ) {
     sql.push('(');
     for field_no in 0..TInsertSql::get_fields_amount() {

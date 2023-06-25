@@ -1,11 +1,11 @@
 use crate::{sql_update::SqlUpdateModel, sql_where::SqlWhereModel};
 
-use super::SqlValues;
+use super::{SqlData, SqlValues};
 
-pub fn build_update_sql<'s, TModel: SqlUpdateModel<'s> + SqlWhereModel<'s>>(
+pub fn build_update_sql<TModel: SqlUpdateModel + SqlWhereModel>(
     model: &TModel,
     table_name: &str,
-) -> (String, SqlValues<'s>) {
+) -> SqlData {
     let mut result = String::new();
 
     result.push_str("UPDATE ");
@@ -25,5 +25,5 @@ pub fn build_update_sql<'s, TModel: SqlUpdateModel<'s> + SqlWhereModel<'s>>(
 
     model.fill_limit_and_offset(&mut result);
 
-    (result, params)
+    SqlData::new(result, params)
 }

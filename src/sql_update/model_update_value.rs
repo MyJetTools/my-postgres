@@ -4,14 +4,14 @@ use super::SqlUpdateValueProvider;
 
 pub struct SqlUpdateModelValue<'s> {
     pub metadata: Option<SqlValueMetadata>,
-    pub value: Option<&'s dyn SqlUpdateValueProvider<'s>>,
+    pub value: Option<&'s dyn SqlUpdateValueProvider>,
 }
 
 impl<'s> SqlUpdateModelValue<'s> {
     pub fn write_value(
         &self,
         sql: &mut String,
-        params: &mut SqlValues<'s>,
+        params: &mut SqlValues,
         get_column_name: impl Fn() -> (&'static str, Option<&'static str>),
     ) {
         match &self.value {

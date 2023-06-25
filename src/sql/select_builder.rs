@@ -1,6 +1,6 @@
 use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel};
 
-use super::SqlValues;
+use super::{SqlData, SqlValues};
 
 pub enum SelectFieldValue {
     LineNo(usize),
@@ -151,13 +151,13 @@ impl SelectBuilder {
         }
     }
 
-    pub fn build_select_sql<'s, TSqlWhereModel: SqlWhereModel<'s>>(
+    pub fn build_select_sql<TSqlWhereModel: SqlWhereModel>(
         &self,
         table_name: &str,
-        where_model: Option<&'s TSqlWhereModel>,
-    ) -> (String, SqlValues<'s>) {
+        where_model: Option<&TSqlWhereModel>,
+    ) -> SqlData {
         let mut sql = String::new();
-        let mut params = SqlValues::new();
+        let mut values = SqlValues::new();
 
         sql.push_str("SELECT ");
 
@@ -167,7 +167,7 @@ impl SelectBuilder {
         sql.push_str(table_name);
 
         if let Some(where_model) = where_model {
-            let where_condition = where_model.build_where_sql_part(&mut params);
+            let where_condition = where_model.build_where_sql_part(&mut values);
 
             if where_condition.has_conditions() {
                 sql.push_str(" WHERE ");
@@ -187,6 +187,6 @@ impl SelectBuilder {
             where_model.fill_limit_and_offset(&mut sql);
         }
 
-        (sql, params)
+        SqlData { sql, values }
     }
 }

@@ -1,11 +1,11 @@
 use crate::sql_insert::SqlInsertModel;
 
-use super::SqlValues;
+use super::{SqlData, SqlValues};
 
-pub fn build_bulk_insert_sql<'s, TSqlInsertModel: SqlInsertModel<'s>>(
-    models: &'s [TSqlInsertModel],
+pub fn build_bulk_insert_sql<TSqlInsertModel: SqlInsertModel>(
+    models: &[TSqlInsertModel],
     table_name: &str,
-) -> (String, SqlValues<'s>) {
+) -> SqlData {
     let mut result = String::new();
 
     result.push_str("INSERT INTO ");
@@ -19,13 +19,13 @@ pub fn build_bulk_insert_sql<'s, TSqlInsertModel: SqlInsertModel<'s>>(
 
     fill_bulk_insert_values_sql::<TSqlInsertModel>(models, &mut result, &mut params);
 
-    (result, params)
+    SqlData::new(result, params)
 }
 
-fn fill_bulk_insert_values_sql<'s, TSqlInsertModel: SqlInsertModel<'s>>(
-    models: &'s [impl SqlInsertModel<'s>],
+fn fill_bulk_insert_values_sql<TSqlInsertModel: SqlInsertModel>(
+    models: &[impl SqlInsertModel],
     sql: &mut String,
-    params: &mut SqlValues<'s>,
+    params: &mut SqlValues,
 ) {
     let mut model_no = 0;
     for model in models {

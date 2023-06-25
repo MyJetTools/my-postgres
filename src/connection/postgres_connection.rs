@@ -7,7 +7,8 @@ use rust_extensions::Logger;
 use tokio_postgres::Row;
 
 use crate::{
-    sql::SqlValues, ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
+    sql::{SqlData, SqlValues},
+    ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
 };
 
 pub enum PostgresConnection {
@@ -49,11 +50,10 @@ impl PostgresConnection {
             logger,
         ))
     }
-    pub async fn execute_sql<'s>(
+    pub async fn execute_sql(
         &self,
-        sql: &str,
-        params: &'s SqlValues<'s>,
-        process_name: &str,
+        sql: SqlData,
+        process_name: Option<&str>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         match self {
@@ -61,7 +61,6 @@ impl PostgresConnection {
                 connection
                     .execute_sql(
                         sql,
-                        params,
                         process_name,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
@@ -74,7 +73,6 @@ impl PostgresConnection {
                     .as_ref()
                     .execute_sql(
                         sql,
-                        params,
                         process_name,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
@@ -84,9 +82,9 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn execute_bulk_sql<'s>(
+    pub async fn execute_bulk_sql(
         &self,
-        sql_with_params: Vec<(String, SqlValues<'s>)>,
+        sql_with_params: Vec<(String, SqlValues)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -116,11 +114,10 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
+    pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
-        sql: &str,
-        params: &SqlValues<'s>,
-        process_name: &str,
+        sql: SqlData,
+        process_name: Option<&str>,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
@@ -129,7 +126,6 @@ impl PostgresConnection {
                 connection
                     .execute_sql_as_vec(
                         sql,
-                        params,
                         process_name,
                         transform,
                         #[cfg(feature = "with-logs-and-telemetry")]
@@ -143,7 +139,6 @@ impl PostgresConnection {
                     .as_ref()
                     .execute_sql_as_vec(
                         sql,
-                        params,
                         process_name,
                         transform,
                         #[cfg(feature = "with-logs-and-telemetry")]

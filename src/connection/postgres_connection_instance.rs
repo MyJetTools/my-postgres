@@ -22,7 +22,10 @@ use std::{
     time::Duration,
 };
 
-use crate::{sql::SqlValues, MyPostgresError, PostgresSettings};
+use crate::{
+    sql::{SqlData, SqlValues},
+    MyPostgresError, PostgresSettings,
+};
 
 pub struct PostgresConnectionInstance {
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
@@ -74,11 +77,10 @@ impl PostgresConnectionInstance {
         self.connected.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    pub async fn execute_sql<'s>(
+    pub async fn execute_sql(
         &self,
-        sql: &str,
-        params: &'s SqlValues<'s>,
-        process_name: &str,
+        sql: SqlData,
+        process_name: Option<&str>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let connection_access = self.client.read().await;
@@ -89,20 +91,26 @@ impl PostgresConnectionInstance {
 
         let connection_access = connection_access.as_ref().unwrap();
 
-        let params = params.get_values_to_invoke();
+        let params = sql.values.get_values_to_invoke();
 
-        let execution = connection_access.execute(sql, params.as_slice());
+        let execution = connection_access.execute(&sql.sql, params.as_slice());
 
         if std::env::var("DEBUG").is_ok() {
-            println!("SQL: {}", sql);
+            println!("SQL: {}", &sql.sql);
         }
+
+        let process_name = if let Some(process_name) = process_name {
+            process_name
+        } else {
+            sql.get_sql_as_process_name()
+        };
 
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
         let result = execute_with_timeout(
             process_name,
-            Some(sql),
+            Some(&sql.sql),
             execution,
             self.sql_request_timeout,
             &self.connected,
@@ -120,7 +128,7 @@ impl PostgresConnectionInstance {
 
     pub async fn execute_bulk_sql<'s>(
         &self,
-        sql_with_params: Vec<(String, SqlValues<'s>)>,
+        sql_with_params: Vec<(String, SqlValues)>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -173,9 +181,8 @@ impl PostgresConnectionInstance {
 
     pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
-        sql: &str,
-        params: &SqlValues<'s>,
-        process_name: &str,
+        sql: SqlData,
+        process_name: Option<&str>,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
@@ -188,18 +195,24 @@ impl PostgresConnectionInstance {
         let connection_access = connection_access.as_ref().unwrap();
 
         if std::env::var("DEBUG").is_ok() {
-            println!("SQL: {}", sql);
+            println!("SQL: {}", &sql.sql);
         }
 
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let params = params.get_values_to_invoke();
-        let execution = connection_access.query(sql, params.as_slice());
+        let params = sql.values.get_values_to_invoke();
+        let execution = connection_access.query(&sql.sql, params.as_slice());
+
+        let process_name = if let Some(process_name) = process_name {
+            process_name
+        } else {
+            sql.get_sql_as_process_name()
+        };
 
         let result = execute_with_timeout(
             process_name,
-            Some(sql),
+            Some(&sql.sql),
             execution,
             self.sql_request_timeout,
             &self.connected,

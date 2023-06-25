@@ -1,13 +1,11 @@
-use rust_extensions::StrOrString;
-
-pub enum SqlUpdateValue<'s> {
+pub enum SqlUpdateValue {
     Index(usize, Option<usize>),
-    StringValue(StrOrString<'s>),
-    NonStringValue(StrOrString<'s>),
+    StringValue(String),
+    NonStringValue(String),
     Json(usize),
 }
 
-impl<'s> SqlUpdateValue<'s> {
+impl SqlUpdateValue {
     pub fn unwrap_as_index(&self) -> (usize, Option<usize>) {
         match self {
             SqlUpdateValue::Index(index, index2) => (*index, *index2),
@@ -21,7 +19,7 @@ impl<'s> SqlUpdateValue<'s> {
         }
     }
 
-    pub fn unwrap_as_string_value(&'s self) -> &StrOrString<'s> {
+    pub fn unwrap_as_string_value(&self) -> &str {
         match self {
             SqlUpdateValue::Index(index, index2) => panic!("Type is Index: {}/{:?}", index, index2),
             SqlUpdateValue::StringValue(value) => value,
@@ -34,7 +32,7 @@ impl<'s> SqlUpdateValue<'s> {
         }
     }
 
-    pub fn unwrap_as_non_string_value(&'s self) -> &StrOrString<'s> {
+    pub fn unwrap_as_non_string_value(&self) -> &str {
         match self {
             SqlUpdateValue::Index(index, index2) => {
                 panic!("Type is Index: ({},{:?})", index, index2)

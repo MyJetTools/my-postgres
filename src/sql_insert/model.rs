@@ -1,9 +1,9 @@
 use crate::sql_update::SqlUpdateModelValue;
 
-pub trait SqlInsertModel<'s> {
+pub trait SqlInsertModel {
     fn get_fields_amount() -> usize;
     fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
-    fn get_field_value(&self, no: usize) -> SqlUpdateModelValue<'s>;
+    fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
     fn get_e_tag_value(&self) -> Option<i64>;

@@ -1,5 +1,5 @@
 use crate::{
-    sql::{SqlValues, WhereBuilder},
+    sql::{SqlData, SqlValues, WhereBuilder},
     SqlValueMetadata, SqlWhereValueProvider,
 };
 
@@ -7,18 +7,18 @@ pub struct WhereFieldData<'s> {
     pub field_name: &'static str,
     pub op: Option<&'static str>,
     pub ignore_if_none: bool,
-    pub value: Option<&'s dyn SqlWhereValueProvider<'s>>,
+    pub value: Option<&'s dyn SqlWhereValueProvider>,
     pub meta_data: Option<SqlValueMetadata>,
 }
 
 const NULL_VALUE: &'static str = "NULL";
-pub trait SqlWhereModel<'s> {
-    fn get_where_field_name_data(&self, no: usize) -> Option<WhereFieldData<'s>>;
+pub trait SqlWhereModel {
+    fn get_where_field_name_data<'s>(&'s self, no: usize) -> Option<WhereFieldData<'s>>;
 
     fn get_limit(&self) -> Option<usize>;
     fn get_offset(&self) -> Option<usize>;
 
-    fn build_where_sql_part(&self, params: &mut crate::sql::SqlValues<'s>) -> WhereBuilder<'s> {
+    fn build_where_sql_part(&self, params: &mut crate::sql::SqlValues) -> WhereBuilder {
         let mut no = 0;
 
         let mut result: WhereBuilder = WhereBuilder::new();
@@ -64,7 +64,7 @@ pub trait SqlWhereModel<'s> {
         }
     }
 
-    fn build_delete_sql(&'s self, table_name: &str) -> (String, SqlValues<'s>) {
+    fn build_delete_sql(&self, table_name: &str) -> SqlData {
         let mut sql = String::new();
 
         sql.push_str("DELETE FROM ");
@@ -77,13 +77,10 @@ pub trait SqlWhereModel<'s> {
         where_builder.build(&mut sql);
 
         self.fill_limit_and_offset(&mut sql);
-        (sql, params)
+        SqlData::new(sql, params)
     }
 
-    fn build_bulk_delete_sql(
-        where_models: &'s [impl SqlWhereModel<'s>],
-        table_name: &str,
-    ) -> (String, SqlValues<'s>) {
+    fn build_bulk_delete_sql(where_models: &[impl SqlWhereModel], table_name: &str) -> SqlData {
         if where_models.len() == 1 {
             let where_model = where_models.get(0).unwrap();
             return where_model.build_delete_sql(table_name);
@@ -113,6 +110,6 @@ pub trait SqlWhereModel<'s> {
             }
         }
 
-        (sql, params)
+        SqlData::new(sql, params)
     }
 }

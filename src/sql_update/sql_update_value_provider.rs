@@ -8,42 +8,42 @@ use crate::{
     SqlValueMetadata,
 };
 
-pub trait SqlUpdateValueProvider<'s> {
+pub trait SqlUpdateValueProvider {
     fn get_update_value(
-        &'s self,
-        params: &mut SqlValues<'s>,
+        &self,
+        params: &mut SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s>;
+    ) -> SqlUpdateValue;
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for String {
+impl SqlUpdateValueProvider for String {
     fn get_update_value(
-        &'s self,
-        params: &mut SqlValues<'s>,
+        &self,
+        params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        let index = params.push(self.as_str());
+    ) -> SqlUpdateValue {
+        let index = params.push(self.to_string());
         SqlUpdateValue::Index(index, None)
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for &'s str {
+impl<'s> SqlUpdateValueProvider for &'s str {
     fn get_update_value(
-        &'s self,
-        params: &mut SqlValues<'s>,
+        &self,
+        params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
-        let index = params.push(*self);
+    ) -> SqlUpdateValue {
+        let index = params.push(self.to_string());
         SqlUpdateValue::Index(index, None)
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for DateTimeAsMicroseconds {
+impl SqlUpdateValueProvider for DateTimeAsMicroseconds {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         if let Some(metadata) = &metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "bigint" {
@@ -64,12 +64,12 @@ impl<'s> SqlUpdateValueProvider<'s> for DateTimeAsMicroseconds {
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for bool {
+impl SqlUpdateValueProvider for bool {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         match self {
             true => SqlUpdateValue::NonStringValue("true".into()),
             false => SqlUpdateValue::NonStringValue("false".into()),
@@ -77,112 +77,112 @@ impl<'s> SqlUpdateValueProvider<'s> for bool {
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for u8 {
+impl SqlUpdateValueProvider for u8 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for i8 {
+impl SqlUpdateValueProvider for i8 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for u16 {
+impl SqlUpdateValueProvider for u16 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for f32 {
+impl SqlUpdateValueProvider for f32 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for f64 {
+impl SqlUpdateValueProvider for f64 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for i16 {
+impl SqlUpdateValueProvider for i16 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for u32 {
+impl SqlUpdateValueProvider for u32 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for i32 {
+impl SqlUpdateValueProvider for i32 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for u64 {
+impl SqlUpdateValueProvider for u64 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for i64 {
+impl SqlUpdateValueProvider for i64 {
     fn get_update_value(
-        &'s self,
-        _: &mut SqlValues<'s>,
+        &self,
+        _: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.to_string().into())
     }
 }
 
-impl<'s, T: Serialize> SqlUpdateValueProvider<'s> for Vec<T> {
+impl<T: Serialize> SqlUpdateValueProvider for Vec<T> {
     fn get_update_value(
-        &'s self,
-        params: &mut SqlValues<'s>,
+        &self,
+        params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         let as_string = serde_json::to_string(self).unwrap();
         let index = params.push(as_string);
         SqlUpdateValue::Json(index)
@@ -195,12 +195,12 @@ impl<'s, T: Serialize> SqlUpdateValueProvider<'s> for Vec<T> {
     }
 }
 
-impl<'s, TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider<'s> for HashMap<TKey, TVale> {
+impl<TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider for HashMap<TKey, TVale> {
     fn get_update_value(
-        &'s self,
-        params: &mut SqlValues<'s>,
+        &self,
+        params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         let as_string = serde_json::to_string(self).unwrap();
         let index = params.push(as_string);
 

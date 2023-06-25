@@ -1,15 +1,13 @@
-use rust_extensions::StrOrString;
-
 #[derive(Debug)]
-pub enum SqlWhereValue<'s> {
+pub enum SqlWhereValue {
     None,
     Index(usize),
-    NonStringValue(StrOrString<'s>),
-    StringValue(StrOrString<'s>),
-    VecOfValues(Box<Vec<SqlWhereValue<'s>>>),
+    NonStringValue(String),
+    StringValue(String),
+    VecOfValues(Box<Vec<SqlWhereValue>>),
 }
 
-impl<'s> SqlWhereValue<'s> {
+impl SqlWhereValue {
     pub fn unwrap_as_index(&self) -> usize {
         match self {
             SqlWhereValue::Index(index) => *index,
@@ -17,7 +15,7 @@ impl<'s> SqlWhereValue<'s> {
         }
     }
 
-    pub fn unwrap_as_non_string_value(&self) -> &StrOrString<'s> {
+    pub fn unwrap_as_non_string_value(&self) -> &str {
         match self {
             SqlWhereValue::NonStringValue(value) => value,
             SqlWhereValue::None => panic!("Type is None"),
@@ -27,7 +25,7 @@ impl<'s> SqlWhereValue<'s> {
         }
     }
 
-    pub fn unwrap_as_string_value(&self) -> &StrOrString<'s> {
+    pub fn unwrap_as_string_value(&self) -> &str {
         match self {
             SqlWhereValue::StringValue(value) => value,
             SqlWhereValue::NonStringValue(value) => {
@@ -99,17 +97,17 @@ impl<'s> SqlWhereValue<'s> {
     }
 }
 
-pub struct WhereCondition<'s> {
+pub struct WhereCondition {
     pub db_column_name: &'static str,
     pub op: &'static str,
-    pub value: SqlWhereValue<'s>,
+    pub value: SqlWhereValue,
 }
 
-pub struct WhereBuilder<'s> {
-    conditions: Vec<WhereCondition<'s>>,
+pub struct WhereBuilder {
+    conditions: Vec<WhereCondition>,
 }
 
-impl<'s> WhereBuilder<'s> {
+impl WhereBuilder {
     pub fn new() -> Self {
         Self {
             conditions: Vec::new(),
@@ -120,7 +118,7 @@ impl<'s> WhereBuilder<'s> {
         &mut self,
         db_column_name: &'static str,
         op: &'static str,
-        value: SqlWhereValue<'s>,
+        value: SqlWhereValue,
     ) {
         self.conditions.push(WhereCondition {
             db_column_name,
@@ -133,7 +131,7 @@ impl<'s> WhereBuilder<'s> {
         self.conditions.len() > 0
     }
 
-    pub fn get(&self, index: usize) -> Option<&WhereCondition<'s>> {
+    pub fn get(&self, index: usize) -> Option<&WhereCondition> {
         self.conditions.get(index)
     }
 

@@ -8,12 +8,12 @@ pub struct RawField {
     pub value: String,
 }
 
-impl<'s> SqlWhereValueProvider<'s> for RawField {
+impl SqlWhereValueProvider for RawField {
     fn get_where_value(
-        &'s self,
-        _params: &mut SqlValues<'s>,
+        &self,
+        _params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue<'s> {
+    ) -> SqlWhereValue {
         SqlWhereValue::NonStringValue(self.value.as_str().into())
     }
 
@@ -26,12 +26,12 @@ impl<'s> SqlWhereValueProvider<'s> for RawField {
     }
 }
 
-impl<'s> SqlUpdateValueProvider<'s> for RawField {
+impl SqlUpdateValueProvider for RawField {
     fn get_update_value(
-        &'s self,
-        _params: &mut SqlValues<'s>,
+        &self,
+        _params: &mut SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlUpdateValue<'s> {
+    ) -> SqlUpdateValue {
         SqlUpdateValue::NonStringValue(self.value.as_str().into())
     }
 }

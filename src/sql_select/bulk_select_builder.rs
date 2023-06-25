@@ -1,24 +1,24 @@
 use crate::{
-    sql::{SelectBuilder, SqlValues},
+    sql::{SelectBuilder, SqlData, SqlValues},
     sql_where::SqlWhereModel,
 };
 
 use super::SelectEntity;
 
-pub struct BulkSelectBuilder<'s, TWhereModel: SqlWhereModel<'s>> {
+pub struct BulkSelectBuilder<TWhereModel: SqlWhereModel> {
     pub where_models: Vec<TWhereModel>,
-    pub table_name: &'s str,
+    pub table_name: &'static str,
 }
 
-impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
-    pub fn new(table_name: &'s str, where_models: Vec<TWhereModel>) -> Self {
+impl<TWhereModel: SqlWhereModel> BulkSelectBuilder<TWhereModel> {
+    pub fn new(table_name: &'static str, where_models: Vec<TWhereModel>) -> Self {
         Self {
             table_name,
             where_models,
         }
     }
 
-    pub fn build_sql<TSelectEntity: SelectEntity>(&'s self) -> (String, SqlValues<'s>) {
+    pub fn build_sql<TSelectEntity: SelectEntity>(&self) -> SqlData {
         let mut sql = String::new();
         let mut params = SqlValues::new();
 
@@ -52,6 +52,6 @@ impl<'s, TWhereModel: SqlWhereModel<'s>> BulkSelectBuilder<'s, TWhereModel> {
             line_no += 1;
         }
 
-        (sql, params)
+        SqlData::new(sql, params)
     }
 }
