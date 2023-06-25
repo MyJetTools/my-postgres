@@ -20,7 +20,7 @@ pub fn build_upsert_sql<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
 
     TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql);
 
-    fill_upsert_where_condition(model, &mut sql_data.sql);
+    fill_upsert_where_condition(model, &mut sql_data.sql, e_tag_value);
 
     sql_data
 }
@@ -28,6 +28,7 @@ pub fn build_upsert_sql<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
 fn fill_upsert_where_condition<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
     model: &TSqlInsertModel,
     sql: &mut String,
+    e_tag_value: i64,
 ) {
     if let Some(e_tag_column) = TSqlInsertModel::get_e_tag_column_name() {
         if let Some(value) = model.get_e_tag_value() {
@@ -35,7 +36,7 @@ fn fill_upsert_where_condition<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>
             sql.push_str(e_tag_column);
             sql.push('=');
 
-            sql.push_str(value.to_string().as_str());
+            sql.push_str(e_tag_value.to_string().as_str());
         }
     }
 }
