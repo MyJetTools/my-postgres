@@ -24,6 +24,13 @@ pub struct MyPostgres {
     logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
+pub enum ConcurrentOperationResult<TModel> {
+    Created(TModel),
+    CreatedCanceled,
+    Updated(TModel),
+    UpdateCanceledOnModel(TModel),
+}
+
 impl MyPostgres {
     pub fn new(
         app_name: String,
@@ -401,27 +408,6 @@ impl MyPostgres {
             .await
     }
 
-    async fn insert_db_entity_if_not_exists_owned<TEntity: SqlInsertModel>(
-        &self,
-        entity: TEntity,
-        table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<u64, MyPostgresError> {
-        let mut sql_data = crate::sql::build_insert_sql_owned(entity, table_name);
-        sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
-
-        let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
-
-        self.connection
-            .execute_sql(
-                sql_data,
-                process_name.as_str().into(),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
-    }
-
     pub async fn bulk_insert_db_entities<TEntity: SqlInsertModel>(
         &self,
         entities: &[TEntity],
@@ -590,41 +576,52 @@ impl MyPostgres {
 
     pub async fn concurrent_insert_or_update_single_entity<
         's,
-        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel + Default,
+        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel,
         TWhereModel: SqlWhereModel,
     >(
         &self,
         table_name: &str,
         where_model: &'s TWhereModel,
-        update: impl Fn(TModel) -> Option<TModel>,
-
+        crate_new_model: impl Fn() -> Option<TModel>,
+        update_model: impl Fn(&mut TModel) -> Option<TModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<(), MyPostgresError> {
+    ) -> Result<ConcurrentOperationResult<TModel>, MyPostgresError> {
         loop {
-            let found = self
+            let mut found = self
                 .query_single_row::<TModel, TWhereModel>(table_name, Some(where_model))
                 .await?;
 
-            match found {
-                Some(model) => match update(model) {
+            match &mut found {
+                Some(found_model) => match update_model(found_model) {
                     Some(model_to_update) => {
                         let result = self.update_db_entity(&model_to_update, table_name).await?;
 
                         if result > 0 {
-                            return Ok(());
+                            return Ok(ConcurrentOperationResult::Updated(model_to_update).into());
                         }
                     }
-                    None => return Ok(()),
+                    None => {
+                        return Ok(ConcurrentOperationResult::UpdateCanceledOnModel(
+                            found.unwrap(),
+                        ))
+                    }
                 },
                 None => {
-                    let new_model = TModel::default();
+                    let new_model = crate_new_model();
 
-                    let result = self
-                        .insert_db_entity_if_not_exists_owned(new_model, table_name)
-                        .await?;
+                    match &new_model {
+                        Some(new_model_to_save) => {
+                            let result = self
+                                .insert_db_entity_if_not_exists(new_model_to_save, table_name)
+                                .await?;
 
-                    if result > 0 {
-                        return Ok(());
+                            if result > 0 {
+                                return Ok(ConcurrentOperationResult::Created(new_model.unwrap()));
+                            }
+                        }
+                        None => {
+                            return Ok(ConcurrentOperationResult::CreatedCanceled);
+                        }
                     }
                 }
             }
