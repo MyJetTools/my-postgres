@@ -1,6 +1,6 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 #[cfg(feature = "with-logs-and-telemetry")]
 use std::collections::HashMap;
 use tokio::{sync::RwLock, time::error::Elapsed};
@@ -38,7 +38,7 @@ pub struct PostgresConnectionInstance {
 
 impl PostgresConnectionInstance {
     pub fn new(
-        app_name: String,
+        app_name: StrOrString<'static>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
@@ -351,7 +351,7 @@ async fn write_fail_telemetry_and_log(
 }
 
 async fn establish_connection_loop(
-    app_name: String,
+    app_name: StrOrString<'static>,
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
     connected: Arc<AtomicBool>,

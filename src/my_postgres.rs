@@ -1,9 +1,9 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
@@ -33,10 +33,11 @@ pub enum ConcurrentOperationResult<TModel> {
 
 impl MyPostgres {
     pub fn new(
-        app_name: String,
+        app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
+        let app_name: StrOrString<'static> = app_name.into();
         let connection = PostgresConnectionInstance::new(
             app_name,
             postgres_settings,

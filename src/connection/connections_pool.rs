@@ -1,12 +1,15 @@
-use rust_extensions::objects_pool::{ObjectsPool, RentedObject};
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
+use rust_extensions::{
+    objects_pool::{ObjectsPool, RentedObject},
+    StrOrString,
+};
 use std::{sync::Arc, time::Duration};
 
 use crate::{PostgresConnectionInstance, PostgresSettings};
 
 struct MyPostgresFactory {
-    app_name: String,
+    app_name: StrOrString<'static>,
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     exec_timeout: Duration,
     #[cfg(feature = "with-logs-and-telemetry")]
@@ -15,7 +18,7 @@ struct MyPostgresFactory {
 
 impl MyPostgresFactory {
     pub fn new(
-        app_name: String,
+        app_name: StrOrString<'static>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         exec_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -51,7 +54,7 @@ pub struct ConnectionsPool {
 
 impl ConnectionsPool {
     pub fn new(
-        app_name: String,
+        app_name: StrOrString<'static>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         request_timeout: Duration,
