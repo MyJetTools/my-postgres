@@ -588,13 +588,25 @@ impl MyPostgres {
     ) -> Result<ConcurrentOperationResult<TModel>, MyPostgresError> {
         loop {
             let mut found = self
-                .query_single_row::<TModel, TWhereModel>(table_name, Some(where_model))
+                .query_single_row::<TModel, TWhereModel>(
+                    table_name,
+                    Some(where_model),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
                 .await?;
 
             match &mut found {
                 Some(found_model) => match update_model(found_model) {
                     Some(model_to_update) => {
-                        let result = self.update_db_entity(&model_to_update, table_name).await?;
+                        let result = self
+                            .update_db_entity(
+                                &model_to_update,
+                                table_name,
+                                #[cfg(feature = "with-logs-and-telemetry")]
+                                telemetry_context,
+                            )
+                            .await?;
 
                         if result > 0 {
                             return Ok(ConcurrentOperationResult::Updated(model_to_update).into());
@@ -612,7 +624,12 @@ impl MyPostgres {
                     match &new_model {
                         Some(new_model_to_save) => {
                             let result = self
-                                .insert_db_entity_if_not_exists(new_model_to_save, table_name)
+                                .insert_db_entity_if_not_exists(
+                                    new_model_to_save,
+                                    table_name,
+                                    #[cfg(feature = "with-logs-and-telemetry")]
+                                    telemetry_context,
+                                )
                                 .await?;
 
                             if result > 0 {

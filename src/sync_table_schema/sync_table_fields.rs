@@ -136,9 +136,8 @@ async fn get_db_fields(
     #[cfg(feature = "with-logs-and-telemetry")]
     let result = conn_string
         .execute_sql_as_vec(
-            &sql,
-            SqlValues::empty(),
-            "get_db_fields",
+            sql.into(),
+            "get_db_fields".into(),
             |db_row| TableColumn {
                 name: db_row.get("column_name"),
                 sql_type: get_sql_type(db_row),
