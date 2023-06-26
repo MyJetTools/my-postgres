@@ -584,7 +584,7 @@ impl MyPostgres {
         table_name: &str,
         where_model: &'s TWhereModel,
         crate_new_model: impl Fn() -> Option<TModel>,
-        update_model: impl Fn(&mut TModel) -> Option<TModel>,
+        update_model: impl Fn(&mut TModel) -> bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<ConcurrentOperationResult<TModel>, MyPostgresError> {
         loop {
@@ -599,10 +599,10 @@ impl MyPostgres {
 
             match &mut found {
                 Some(found_model) => match update_model(found_model) {
-                    Some(model_to_update) => {
+                    true => {
                         let result = self
                             .update_db_entity(
-                                &model_to_update,
+                                found_model,
                                 table_name,
                                 #[cfg(feature = "with-logs-and-telemetry")]
                                 telemetry_context,
@@ -610,10 +610,10 @@ impl MyPostgres {
                             .await?;
 
                         if result > 0 {
-                            return Ok(ConcurrentOperationResult::Updated(model_to_update).into());
+                            return Ok(ConcurrentOperationResult::Updated(found.unwrap()));
                         }
                     }
-                    None => {
+                    false => {
                         return Ok(ConcurrentOperationResult::UpdateCanceledOnModel(
                             found.unwrap(),
                         ))
