@@ -32,7 +32,7 @@ whether to use TLS or not is detected by **sslmode=require** in the connection s
 
 ### Application name
 
-Please do not include application name in the connection sting, since it's injected during the construction of the MyPostgress structure as a parameter
+Please do not include application name in the connection sting, since it's injected as an in parameter of the MyPostgres structure
 
 ```rust
 pub struct MySettings;
