@@ -25,7 +25,9 @@ impl SqlOperationWithRetries {
         &self,
         entity: &TEntity,
         table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
+            &my_telemetry::MyTelemetryContext,
+        >,
     ) -> Result<u64, MyPostgresError> {
         let mut attempt_no = 0;
 

@@ -5,7 +5,9 @@ impl PostgresConnection {
         &self,
         entity: &TEntity,
         table_name: &str,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
+            &my_telemetry::MyTelemetryContext,
+        >,
     ) -> Result<u64, MyPostgresError> {
         let mut sql_data = crate::sql::build_insert_sql(entity, table_name);
         sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
