@@ -8,7 +8,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    sql::{SelectBuilder, SqlData, SqlValues},
+    sql::{SelectBuilder, SqlData},
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
@@ -140,38 +140,14 @@ impl MyPostgres {
         where_model: &TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TResult>, MyPostgresError> {
-        let mut sql = String::new();
-
-        let mut values = SqlValues::new();
-        sql.push_str("SELECT COUNT(*)::");
-        sql.push_str(TResult::get_postgres_type());
-
-        sql.push_str(" FROM ");
-        sql.push_str(table_name);
-
-        let where_condition = where_model.build_where_sql_part(&mut values);
-
-        if where_condition.has_conditions() {
-            sql.push_str(" WHERE ");
-            where_condition.build(&mut sql);
-        }
-        where_model.fill_limit_and_offset(&mut sql);
-
-        let mut result = self
-            .connection
-            .execute_sql_as_vec(
-                SqlData::new(sql, values),
-                None,
-                |row| TResult::from_db_row(row),
+        self.connection
+            .get_count(
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
-        }
+            .await
     }
 
     pub async fn query_single_row<TEntity: SelectEntity, TWhereModel: SqlWhereModel>(
@@ -180,26 +156,14 @@ impl MyPostgres {
         where_model: Option<&TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let select_builder = SelectBuilder::from_select_model::<TEntity>();
-
-        let sql = select_builder.build_select_sql(table_name, where_model);
-
-        let mut result = self
-            .connection
-            .execute_sql_as_vec(
-                sql,
-                None,
-                |row| TEntity::from(row),
+        self.connection
+            .query_single_row(
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
-        }
+            .await
     }
 
     pub async fn query_single_row_with_processing<
@@ -213,28 +177,15 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
-        let select_builder = SelectBuilder::from_select_model::<TEntity>();
-
-        let mut sql = select_builder.build_select_sql(table_name, where_model);
-
-        post_processing(&mut sql.sql);
-
-        let mut result = self
-            .connection
-            .execute_sql_as_vec(
-                sql,
-                None,
-                |row| TEntity::from(row),
+        self.connection
+            .query_single_row_with_processing(
+                table_name,
+                where_model,
+                &post_processing,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
-        }
+            .await
     }
 
     pub async fn execute_sql<ToSql: ToSqlString>(
