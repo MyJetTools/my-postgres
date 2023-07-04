@@ -1,10 +1,11 @@
 mod connection;
-
+mod connection_sql_operations;
 mod count_result;
 mod db_row;
 mod error;
 mod my_postgres;
 pub mod sql;
+mod with_retries;
 
 pub mod sync_table_schema;
 
@@ -24,4 +25,6 @@ pub mod sql_where;
 pub mod table_schema;
 
 mod update_conflict_type;
+pub use connection_sql_operations::*;
 pub use update_conflict_type::*;
+pub use with_retries::*;

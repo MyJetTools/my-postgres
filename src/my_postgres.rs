@@ -15,7 +15,7 @@ use crate::{
     sql_where::SqlWhereModel,
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
     MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
-    UpdateConflictType,
+    SqlOperationWithRetries, UpdateConflictType,
 };
 
 pub struct MyPostgres {
@@ -394,15 +394,10 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let mut sql_data = crate::sql::build_insert_sql(entity, table_name);
-        sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
-
-        let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                process_name.as_str().into(),
+            .insert_db_entity_if_not_exists(
+                entity,
+                table_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -644,5 +639,13 @@ impl MyPostgres {
                 }
             }
         }
+    }
+
+    pub fn with_retries(
+        &self,
+        retries: usize,
+        delay_between_retries: Duration,
+    ) -> SqlOperationWithRetries {
+        SqlOperationWithRetries::new(self.connection.clone(), delay_between_retries, retries)
     }
 }
