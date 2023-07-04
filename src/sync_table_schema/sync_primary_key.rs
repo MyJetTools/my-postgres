@@ -94,7 +94,7 @@ async fn update_primary_key(
     for sql in update_primary_key_sql {
         conn_string
             .execute_sql(
-                sql.into(),
+                &sql.into(),
                 "update_primary_key".into(),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
@@ -126,7 +126,7 @@ async fn get_primary_key_fields_from_db(
 
     let result = conn_string
         .execute_sql_as_vec(
-            sql.into(),
+            &sql.into(),
             "get_db_fields".into(),
             |db_row| {
                 let result: String = db_row.get(0);

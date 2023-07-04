@@ -53,7 +53,7 @@ impl PostgresConnection {
     }
     pub async fn execute_sql(
         &self,
-        sql: SqlData,
+        sql: &SqlData,
         process_name: Option<&str>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -117,7 +117,7 @@ impl PostgresConnection {
 
     pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
-        sql: SqlData,
+        sql: &SqlData,
         process_name: Option<&str>,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
@@ -126,7 +126,7 @@ impl PostgresConnection {
             PostgresConnection::Single(connection) => {
                 connection
                     .execute_sql_as_vec(
-                        sql,
+                        &sql,
                         process_name,
                         transform,
                         #[cfg(feature = "with-logs-and-telemetry")]

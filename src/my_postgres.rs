@@ -4,11 +4,11 @@ use my_telemetry::MyTelemetryContext;
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
-use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    sql::{SelectBuilder, SqlData},
+    sql::SqlData,
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
@@ -195,7 +195,7 @@ impl MyPostgres {
     ) -> Result<u64, MyPostgresError> {
         self.connection
             .execute_sql(
-                sql,
+                &sql,
                 None,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -213,7 +213,7 @@ impl MyPostgres {
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         self.connection
             .execute_sql_as_vec(
-                sql,
+                &sql,
                 None,
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -231,15 +231,10 @@ impl MyPostgres {
         where_model: Option<&TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let select_builder = SelectBuilder::from_select_model::<TEntity>();
-
-        let sql = select_builder.build_select_sql(table_name, where_model);
-
         self.connection
-            .execute_sql_as_vec(
-                sql,
-                None,
-                |row| TEntity::from(row),
+            .query_rows(
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -257,17 +252,11 @@ impl MyPostgres {
         post_processing: TPostProcessing,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let select_builder = SelectBuilder::from_select_model::<TEntity>();
-
-        let mut sql = select_builder.build_select_sql(table_name, where_model);
-
-        post_processing(&mut sql.sql);
-
         self.connection
-            .execute_sql_as_vec(
-                sql,
-                None,
-                |row| TEntity::from(row),
+            .query_rows_with_processing(
+                table_name,
+                where_model,
+                &post_processing,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -283,40 +272,16 @@ impl MyPostgres {
         &self,
         sql_builder: &BulkSelectBuilder<TIn>,
         transform: TTransform,
-        #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgresError> {
-        let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
-        let sql = sql_builder.build_sql::<TEntity>();
-
-        let response = {
-            self.connection
-                .execute_sql_as_vec(
-                    sql,
-                    Some(process_name.as_str()),
-                    |row| TEntity::from(row),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    ctx,
-                )
-                .await?
-        };
-
-        let mut result = Vec::with_capacity(response.len());
-
-        let mut response_as_hashmap = BTreeMap::new();
-
-        for entity in response {
-            response_as_hashmap.insert(entity.get_line_no(), entity);
-        }
-
-        let mut line_no = 0;
-        for where_model in &sql_builder.where_models {
-            let out = response_as_hashmap.remove(&line_no);
-            let item = transform(where_model, out);
-            result.push(item);
-            line_no += 1;
-        }
-
-        Ok(result)
+        self.connection
+            .bulk_query_rows_with_transformation(
+                sql_builder,
+                &transform,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub async fn insert_db_entity<TEntity: SqlInsertModel>(
@@ -325,14 +290,10 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let sql = crate::sql::build_insert_sql(entity, table_name);
-
-        let process_name: String = format!("insert_db_entity into table {}", table_name);
-
         self.connection
-            .execute_sql(
-                sql,
-                process_name.as_str().into(),
+            .insert_db_entity(
+                entity,
+                table_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -361,20 +322,14 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let sql_data = crate::sql::build_bulk_insert_sql(entities, table_name);
-
-        let process_name = format!("bulk_insert_db_entities into table {}", table_name);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(process_name.as_str()),
+            .bulk_insert_db_entities(
+                entities,
+                table_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn bulk_insert_db_entities_if_not_exists<TEntity: SqlInsertModel>(
@@ -383,25 +338,14 @@ impl MyPostgres {
         entities: &[TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let mut sql_data = crate::sql::build_bulk_insert_sql(entities, table_name);
-
-        sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
-
-        let process_name = format!(
-            "bulk_insert_db_entities_if_not_exists into table {}",
-            table_name
-        );
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(process_name.as_str()),
+            .bulk_insert_db_entities_if_not_exists(
+                table_name,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn update_db_entity<'s, TEntity: SqlUpdateModel + SqlWhereModel>(
@@ -410,13 +354,10 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let sql_data = crate::sql::build_update_sql(entity, table_name);
-        let process_name = format!("update_db_entity into table {}", table_name);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(process_name.as_str()),
+            .update_db_entity(
+                entity,
+                table_name,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -430,28 +371,15 @@ impl MyPostgres {
         entities: &[TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let process_name = format!(
-            "bulk_insert_or_update_db_entity into table {} {} entities",
-            table_name,
-            entities.len()
-        );
-
-        let sql_data = crate::sql::build_bulk_insert_or_update_sql(
-            table_name,
-            &update_conflict_type,
-            entities,
-        );
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(process_name.as_str()),
+            .bulk_insert_or_update_db_entity(
+                table_name,
+                &update_conflict_type,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn insert_or_update_db_entity<'s, TEntity: SqlInsertModel + SqlUpdateModel>(
@@ -461,21 +389,15 @@ impl MyPostgres {
         entity: &TEntity,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let process_name = format!("insert_or_update_db_entity into table {}", table_name);
-
-        let sql_data =
-            crate::sql::build_insert_or_update_sql(entity, table_name, &update_conflict_type);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(process_name.as_str()),
+            .insert_or_update_db_entity(
+                table_name,
+                &update_conflict_type,
+                entity,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn delete_db_entity<TWhereModel: SqlWhereModel>(
@@ -484,18 +406,14 @@ impl MyPostgres {
         where_model: &TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let sql_data = where_model.build_delete_sql(table_name);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                None,
+            .delete_db_entity(
+                table_name,
+                where_model,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn bulk_delete<TEntity: SqlWhereModel>(
@@ -505,20 +423,14 @@ impl MyPostgres {
 
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let process_name = format!("bulk_delete from table {}", table_name);
-
-        let sql_data = TEntity::build_bulk_delete_sql(entities, table_name);
-
         self.connection
-            .execute_sql(
-                sql_data,
-                Some(&process_name),
+            .bulk_delete(
+                table_name,
+                entities,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     pub async fn concurrent_insert_or_update_single_entity<
@@ -533,63 +445,16 @@ impl MyPostgres {
         update_model: impl Fn(&mut TModel) -> bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<ConcurrentOperationResult<TModel>, MyPostgresError> {
-        loop {
-            let mut found = self
-                .query_single_row::<TModel, TWhereModel>(
-                    table_name,
-                    Some(where_model),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                )
-                .await?;
-
-            match &mut found {
-                Some(found_model) => match update_model(found_model) {
-                    true => {
-                        let result = self
-                            .update_db_entity(
-                                found_model,
-                                table_name,
-                                #[cfg(feature = "with-logs-and-telemetry")]
-                                telemetry_context,
-                            )
-                            .await?;
-
-                        if result > 0 {
-                            return Ok(ConcurrentOperationResult::Updated(found.unwrap()));
-                        }
-                    }
-                    false => {
-                        return Ok(ConcurrentOperationResult::UpdateCanceledOnModel(
-                            found.unwrap(),
-                        ))
-                    }
-                },
-                None => {
-                    let new_model = crate_new_model();
-
-                    match &new_model {
-                        Some(new_model_to_save) => {
-                            let result = self
-                                .insert_db_entity_if_not_exists(
-                                    new_model_to_save,
-                                    table_name,
-                                    #[cfg(feature = "with-logs-and-telemetry")]
-                                    telemetry_context,
-                                )
-                                .await?;
-
-                            if result > 0 {
-                                return Ok(ConcurrentOperationResult::Created(new_model.unwrap()));
-                            }
-                        }
-                        None => {
-                            return Ok(ConcurrentOperationResult::CreatedCanceled);
-                        }
-                    }
-                }
-            }
-        }
+        self.connection
+            .concurrent_insert_or_update_single_entity(
+                table_name,
+                where_model,
+                &crate_new_model,
+                &update_model,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub fn with_retries(

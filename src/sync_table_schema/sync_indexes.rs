@@ -92,7 +92,7 @@ async fn create_index(
 
     conn_string
         .execute_sql(
-            sql.into(),
+            &sql.into(),
             "create_new_index".into(),
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -125,7 +125,7 @@ async fn update_index(
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     conn_string
         .execute_sql(
-            sql.into(),
+            &sql.into(),
             "create_new_index".into(),
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -158,7 +158,7 @@ async fn get_indexes_from_db(
 
     let result = conn_string
         .execute_sql_as_vec(
-            sql.into(),
+            &sql.into(),
             "get_db_fields".into(),
             |db_row| {
                 let index_name: String = db_row.get("indexname");
