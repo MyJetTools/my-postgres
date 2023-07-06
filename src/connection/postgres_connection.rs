@@ -19,11 +19,12 @@ pub enum PostgresConnection {
 
 impl PostgresConnection {
     pub fn new_as_single_connection(
-        app_name: StrOrString<'static>,
+        app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
+        let app_name: StrOrString<'static> = app_name.into();
         let connection = PostgresConnectionInstance::new(
             app_name,
             postgres_settings,
@@ -36,12 +37,13 @@ impl PostgresConnection {
     }
 
     pub fn new_as_multiple_connections(
-        app_name: StrOrString<'static>,
+        app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
         max_pool_size: usize,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
+        let app_name: StrOrString<'static> = app_name.into();
         Self::Pool(ConnectionsPool::new(
             app_name,
             postgres_settings,
