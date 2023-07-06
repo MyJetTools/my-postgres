@@ -50,6 +50,8 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
 
 pub struct ConnectionsPool {
     connections: ObjectsPool<PostgresConnectionInstance, MyPostgresFactory>,
+    #[cfg(feature = "with-logs-and-telemetry")]
+    pub logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl ConnectionsPool {
@@ -61,6 +63,8 @@ impl ConnectionsPool {
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger: logger.clone(),
             connections: ObjectsPool::new(
                 max_pool_size,
                 Arc::new(MyPostgresFactory::new(

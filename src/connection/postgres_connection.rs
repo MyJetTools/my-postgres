@@ -151,4 +151,12 @@ impl PostgresConnection {
             }
         }
     }
+
+    #[cfg(feature = "with-logs-and-telemetry")]
+    pub fn get_logger(&self) -> Arc<dyn Logger + Sync + Send + 'static> {
+        match self {
+            PostgresConnection::Single(connection) => connection.logger.clone(),
+            PostgresConnection::Pool(pool) => pool.logger.clone(),
+        }
+    }
 }

@@ -30,7 +30,7 @@ use crate::{
 pub struct PostgresConnectionInstance {
     client: Arc<RwLock<Option<tokio_postgres::Client>>>,
     #[cfg(feature = "with-logs-and-telemetry")]
-    logger: Arc<dyn Logger + Send + Sync + 'static>,
+    pub logger: Arc<dyn Logger + Send + Sync + 'static>,
     pub connected: Arc<AtomicBool>,
     pub created: DateTimeAsMicroseconds,
     pub sql_request_timeout: Duration,

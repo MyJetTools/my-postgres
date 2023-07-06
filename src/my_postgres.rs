@@ -53,10 +53,9 @@ impl MyPostgres {
         }
     }
 
-    pub fn with_shared_connection(
-        connection: Arc<PostgresConnection>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
-    ) -> Self {
+    pub fn with_shared_connection(connection: Arc<PostgresConnection>) -> Self {
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let logger = connection.get_logger().clone();
         Self {
             connection,
             #[cfg(feature = "with-logs-and-telemetry")]
