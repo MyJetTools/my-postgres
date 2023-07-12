@@ -66,8 +66,8 @@ impl IndexField {
 
 #[derive(Clone, Debug)]
 pub struct IndexSchema {
-    is_unique: bool,
-    fields: Vec<IndexField>,
+    pub is_unique: bool,
+    pub fields: Vec<IndexField>,
 }
 
 impl IndexSchema {
