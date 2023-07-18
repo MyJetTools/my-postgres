@@ -9,6 +9,7 @@ pub enum TableColumnType {
     Integer,
     Json,
     Timestamp,
+    Jsonb,
 }
 
 impl TableColumnType {
@@ -23,6 +24,7 @@ impl TableColumnType {
             TableColumnType::Integer => 6,
             TableColumnType::Json => 7,
             TableColumnType::Timestamp => 8,
+            TableColumnType::Jsonb => 8,
         }
     }
 
@@ -49,6 +51,7 @@ impl TableColumnType {
             "real" => Some(TableColumnType::Real),
             "integer" => Some(TableColumnType::Integer),
             "json" => Some(TableColumnType::Json),
+            "jsonb" => Some(TableColumnType::Jsonb),
             "timestamp" => Some(TableColumnType::Timestamp),
             _ => None,
         }
@@ -64,6 +67,7 @@ impl TableColumnType {
             TableColumnType::Double => "double precision",
             TableColumnType::Integer => "integer",
             TableColumnType::Json => "json",
+            TableColumnType::Jsonb => "jsonb",
             TableColumnType::Timestamp => "timestamp",
         }
     }
