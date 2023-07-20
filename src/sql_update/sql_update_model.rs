@@ -48,7 +48,7 @@ pub trait SqlUpdateModel {
                 sql.push_str(related_column_name);
             }
         }
-        sql.push('(');
+        sql.push(')');
     }
 
     fn fill_update_values(&self, sql: &mut String, params: &mut SqlValues) {
