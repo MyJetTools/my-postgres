@@ -5,7 +5,7 @@ pub struct TableColumn {
     pub name: String,
     pub sql_type: TableColumnType,
     pub is_nullable: bool,
-    pub default: Option<String>,
+    pub default: Option<&'static str>,
 }
 
 impl TableColumn {
