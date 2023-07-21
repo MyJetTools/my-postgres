@@ -5,8 +5,8 @@ pub struct Position {
     to: usize,
 }
 
-pub struct ConnectionString<'s> {
-    conn_string: &'s [u8],
+pub struct ConnectionString {
+    conn_string: Vec<u8>,
     user_name: Position,
     password: Position,
     host: Position,
@@ -15,17 +15,17 @@ pub struct ConnectionString<'s> {
     ssl_require: bool,
 }
 
-impl<'s> ConnectionString<'s> {
-    pub fn parse(conn_string: ConnectionStringFormat<'s>) -> Self {
+impl ConnectionString {
+    pub fn parse(conn_string: ConnectionStringFormat) -> Self {
         match conn_string {
             ConnectionStringFormat::ReadyToUse(_) => {
                 panic!("We should not go here");
             }
             ConnectionStringFormat::AsUrl(conn_string) => {
-                Self::parse_url_connection_string(conn_string.as_bytes())
+                Self::parse_url_connection_string(conn_string.as_bytes().to_vec())
             }
             ConnectionStringFormat::SemiColumnSeparated(conn_string) => {
-                Self::parse_column_separated(conn_string.as_bytes())
+                Self::parse_column_separated(conn_string.as_bytes().to_vec())
             }
         }
     }
@@ -34,7 +34,7 @@ impl<'s> ConnectionString<'s> {
         self.get_field_value(&self.db_name)
     }
 
-    fn parse_column_separated(conn_string: &'s [u8]) -> Self {
+    fn parse_column_separated(conn_string: Vec<u8>) -> Self {
         let mut user_name = None;
         let mut password = None;
         let mut db_name = None;
@@ -44,7 +44,7 @@ impl<'s> ConnectionString<'s> {
 
         let mut pos = 0;
         while pos < conn_string.len() {
-            let eq_pos = find_pos(conn_string, pos + 1, b'=');
+            let eq_pos = find_pos(conn_string.as_slice(), pos + 1, b'=');
 
             if eq_pos == None {
                 break;
@@ -52,7 +52,7 @@ impl<'s> ConnectionString<'s> {
 
             let eq_pos = eq_pos.unwrap();
 
-            let end_of_value = find_pos(conn_string, eq_pos + 1, b';');
+            let end_of_value = find_pos(conn_string.as_slice(), eq_pos + 1, b';');
 
             let end_of_value = match end_of_value {
                 Some(end_of_value) => end_of_value,
@@ -130,10 +130,10 @@ impl<'s> ConnectionString<'s> {
         }
     }
 
-    fn parse_url_connection_string(conn_string: &'s [u8]) -> Self {
+    fn parse_url_connection_string(conn_string: Vec<u8>) -> Self {
         let user_name_start = PREFIX.len();
 
-        let pos = find_pos(conn_string, user_name_start + 1, b':');
+        let pos = find_pos(conn_string.as_slice(), user_name_start + 1, b':');
         if pos.is_none() {
             panic!("Invalid connection string");
         }
@@ -142,7 +142,7 @@ impl<'s> ConnectionString<'s> {
 
         let password_start = user_name_end + 1;
 
-        let pos = find_pos(conn_string, password_start + 1, b'@');
+        let pos = find_pos(conn_string.as_slice(), password_start + 1, b'@');
         if pos.is_none() {
             panic!("Invalid connection string");
         }
@@ -152,7 +152,7 @@ impl<'s> ConnectionString<'s> {
         // Reading host
         let host_start = password_end + 1;
 
-        let pos = find_pos(conn_string, host_start + 1, b':');
+        let pos = find_pos(conn_string.as_slice(), host_start + 1, b':');
         if pos.is_none() {
             panic!("Invalid connection string");
         }
@@ -162,7 +162,7 @@ impl<'s> ConnectionString<'s> {
         // Reading port
         let port_start = host_end + 1;
 
-        let pos = find_pos(conn_string, port_start + 1, b'/');
+        let pos = find_pos(conn_string.as_slice(), port_start + 1, b'/');
         if pos.is_none() {
             panic!("Invalid connection string");
         }
@@ -178,22 +178,23 @@ impl<'s> ConnectionString<'s> {
 
         let mut ssl_require = false;
 
-        let db_name_end = if let Some(pos_end) = find_pos(conn_string, port_start + 1, b'?') {
-            let query = std::str::from_utf8(&conn_string[pos_end + 1..]).unwrap();
-            for itm in query.split('&') {
-                let mut parts = itm.split('=');
-                let key = parts.next().unwrap();
-                let value = parts.next().unwrap();
+        let db_name_end =
+            if let Some(pos_end) = find_pos(conn_string.as_slice(), port_start + 1, b'?') {
+                let query = std::str::from_utf8(&conn_string[pos_end + 1..]).unwrap();
+                for itm in query.split('&') {
+                    let mut parts = itm.split('=');
+                    let key = parts.next().unwrap();
+                    let value = parts.next().unwrap();
 
-                if key == "sslmode" {
-                    ssl_require = value == "require";
+                    if key == "sslmode" {
+                        ssl_require = value == "require";
+                    }
                 }
-            }
 
-            pos_end
-        } else {
-            conn_string.len()
-        };
+                pos_end
+            } else {
+                conn_string.len()
+            };
 
         Self {
             conn_string,
@@ -218,7 +219,7 @@ impl<'s> ConnectionString<'s> {
         }
     }
 
-    pub fn get_field_value(&'s self, pos: &Position) -> &'s str {
+    pub fn get_field_value(&self, pos: &Position) -> &str {
         return std::str::from_utf8(&self.conn_string[pos.from..pos.to]).unwrap();
     }
 
@@ -239,6 +240,30 @@ impl<'s> ConnectionString<'s> {
                 self.get_field_value(&self.host),
                 &self.port,
                 self.get_field_value(&self.db_name),
+                self.get_field_value(&self.user_name),
+                self.get_field_value(&self.password),
+                app_name
+            )
+        }
+    }
+
+    pub fn to_string_with_new_db_name(&self, app_name: &str, db_name: &str) -> String {
+        if self.ssl_require {
+            format!(
+                "host={} port={} dbname={} user={} password={} application_name={} sslmode=require",
+                self.get_field_value(&self.host),
+                &self.port,
+                db_name,
+                self.get_field_value(&self.user_name),
+                self.get_field_value(&self.password),
+                app_name
+            )
+        } else {
+            format!(
+                "host={} port={} dbname={} user={} password={} application_name={}",
+                self.get_field_value(&self.host),
+                &self.port,
+                db_name,
                 self.get_field_value(&self.user_name),
                 self.get_field_value(&self.password),
                 app_name

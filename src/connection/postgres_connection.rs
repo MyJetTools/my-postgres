@@ -8,9 +8,8 @@ use rust_extensions::StrOrString;
 use tokio_postgres::Row;
 
 use crate::{
-    count_result::CountResult,
-    sql::{SqlData, SqlValues},
-    ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
+    sql::SqlData, ConnectionString, ConnectionsPool, MyPostgresError, PostgresConnectionInstance,
+    PostgresSettings,
 };
 
 pub enum PostgresConnection {
@@ -88,7 +87,7 @@ impl PostgresConnection {
 
     pub async fn execute_bulk_sql(
         &self,
-        sql_with_params: Vec<(String, SqlValues)>,
+        sql_with_params: Vec<SqlData>,
         process_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -118,6 +117,37 @@ impl PostgresConnection {
         }
     }
 
+    pub async fn get_connection_string(&self) -> (String, ConnectionString) {
+        match self {
+            PostgresConnection::Single(connection) => {
+                let conn_string = connection.postgres_settings.get_connection_string().await;
+
+                let conn_string_format =
+                    crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
+
+                (
+                    connection.app_name.as_str().to_string(),
+                    ConnectionString::parse(conn_string_format),
+                )
+            }
+            PostgresConnection::Pool(pool) => {
+                let connection = pool.get().await;
+                let conn_string = connection
+                    .as_ref()
+                    .postgres_settings
+                    .get_connection_string()
+                    .await;
+
+                let conn_string_format =
+                    crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
+
+                (
+                    connection.as_ref().app_name.as_str().to_string(),
+                    ConnectionString::parse(conn_string_format),
+                )
+            }
+        }
+    }
     pub async fn get_db_name(&self) -> String {
         match self {
             PostgresConnection::Single(connection) => connection.get_db_name().await,
@@ -125,28 +155,6 @@ impl PostgresConnection {
                 let connection = pool.get().await;
                 connection.as_ref().get_db_name().await
             }
-        }
-    }
-    pub async fn get_count_low_level<TCountResult: CountResult>(
-        &self,
-        sql: &SqlData,
-        process_name: Option<&str>,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
-    ) -> Result<Option<TCountResult>, MyPostgresError> {
-        let mut result = self
-            .execute_sql_as_vec(
-                sql,
-                process_name,
-                |db_row| TCountResult::from_db_row(db_row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await?;
-
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
         }
     }
 
