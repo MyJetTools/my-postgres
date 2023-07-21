@@ -11,13 +11,62 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::{sync::RwLock, time::error::Elapsed};
 use tokio_postgres::Row;
 
-use crate::{sql::SqlData, MyPostgresError};
+use crate::{sql::SqlData, MyPostgresError, PostgresSettings};
+
+pub struct PostgresConnectionSingleThreaded {
+    postgres_client: Option<tokio_postgres::Client>,
+    to_start: Option<Arc<PostgresConnectionInner>>,
+}
+
+impl PostgresConnectionSingleThreaded {
+    pub fn new() -> Self {
+        Self {
+            postgres_client: None,
+            to_start: None,
+        }
+    }
+
+    pub fn new_connection(&mut self, client: tokio_postgres::Client) {
+        self.postgres_client = Some(client);
+    }
+
+    pub fn disconnect(&mut self) {
+        self.postgres_client = None;
+    }
+
+    pub fn get_connection(&self) -> Result<Option<&tokio_postgres::Client>, MyPostgresError> {
+        if self.to_start.is_some() {
+            return Ok(None);
+        }
+
+        if let Some(client) = &self.postgres_client {
+            Ok(client.into())
+        } else {
+            Err(MyPostgresError::NoConnection)
+        }
+    }
+
+    pub fn start_connection(&mut self) {
+        if let Some(to_start) = self.to_start.take() {
+            tokio::spawn(super::connection_loop::start_connection_loop(to_start));
+        }
+    }
+
+    pub fn get_connection_mut(&mut self) -> Result<&mut tokio_postgres::Client, MyPostgresError> {
+        if let Some(client) = &mut self.postgres_client {
+            Ok(client.into())
+        } else {
+            Err(MyPostgresError::NoConnection)
+        }
+    }
+}
 
 pub struct PostgresConnectionInner {
-    pub tokio_postgres_client: Arc<RwLock<Option<tokio_postgres::Client>>>,
+    pub inner: Arc<RwLock<PostgresConnectionSingleThreaded>>,
     pub connected: Arc<AtomicBool>,
     pub sql_request_time_out: Duration,
-
+    pub app_name: String,
+    pub postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     pub to_be_disposable: AtomicBool,
     #[cfg(feature = "with-logs-and-telemetry")]
     pub logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
@@ -25,19 +74,28 @@ pub struct PostgresConnectionInner {
 
 impl PostgresConnectionInner {
     pub fn new(
+        app_name: String,
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
     ) -> Self {
         Self {
-            tokio_postgres_client: Arc::new(RwLock::new(None)),
+            app_name,
+            postgres_settings,
+            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new())),
             connected: Arc::new(AtomicBool::new(false)),
             sql_request_time_out,
             to_be_disposable: AtomicBool::new(false),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
+    }
+
+    pub async fn engage(&self, to_start: Arc<PostgresConnectionInner>) {
+        let mut write_access = self.inner.write().await;
+        write_access.to_start = Some(to_start);
     }
 
     pub fn set_to_be_disposable(&self) {
@@ -50,13 +108,13 @@ impl PostgresConnectionInner {
     }
 
     pub fn disconnect(&self) {
-        let tokio_postgres_client = self.tokio_postgres_client.clone();
+        let tokio_postgres_client = self.inner.clone();
 
         let connected = self.connected.clone();
 
         tokio::spawn(async move {
             let mut write_access = tokio_postgres_client.write().await;
-            write_access.take();
+            write_access.disconnect();
             connected.store(false, std::sync::atomic::Ordering::SeqCst);
         });
     }
@@ -76,8 +134,11 @@ impl PostgresConnectionInner {
         );
 
         {
-            let mut write_access = self.tokio_postgres_client.write().await;
-            *write_access = Some(postgres_client);
+            let mut write_access: tokio::sync::RwLockWriteGuard<
+                '_,
+                PostgresConnectionSingleThreaded,
+            > = self.inner.write().await;
+            write_access.new_connection(postgres_client);
         };
         self.connected.store(true, Ordering::Relaxed);
 
@@ -158,6 +219,20 @@ impl PostgresConnectionInner {
         result
     }
 
+    async fn start_connection(&self) {
+        {
+            let mut write_access = self.inner.write().await;
+            write_access.start_connection();
+        }
+
+        loop {
+            if self.is_connected() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_micros(100)).await;
+        }
+    }
+
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
@@ -166,46 +241,55 @@ impl PostgresConnectionInner {
             &my_telemetry::MyTelemetryContext,
         >,
     ) -> Result<u64, MyPostgresError> {
-        let connection_access = self.tokio_postgres_client.read().await;
+        let mut start_connection = false;
+        loop {
+            if start_connection {
+                self.start_connection().await;
+            }
+            let connection_access = self.inner.read().await;
 
-        if connection_access.is_none() {
-            return Err(MyPostgresError::NoConnection);
+            let connection_access = connection_access.get_connection()?;
+
+            match connection_access {
+                Some(connection_access) => {
+                    let params = sql.values.get_values_to_invoke();
+
+                    let execution = connection_access.execute(&sql.sql, params.as_slice());
+
+                    if std::env::var("DEBUG").is_ok() {
+                        println!("SQL: {}", &sql.sql);
+                    }
+
+                    let process_name = if let Some(process_name) = process_name {
+                        process_name
+                    } else {
+                        sql.get_sql_as_process_name()
+                    };
+
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    let started = DateTimeAsMicroseconds::now();
+
+                    let result = self
+                        .execute_with_timeout(
+                            Some(&sql.sql),
+                            process_name,
+                            execution,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &self.logger,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            started,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            telemetry_context,
+                        )
+                        .await;
+
+                    return Ok(self.handle_error(result)?);
+                }
+                None => {
+                    start_connection = true;
+                }
+            }
         }
-
-        let connection_access = connection_access.as_ref().unwrap();
-
-        let params = sql.values.get_values_to_invoke();
-
-        let execution = connection_access.execute(&sql.sql, params.as_slice());
-
-        if std::env::var("DEBUG").is_ok() {
-            println!("SQL: {}", &sql.sql);
-        }
-
-        let process_name = if let Some(process_name) = process_name {
-            process_name
-        } else {
-            sql.get_sql_as_process_name()
-        };
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let started = DateTimeAsMicroseconds::now();
-
-        let result = self
-            .execute_with_timeout(
-                Some(&sql.sql),
-                process_name,
-                execution,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &self.logger,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                started,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await;
-
-        Ok(self.handle_error(result)?)
     }
 
     pub async fn execute_sql_as_vec<'s>(
@@ -216,42 +300,55 @@ impl PostgresConnectionInner {
             &my_telemetry::MyTelemetryContext,
         >,
     ) -> Result<Vec<Row>, MyPostgresError> {
-        let connection_access = self.tokio_postgres_client.read().await;
+        let mut start_connection = false;
+        loop {
+            if start_connection {
+                self.start_connection().await;
+            }
 
-        if connection_access.is_none() {
-            return Err(MyPostgresError::NoConnection);
+            let connection_access = self.inner.read().await;
+
+            let connection_access = connection_access.get_connection()?;
+
+            match connection_access {
+                Some(connection_access) => {
+                    if std::env::var("DEBUG").is_ok() {
+                        println!("SQL: {}", &sql.sql);
+                    }
+
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    let started = DateTimeAsMicroseconds::now();
+
+                    let params = sql.values.get_values_to_invoke();
+                    let execution = connection_access.query(&sql.sql, params.as_slice());
+
+                    let process_name = if let Some(process_name) = process_name {
+                        process_name
+                    } else {
+                        sql.get_sql_as_process_name()
+                    };
+
+                    let result = self
+                        .execute_with_timeout(
+                            Some(&sql.sql),
+                            process_name,
+                            execution,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &self.logger,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            started,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            telemetry_context,
+                        )
+                        .await;
+
+                    return Ok(self.handle_error(result)?);
+                }
+                None => {
+                    start_connection = true;
+                }
+            }
         }
-
-        let connection_access = connection_access.as_ref().unwrap();
-
-        if std::env::var("DEBUG").is_ok() {
-            println!("SQL: {}", &sql.sql);
-        }
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let started = DateTimeAsMicroseconds::now();
-
-        let params = sql.values.get_values_to_invoke();
-        let execution = connection_access.query(&sql.sql, params.as_slice());
-
-        let process_name = if let Some(process_name) = process_name {
-            process_name
-        } else {
-            sql.get_sql_as_process_name()
-        };
-
-        self.execute_with_timeout(
-            Some(&sql.sql),
-            process_name,
-            execution,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            &self.logger,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            started,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            telemetry_context,
-        )
-        .await
     }
 
     pub async fn execute_bulk_sql<'s>(
@@ -271,13 +368,9 @@ impl PostgresConnectionInner {
         #[cfg(feature = "with-logs-and-telemetry")]
         let started = DateTimeAsMicroseconds::now();
 
-        let mut connection_access = self.tokio_postgres_client.write().await;
+        let mut connection_access = self.inner.write().await;
 
-        if connection_access.is_none() {
-            return Err(MyPostgresError::NoConnection);
-        }
-
-        let connection_access = connection_access.as_mut().unwrap();
+        let connection_access = connection_access.get_connection_mut()?;
 
         let execution = {
             let builder = connection_access.build_transaction();
@@ -323,6 +416,7 @@ impl PostgresConnectionInner {
                 MyPostgresError::TimeOut(_) => {
                     self.disconnect();
                 }
+                MyPostgresError::ConnectionNotStartedYet => {}
             }
         }
 

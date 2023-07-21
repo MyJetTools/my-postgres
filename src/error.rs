@@ -7,6 +7,16 @@ pub enum MyPostgresError {
     PostgresError(tokio_postgres::Error),
     Other(String),
     TimeOut(Duration),
+    ConnectionNotStartedYet,
+}
+
+impl MyPostgresError {
+    pub fn is_connection_not_started_yet(&self) -> bool {
+        match self {
+            Self::ConnectionNotStartedYet => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<tokio_postgres::Error> for MyPostgresError {

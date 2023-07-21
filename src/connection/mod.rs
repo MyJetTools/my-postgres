@@ -1,3 +1,4 @@
+mod connection_loop;
 mod connection_string;
 mod connections_pool;
 mod postgres_connect_inner;

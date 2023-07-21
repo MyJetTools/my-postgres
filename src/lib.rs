@@ -4,10 +4,10 @@ mod count_result;
 mod db_row;
 mod error;
 mod my_postgres;
+mod my_postgres_builder;
 pub mod sql;
-mod with_retries;
-
 pub mod sync_table_schema;
+mod with_retries;
 
 mod postgres_settings;
 pub mod sql_insert;
@@ -26,5 +26,6 @@ pub mod table_schema;
 
 mod update_conflict_type;
 pub use connection_sql_operations::*;
+pub use my_postgres_builder::*;
 pub use update_conflict_type::*;
 pub use with_retries::*;

@@ -45,6 +45,7 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
             #[cfg(feature = "with-logs-and-telemetry")]
             self.logger.clone(),
         )
+        .await
     }
 }
 

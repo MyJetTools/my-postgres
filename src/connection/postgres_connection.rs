@@ -18,7 +18,7 @@ pub enum PostgresConnection {
 }
 
 impl PostgresConnection {
-    pub fn new_as_single_connection(
+    pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         sql_request_timeout: Duration,
@@ -31,7 +31,8 @@ impl PostgresConnection {
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
-        );
+        )
+        .await;
 
         Self::Single(connection)
     }
@@ -53,6 +54,7 @@ impl PostgresConnection {
             logger,
         ))
     }
+
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
@@ -120,21 +122,8 @@ impl PostgresConnection {
     pub async fn get_connection_string(&self) -> (String, ConnectionString) {
         match self {
             PostgresConnection::Single(connection) => {
-                let conn_string = connection.postgres_settings.get_connection_string().await;
-
-                let conn_string_format =
-                    crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
-
-                (
-                    connection.app_name.as_str().to_string(),
-                    ConnectionString::parse(conn_string_format),
-                )
-            }
-            PostgresConnection::Pool(pool) => {
-                let connection = pool.get().await;
                 let conn_string = connection
-                    .as_ref()
-                    .postgres_settings
+                    .get_postgres_settings()
                     .get_connection_string()
                     .await;
 
@@ -142,7 +131,23 @@ impl PostgresConnection {
                     crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
 
                 (
-                    connection.as_ref().app_name.as_str().to_string(),
+                    connection.get_app_name().to_string(),
+                    ConnectionString::parse(conn_string_format),
+                )
+            }
+            PostgresConnection::Pool(pool) => {
+                let connection = pool.get().await;
+                let conn_string = connection
+                    .as_ref()
+                    .get_postgres_settings()
+                    .get_connection_string()
+                    .await;
+
+                let conn_string_format =
+                    crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
+
+                (
+                    connection.as_ref().get_app_name().to_string(),
                     ConnectionString::parse(conn_string_format),
                 )
             }
