@@ -53,6 +53,10 @@ impl TableColumn {
             if let Some(other_default) = &other.default {
                 return other_default.as_str() == self_default.as_str();
             }
+        } else {
+            if other.default.is_none() {
+                return true;
+            }
         }
 
         false
