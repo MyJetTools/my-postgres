@@ -182,8 +182,7 @@ async fn establish_connection_loop(
             #[cfg(feature = "with-tls")]
             create_and_start_with_tls(
                 conn_string,
-                &client,
-                &connected,
+                &inner,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 &logger,
             )
@@ -289,8 +288,8 @@ async fn create_and_start_no_tls_connection(
 #[cfg(feature = "with-tls")]
 async fn create_and_start_with_tls(
     connection_string: String,
-    client: &Arc<RwLock<Option<tokio_postgres::Client>>>,
-    connected: &Arc<AtomicBool>,
+    inner: &Arc<PostgresConnectionInner>,
+
     #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Sync + Send + 'static>,
 ) {
     let builder = SslConnector::builder(SslMethod::tls()).unwrap();
@@ -302,10 +301,11 @@ async fn create_and_start_with_tls(
     let logger_spawned = logger.clone();
     match result {
         Ok((postgres_client, postgres_connection)) => {
-            let connected_date_time =
-                handle_connection_is_established(client, postgres_client, connected).await;
+            let connected_date_time = inner
+                .handle_connection_is_established(postgres_client)
+                .await;
 
-            let connected_spawned = connected.clone();
+            let inner_spawned = inner.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = postgres_connection.await {
@@ -322,10 +322,10 @@ async fn create_and_start_with_tls(
                     None,
                 );
 
-                connected_spawned.store(false, Ordering::SeqCst);
+                inner_spawned.disconnect();
             });
 
-            while connected.load(Ordering::Relaxed) {
+            while inner.is_connected() {
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
         }
