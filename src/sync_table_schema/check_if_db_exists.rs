@@ -50,7 +50,7 @@ pub async fn check_if_db_exists(
 
     println!("Database {db_name} not found. Creating it...");
 
-    let sql: String = format!("CREATE DATABASE {db_name}'");
+    let sql: String = format!("CREATE DATABASE {db_name}");
 
     #[cfg(feature = "with-logs-and-telemetry")]
     {
