@@ -8,9 +8,6 @@ use crate::{
 pub async fn sync_indexes(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<bool, MyPostgresError> {
     if table_schema.indexes.is_none() {
         #[cfg(not(feature = "with-logs-and-telemetry"))]
@@ -20,7 +17,7 @@ pub async fn sync_indexes(
         );
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        logger.write_info(
+        conn_string.get_logger().write_info(
             "Table Schema verification".into(),
             format!(
                 "No Schema indexes is found for the table {}. Indexes synchronization is skipping",
@@ -42,27 +39,11 @@ pub async fn sync_indexes(
         if let Some(index_from_db) = indexes_from_db.get(index_name) {
             if !index_schema.is_the_same_with(index_from_db) {
                 println!("Index {} is not synchronized", index_name);
-                update_index(
-                    conn_string,
-                    table_schema,
-                    index_name,
-                    index_schema,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger,
-                )
-                .await?;
+                update_index(conn_string, table_schema, index_name, index_schema).await?;
             }
         } else {
             println!("Index {} not found. Creating one", index_name);
-            create_index(
-                conn_string,
-                table_schema,
-                index_name,
-                index_schema,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger,
-            )
-            .await?;
+            create_index(conn_string, table_schema, index_name, index_schema).await?;
             has_updates = true;
         }
     }
@@ -75,16 +56,13 @@ async fn create_index(
     table_schema: &TableSchema,
     index_name: &str,
     index_schema: &IndexSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<(), MyPostgresError> {
     let sql = index_schema.generate_create_index_sql(&table_schema.table_name, index_name);
 
     println!("Executing sql: {}", sql);
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    logger.write_warning(
+    conn_string.get_logger().write_warning(
         super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
         format!("Executing sql: {}", sql),
         None,
@@ -107,16 +85,13 @@ async fn update_index(
     table_schema: &TableSchema,
     index_name: &str,
     index_schema: &IndexSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<(), MyPostgresError> {
     let sql = format!("drop index {index_name};");
 
     println!("Executing sql: {}", sql);
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    logger.write_warning(
+    conn_string.get_logger().write_warning(
         super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
         format!("Executing sql: {}", sql),
         None,
@@ -133,15 +108,7 @@ async fn update_index(
         .await
         .unwrap();
 
-    create_index(
-        conn_string,
-        table_schema,
-        index_name,
-        index_schema,
-        #[cfg(feature = "with-logs-and-telemetry")]
-        logger,
-    )
-    .await?;
+    create_index(conn_string, table_schema, index_name, index_schema).await?;
 
     Ok(())
 }

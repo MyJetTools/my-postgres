@@ -34,7 +34,13 @@ impl MyPostgres {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> MyPostgresBuilder {
-        MyPostgresBuilder::new(app_name, postgres_settings).await
+        MyPostgresBuilder::new(
+            app_name,
+            postgres_settings,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            logger,
+        )
+        .await
     }
 
     pub fn create(connection: Arc<PostgresConnection>) -> Self {
@@ -42,13 +48,7 @@ impl MyPostgres {
     }
 
     pub fn with_shared_connection(connection: Arc<PostgresConnection>) -> MyPostgresBuilder {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let logger = connection.get_logger().clone();
-        MyPostgresBuilder::from_connection(
-            connection,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
-        )
+        MyPostgresBuilder::from_connection(connection)
     }
 
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(

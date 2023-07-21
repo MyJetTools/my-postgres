@@ -4,11 +4,6 @@ use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
 use tokio_postgres::Row;
 
-#[cfg(feature = "with-tls")]
-use openssl::ssl::{SslConnector, SslMethod};
-#[cfg(feature = "with-tls")]
-use postgres_openssl::MakeTlsConnector;
-
 #[cfg(feature = "with-logs-and-telemetry")]
 use rust_extensions::Logger;
 use std::{sync::Arc, time::Duration};

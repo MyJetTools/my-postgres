@@ -2,13 +2,7 @@ use std::time::Duration;
 
 use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
 
-pub async fn check_if_db_exists(
-    connection: &PostgresConnection,
-
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
-) -> Result<(), MyPostgresError> {
+pub async fn check_if_db_exists(connection: &PostgresConnection) -> Result<(), MyPostgresError> {
     let (app_name, connection_string) = connection.get_connection_string().await;
 
     let tech_conn_string =
@@ -21,7 +15,7 @@ pub async fn check_if_db_exists(
         std::sync::Arc::new(tech_conn_string),
         Duration::from_secs(5),
         #[cfg(feature = "with-logs-and-telemetry")]
-        logger.clone(),
+        connection.get_logger().clone(),
     )
     .await;
 
@@ -54,7 +48,7 @@ pub async fn check_if_db_exists(
         let mut ctx = std::collections::HashMap::new();
 
         ctx.insert("sql".to_string(), sql.to_string());
-        logger.write_warning(
+        connection.get_logger().write_warning(
             "check_if_db_exists".to_string(),
             format!("Creating table {db_name}"),
             Some(ctx),

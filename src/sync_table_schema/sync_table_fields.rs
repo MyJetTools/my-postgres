@@ -10,20 +10,11 @@ use crate::{
 pub async fn sync_table_fields(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<bool, MyPostgresError> {
     let db_fields = get_db_fields(conn_string, table_schema.table_name).await?;
 
     if db_fields.is_none() {
-        create_table(
-            conn_string,
-            table_schema,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
-        )
-        .await;
+        create_table(conn_string, table_schema).await;
         return Ok(true);
     }
 
@@ -39,7 +30,7 @@ pub async fn sync_table_fields(
 
         #[cfg(feature = "with-logs-and-telemetry")]
         {
-            logger.write_warning(
+            conn_string.get_logger().write_warning(
                 super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
                 format!(
                     "Please update columns manually {:?}",
@@ -56,14 +47,7 @@ pub async fn sync_table_fields(
 
     if schema_difference.to_add.len() > 0 {
         for column_name in &schema_difference.to_add {
-            add_column_to_table(
-                conn_string,
-                table_schema,
-                column_name,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger,
-            )
-            .await?;
+            add_column_to_table(conn_string, table_schema, column_name).await?;
         }
 
         return Ok(true);
@@ -72,13 +56,7 @@ pub async fn sync_table_fields(
     Ok(false)
 }
 
-async fn create_table(
-    conn_string: &PostgresConnection,
-    table_schema: &TableSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
-) {
+async fn create_table(conn_string: &PostgresConnection, table_schema: &TableSchema) {
     let create_table_sql = table_schema.generate_create_table_script();
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     println!("Table not found. Creating Table");
@@ -95,7 +73,7 @@ async fn create_table(
 
         ctx.insert("Sql".to_string(), create_table_sql.to_string());
 
-        logger.write_warning(
+        conn_string.get_logger().write_warning(
             super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
             format!("Creating table: {}", table_schema.table_name),
             Some(ctx),
@@ -164,9 +142,6 @@ async fn add_column_to_table(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     column_name: &str,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<(), MyPostgresError> {
     let add_column_sql = table_schema.generate_add_column_sql(column_name);
 
@@ -178,7 +153,7 @@ async fn add_column_to_table(
 
     #[cfg(feature = "with-logs-and-telemetry")]
     {
-        logger.write_warning(
+        conn_string.get_logger().write_warning(
             super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
             format!(
                 "Adding column by execution sql: {}",

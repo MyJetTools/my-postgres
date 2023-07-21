@@ -6,9 +6,6 @@ use crate::{
 pub async fn sync_primary_key(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) -> Result<bool, MyPostgresError> {
     if table_schema.primary_key.is_none() {
         #[cfg(not(feature = "with-logs-and-telemetry"))]
@@ -18,7 +15,7 @@ pub async fn sync_primary_key(
         );
 
         #[cfg(feature = "with-logs-and-telemetry")]
-        logger.write_info(
+        conn_string.get_logger().write_info(
             "Table Schema verification".into(),
             format!(
                 "No Primary key schema is found for the table {}. Primary key synchronization is skipping",
@@ -45,8 +42,6 @@ pub async fn sync_primary_key(
         primary_key_name,
         primary_key_schema,
         &primary_key_from_db,
-        #[cfg(feature = "with-logs-and-telemetry")]
-        logger,
     )
     .await;
 
@@ -59,9 +54,6 @@ async fn update_primary_key(
     primary_key_name: &str,
     primary_key_schema: &PrimaryKeySchema,
     primary_key_from_db: &PrimaryKeySchema,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &std::sync::Arc<
-        dyn rust_extensions::Logger + Sync + Send + 'static,
-    >,
 ) {
     let update_primary_key_sql = primary_key_schema.generate_update_primary_key_sql(
         table_name,
@@ -82,7 +74,7 @@ async fn update_primary_key(
     );
 
     #[cfg(feature = "with-logs-and-telemetry")]
-    logger.write_warning(
+    conn_string.get_logger().write_warning(
         super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
         format!(
             "Executing update primary key sql: {:?}",

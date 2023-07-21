@@ -15,6 +15,9 @@ impl MyPostgresBuilder {
     pub async fn new(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
+            dyn rust_extensions::Logger + Send + Sync + 'static,
+        >,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
@@ -23,7 +26,7 @@ impl MyPostgresBuilder {
             postgres_settings,
             Duration::from_secs(5),
             #[cfg(feature = "with-logs-and-telemetry")]
-            logger.clone(),
+            logger,
         )
         .await;
 
@@ -32,13 +35,7 @@ impl MyPostgresBuilder {
         }
     }
     pub fn from_connection(connection: Arc<PostgresConnection>) -> Self {
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let logger = connection.get_logger().clone();
-        Self {
-            connection,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
-        }
+        Self { connection }
     }
 
     pub async fn with_table_schema_verification<TTableSchemaProvider: TableSchemaProvider>(
@@ -86,13 +83,8 @@ impl MyPostgresBuilder {
 
         let started = DateTimeAsMicroseconds::now();
 
-        while let Err(err) = crate::sync_table_schema::sync_schema(
-            &self.connection,
-            &table_schema,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            &self.logger,
-        )
-        .await
+        while let Err(err) =
+            crate::sync_table_schema::sync_schema(&self.connection, &table_schema).await
         {
             println!(
                 "Can not verify schema for table {} because of error {:?}",

@@ -3,6 +3,11 @@ use std::{sync::Arc, time::Duration};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_postgres::NoTls;
 
+#[cfg(feature = "with-tls")]
+use openssl::ssl::{SslConnector, SslMethod};
+#[cfg(feature = "with-tls")]
+use postgres_openssl::MakeTlsConnector;
+
 use super::postgres_connect_inner::PostgresConnectionInner;
 
 pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
@@ -18,13 +23,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
 
         if conn_string.contains("sslmode=require") {
             #[cfg(feature = "with-tls")]
-            create_and_start_with_tls(
-                conn_string,
-                &inner,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &logger,
-            )
-            .await;
+            create_and_start_with_tls(conn_string, &inner).await;
             #[cfg(not(feature = "with-tls"))]
             {
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -38,13 +37,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         } else {
-            create_and_start_no_tls_connection(
-                conn_string,
-                &inner,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &logger,
-            )
-            .await;
+            create_and_start_no_tls_connection(conn_string, &inner).await;
         }
 
         inner.disconnect();
@@ -56,7 +49,6 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
 async fn create_and_start_no_tls_connection(
     connection_string: String,
     inner: &Arc<PostgresConnectionInner>,
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Sync + Send + 'static>,
 ) {
     let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
 
@@ -67,7 +59,7 @@ async fn create_and_start_no_tls_connection(
                 .await;
 
             #[cfg(feature = "with-logs-and-telemetry")]
-            let logger_spawned = logger.clone();
+            let logger_spawned = inner.logger.clone();
 
             let inner_spawned = inner.clone();
 
@@ -113,7 +105,7 @@ async fn create_and_start_no_tls_connection(
             );
 
             #[cfg(feature = "with-logs-and-telemetry")]
-            logger.write_fatal_error(
+            inner.logger.write_fatal_error(
                 "CreatingPostgres".to_string(),
                 format!("Can not establish postgres connection. {:?}", err),
                 None,
@@ -127,8 +119,6 @@ async fn create_and_start_no_tls_connection(
 async fn create_and_start_with_tls(
     connection_string: String,
     inner: &Arc<PostgresConnectionInner>,
-
-    #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<dyn Logger + Sync + Send + 'static>,
 ) {
     let builder = SslConnector::builder(SslMethod::tls()).unwrap();
 
@@ -136,7 +126,7 @@ async fn create_and_start_with_tls(
 
     let result = tokio_postgres::connect(connection_string.as_str(), connector).await;
     #[cfg(feature = "with-logs-and-telemetry")]
-    let logger_spawned = logger.clone();
+    let logger_spawned = inner.logger.clone();
     match result {
         Ok((postgres_client, postgres_connection)) => {
             let connected_date_time = inner
@@ -169,7 +159,7 @@ async fn create_and_start_with_tls(
         }
         Err(_err) => {
             #[cfg(feature = "with-logs-and-telemetry")]
-            logger.write_fatal_error(
+            inner.logger.write_fatal_error(
                 "Creating Postgres".to_string(),
                 format!("Invalid connection string. {:?}", _err),
                 None,
