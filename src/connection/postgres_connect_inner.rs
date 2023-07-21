@@ -46,10 +46,12 @@ impl PostgresConnectionSingleThreaded {
         }
     }
 
-    pub fn start_connection(&mut self) {
+    pub fn start_connection(&mut self) -> bool {
         if let Some(to_start) = self.to_start.take() {
             tokio::spawn(super::connection_loop::start_connection_loop(to_start));
+            return true;
         }
+        false
     }
 
     pub fn get_connection_mut(&mut self) -> Result<&mut tokio_postgres::Client, MyPostgresError> {
@@ -220,16 +222,18 @@ impl PostgresConnectionInner {
     }
 
     async fn start_connection(&self) {
-        {
+        let started = {
             let mut write_access = self.inner.write().await;
-            write_access.start_connection();
-        }
+            write_access.start_connection()
+        };
 
-        loop {
-            if self.is_connected() {
-                break;
+        if started {
+            loop {
+                if self.is_connected() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_micros(100)).await;
             }
-            tokio::time::sleep(Duration::from_micros(100)).await;
         }
     }
 
