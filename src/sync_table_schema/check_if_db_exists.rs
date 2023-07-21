@@ -64,7 +64,7 @@ pub async fn check_if_db_exists(
         );
     }
 
-    connection
+    tech_connection
         .execute_sql(
             &sql.into(),
             None,
