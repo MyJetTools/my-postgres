@@ -18,8 +18,8 @@ pub struct ConnectionString {
 impl ConnectionString {
     pub fn parse(conn_string: ConnectionStringFormat) -> Self {
         match conn_string {
-            ConnectionStringFormat::ReadyToUse(_) => {
-                panic!("We should not go here");
+            ConnectionStringFormat::ReadyToUse(conn_string) => {
+                Self::parse_space_separated(conn_string.as_bytes().to_vec())
             }
             ConnectionStringFormat::AsUrl(conn_string) => {
                 Self::parse_url_connection_string(conn_string.as_bytes().to_vec())
@@ -32,6 +32,97 @@ impl ConnectionString {
 
     pub fn get_db_name(&self) -> &str {
         self.get_field_value(&self.db_name)
+    }
+
+    fn parse_space_separated(conn_string: Vec<u8>) -> Self {
+        let mut user_name = None;
+        let mut password = None;
+        let mut db_name = None;
+        let mut host = None;
+        let mut port: u32 = 5432;
+        let mut ssl_require = false;
+
+        let mut pos = 0;
+        while pos < conn_string.len() {
+            let eq_pos = find_pos(conn_string.as_slice(), pos + 1, b'=');
+
+            if eq_pos == None {
+                break;
+            }
+
+            let eq_pos = eq_pos.unwrap();
+
+            let end_of_value = find_pos(conn_string.as_slice(), eq_pos + 1, b' ');
+
+            let end_of_value = match end_of_value {
+                Some(end_of_value) => end_of_value,
+                None => conn_string.len(),
+            };
+
+            let key = std::str::from_utf8(&conn_string[pos..eq_pos])
+                .unwrap()
+                .trim()
+                .to_lowercase();
+
+            match key.as_str() {
+                "host" => {
+                    host = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+                "user" => {
+                    user_name = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+
+                "password" => {
+                    password = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+
+                "port" => {
+                    let value = std::str::from_utf8(&conn_string[eq_pos + 1..end_of_value])
+                        .unwrap()
+                        .trim();
+
+                    port = value.parse::<u32>().unwrap();
+                }
+
+                "dbname" => {
+                    db_name = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+
+                "sslmode" => {
+                    let value = std::str::from_utf8(&conn_string[eq_pos + 1..end_of_value])
+                        .unwrap()
+                        .trim()
+                        .to_lowercase();
+                    ssl_require = value == "require";
+                }
+
+                _ => {}
+            }
+
+            pos = end_of_value + 1;
+        }
+
+        Self {
+            conn_string: conn_string,
+            user_name: user_name.unwrap(),
+            password: password.unwrap(),
+            host: host.unwrap(),
+            port,
+            db_name: db_name.unwrap(),
+            ssl_require,
+        }
     }
 
     fn parse_column_separated(conn_string: Vec<u8>) -> Self {
