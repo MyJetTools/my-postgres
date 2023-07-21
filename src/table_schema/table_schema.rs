@@ -45,6 +45,12 @@ impl TableSchema {
             result.push_str(column.name.as_str());
             result.push_str(" ");
             result.push_str(column.sql_type.to_db_type());
+
+            if let Some(default) = column.get_default() {
+                result.push_str(" default ");
+                result.push_str(default.as_str());
+            }
+
             result.push_str(" ");
             result.push_str(column.generate_is_nullable_sql());
 
@@ -86,9 +92,14 @@ impl TableSchema {
             let table_name = self.table_name;
             let column_name = column.name.as_str();
             let column_type = column.sql_type.to_db_type();
+            let default = if let Some(default) = column.get_default() {
+                format!("default {}", default.as_str())
+            } else {
+                "".to_string()
+            };
             let is_nullable = column.generate_is_nullable_sql();
             return format!(
-                "alter table {schema}.{table_name} add {column_name} {column_type} {is_nullable};"
+                "alter table {schema}.{table_name} add {column_name} {column_type} {default} {is_nullable};"
             );
         }
 

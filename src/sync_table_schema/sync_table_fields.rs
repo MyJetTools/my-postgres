@@ -1,5 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
+use rust_extensions::StrOrString;
+
 use crate::{
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
     MyPostgresError, PostgresConnection,
@@ -129,7 +131,7 @@ async fn get_db_fields(
             name: db_row.get("column_name"),
             sql_type: get_sql_type(db_row),
             is_nullable: get_is_nullable(db_row),
-            default: None,
+            default: get_column_default(&db_row),
         })
         .await?;
 
@@ -142,7 +144,7 @@ async fn get_db_fields(
                 name: db_row.get("column_name"),
                 sql_type: get_sql_type(db_row),
                 is_nullable: get_is_nullable(db_row),
-                default: None,
+                default: get_column_default(&db_row),
             },
             None,
         )
@@ -211,4 +213,38 @@ fn get_sql_type(db_row: &tokio_postgres::Row) -> TableColumnType {
 fn get_is_nullable(db_row: &tokio_postgres::Row) -> bool {
     let is_nullable: String = db_row.get("is_nullable");
     is_nullable == "YES"
+}
+
+fn get_column_default(db_row: &tokio_postgres::Row) -> Option<StrOrString<'static>> {
+    let value: Option<String> = db_row.get("column_default");
+
+    let value = value?;
+
+    Some(transform_value(value.as_str()).to_string().into())
+}
+
+fn transform_value(src: &str) -> &str {
+    if !src.starts_with("'") {
+        return src;
+    }
+
+    let src = &src[1..];
+
+    match src.find('\'') {
+        Some(end_index) => &src[..end_index],
+        None => src,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test() {
+        let src = "'2021-01-01'::date";
+
+        let result = super::transform_value(src);
+
+        assert_eq!("2021-01-01", result);
+    }
 }
