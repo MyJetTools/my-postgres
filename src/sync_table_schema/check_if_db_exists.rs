@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
 
@@ -23,6 +23,10 @@ pub async fn check_if_db_exists(
         #[cfg(feature = "with-logs-and-telemetry")]
         logger.clone(),
     );
+
+    println!("Waiting until we have tech connection");
+
+    tech_connection.await_until_connected().await;
 
     println!("Checking that DB exists");
 

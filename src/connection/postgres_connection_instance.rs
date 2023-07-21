@@ -62,6 +62,16 @@ impl PostgresConnectionInstance {
         }
     }
 
+    pub async fn await_until_connected(&self) {
+        loop {
+            if self.inner.is_connected() {
+                break;
+            }
+
+            tokio::time::sleep(Duration::from_micros(100)).await;
+        }
+    }
+
     pub fn disconnect(&self) {
         self.inner.disconnect();
     }
