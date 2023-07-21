@@ -30,6 +30,10 @@ impl<'s> ConnectionString<'s> {
         }
     }
 
+    pub fn get_db_name(&self) -> &str {
+        self.get_field_value(&self.db_name)
+    }
+
     fn parse_column_separated(conn_string: &'s [u8]) -> Self {
         let mut user_name = None;
         let mut password = None;

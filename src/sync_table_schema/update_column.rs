@@ -67,7 +67,15 @@ async fn try_to_update_is_nullable(
         alter column {column_name} drop not null;"#
         );
 
-        conn_string.execute_sql(&sql.into(), None).await.unwrap();
+        conn_string
+            .execute_sql(
+                &sql.into(),
+                None,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                None,
+            )
+            .await
+            .unwrap();
 
         return Ok(());
     }
@@ -77,7 +85,15 @@ async fn try_to_update_is_nullable(
     alter column {column_name} set not null;"#
     );
 
-    match conn_string.execute_sql(&sql.clone().into(), None).await {
+    match conn_string
+        .execute_sql(
+            &sql.clone().into(),
+            None,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            None,
+        )
+        .await
+    {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(format!("Failed to execute {}. Reason: {:?}", sql, err));
@@ -98,7 +114,15 @@ async fn try_to_update_column_type(
     alter column {column_name} type {db_type} using test::{db_type};"#
     );
 
-    match conn_string.execute_sql(&sql.clone().into(), None).await {
+    match conn_string
+        .execute_sql(
+            &sql.clone().into(),
+            None,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            None,
+        )
+        .await
+    {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(format!("Failed to execute {}. Reason: {:?}", sql, err));
@@ -144,7 +168,15 @@ async fn try_to_update_default(
         }
     };
 
-    match conn_string.execute_sql(&sql.clone().into(), None).await {
+    match conn_string
+        .execute_sql(
+            &sql.clone().into(),
+            None,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            None,
+        )
+        .await
+    {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(format!("Failed to execute {}. Reason: {:?}", sql, err));

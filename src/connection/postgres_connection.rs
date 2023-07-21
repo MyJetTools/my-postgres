@@ -8,6 +8,7 @@ use rust_extensions::StrOrString;
 use tokio_postgres::Row;
 
 use crate::{
+    count_result::CountResult,
     sql::{SqlData, SqlValues},
     ConnectionsPool, MyPostgresError, PostgresConnectionInstance, PostgresSettings,
 };
@@ -114,6 +115,38 @@ impl PostgresConnection {
                     )
                     .await
             }
+        }
+    }
+
+    pub async fn get_db_name(&self) -> String {
+        match self {
+            PostgresConnection::Single(connection) => connection.get_db_name().await,
+            PostgresConnection::Pool(pool) => {
+                let connection = pool.get().await;
+                connection.as_ref().get_db_name().await
+            }
+        }
+    }
+    pub async fn get_count_low_level<TCountResult: CountResult>(
+        &self,
+        sql: &SqlData,
+        process_name: Option<&str>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Option<TCountResult>, MyPostgresError> {
+        let mut result = self
+            .execute_sql_as_vec(
+                sql,
+                process_name,
+                |db_row| TCountResult::from_db_row(db_row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
+
+        if result.len() > 0 {
+            Ok(Some(result.remove(0)))
+        } else {
+            Ok(None)
         }
     }
 

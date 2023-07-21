@@ -24,7 +24,7 @@ use std::{
 
 use crate::{
     sql::{SqlData, SqlValues},
-    MyPostgresError, PostgresSettings,
+    ConnectionString, MyPostgresError, PostgresSettings,
 };
 
 pub struct PostgresConnectionInstance {
@@ -34,6 +34,7 @@ pub struct PostgresConnectionInstance {
     pub connected: Arc<AtomicBool>,
     pub created: DateTimeAsMicroseconds,
     pub sql_request_timeout: Duration,
+    postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
 }
 
 impl PostgresConnectionInstance {
@@ -51,7 +52,7 @@ impl PostgresConnectionInstance {
 
         tokio::spawn(establish_connection_loop(
             app_name,
-            postgres_settings,
+            postgres_settings.clone(),
             client.clone(),
             connected.clone(),
             #[cfg(feature = "with-logs-and-telemetry")]
@@ -65,6 +66,7 @@ impl PostgresConnectionInstance {
             logger,
             created: DateTimeAsMicroseconds::now(),
             sql_request_timeout,
+            postgres_settings,
         }
     }
 
@@ -75,6 +77,17 @@ impl PostgresConnectionInstance {
 
     pub fn is_connected(&self) -> bool {
         self.connected.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub async fn get_db_name(&self) -> String {
+        let conn_string = self.postgres_settings.get_connection_string().await;
+
+        let conn_string_format =
+            crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
+
+        let connection_string = ConnectionString::parse(conn_string_format);
+
+        connection_string.get_db_name().to_string()
     }
 
     pub async fn execute_sql(
