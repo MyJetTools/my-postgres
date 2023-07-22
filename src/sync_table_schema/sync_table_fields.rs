@@ -30,26 +30,29 @@ pub async fn sync_table_fields(
         )
         .await
         {
-            println!("Reason: {}", err.err);
-            println!("---------------------");
-            println!("Failed to update column {}. {}", err.column_name, err.dif);
+            #[cfg(not(feature = "with-logs-and-telemetry"))]
+            {
+                println!("Reason: {}", err.err);
+                println!("---------------------");
+                println!("Failed to update column {}. {}", err.column_name, err.dif);
+            }
+
+            #[cfg(feature = "with-logs-and-telemetry")]
+            {
+                conn_string.get_logger().write_warning(
+                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                    format!(
+                        "Please update columns manually {:?}",
+                        schema_difference.to_update
+                    ),
+                    None,
+                );
+            }
+
+            tokio::time::sleep(Duration::from_secs(10)).await;
+
+            panic!("Closing application...");
         }
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        {
-            conn_string.get_logger().write_warning(
-                super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                format!(
-                    "Please update columns manually {:?}",
-                    schema_difference.to_update
-                ),
-                None,
-            );
-        }
-
-        tokio::time::sleep(Duration::from_secs(10)).await;
-
-        panic!("Closing application...");
     }
 
     if schema_difference.to_add.len() > 0 {
