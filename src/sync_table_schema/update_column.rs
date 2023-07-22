@@ -17,7 +17,7 @@ pub async fn update_column(
     differences: &[ColumnDifference],
 ) -> Result<(), UpdateColumnError> {
     for difference in differences {
-        if difference
+        if !difference
             .db
             .sql_type
             .equals_to(&difference.required.sql_type)
