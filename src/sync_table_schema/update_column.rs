@@ -1,5 +1,3 @@
-use rust_extensions::StrOrString;
-
 use crate::{
     table_schema::{ColumnDifference, TableColumn, TableColumnType, DEFAULT_SCHEMA},
     PostgresConnection,
@@ -22,6 +20,14 @@ pub async fn update_column(
             .sql_type
             .equals_to(&difference.required.sql_type)
         {
+            println!(
+                "DB: {}. Updating column {}  type: {:?}->{:?}",
+                table_name,
+                difference.required.name,
+                difference.db.get_default(),
+                difference.required.get_default(),
+            );
+
             try_to_update_column_type(
                 conn_string,
                 table_name,
@@ -35,6 +41,14 @@ pub async fn update_column(
         }
 
         if difference.db.is_nullable && !difference.required.is_nullable {
+            println!(
+                "DB: {}. Updating column {} nullable: {}->{}",
+                table_name,
+                difference.required.name,
+                difference.db.is_nullable,
+                difference.required.is_nullable,
+            );
+
             try_to_update_is_nullable(
                 conn_string,
                 table_name,
@@ -47,12 +61,18 @@ pub async fn update_column(
         }
 
         if !difference.db.is_default_the_same(&difference.required) {
+            println!(
+                "DB: {}. Updating column {} default: {:?}->{:?}",
+                table_name,
+                difference.required.name,
+                difference.db.get_default(),
+                difference.required.get_default(),
+            );
             try_to_update_default(
                 conn_string,
                 table_name,
+                &difference.db,
                 &difference.required,
-                &difference.db.default,
-                &difference.required.default,
             )
             .await?;
             return Ok(());
@@ -154,12 +174,11 @@ async fn try_to_update_column_type(
 async fn try_to_update_default(
     conn_string: &PostgresConnection,
     table_name: &str,
-    table_column: &TableColumn,
-    now_default: &Option<StrOrString<'static>>,
-    required_default: &Option<StrOrString<'static>>,
+    db: &TableColumn,
+    required: &TableColumn,
 ) -> Result<(), UpdateColumnError> {
-    let sql = if let Some(now_default) = now_default {
-        if let Some(required_default) = required_default {
+    let sql = if let Some(now_default) = db.default.as_ref() {
+        if let Some(required_default) = required.default.as_ref() {
             if required_default.as_str() == now_default.as_str() {
                 println!("BUG: We should not be here: #1");
                 return Ok(());
@@ -167,7 +186,7 @@ async fn try_to_update_default(
                 format!(
                     r#"alter table {DEFAULT_SCHEMA}.{table_name}
                     alter column {column_name} set default {now_default}"#,
-                    column_name = table_column.name.as_str(),
+                    column_name = db.name.as_str(),
                     now_default = now_default.as_str()
                 )
             }
@@ -175,15 +194,15 @@ async fn try_to_update_default(
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
                 alter column {column_name} drop default"#,
-                column_name = table_column.name.as_str(),
+                column_name = db.name.as_str(),
             )
         }
     } else {
-        if let Some(now_default) = table_column.get_default() {
+        if let Some(req_default) = required.get_default() {
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
-           alter column {column_name} set default {now_default}"#,
-                column_name = table_column.name.as_str(),
+           alter column {column_name} set default {req_default}"#,
+                column_name = required.name.as_str(),
             )
         } else {
             println!("BUG: We should not be here: #2");
@@ -203,10 +222,11 @@ async fn try_to_update_default(
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(UpdateColumnError {
-                column_name: table_column.name.to_string(),
+                column_name: required.name.to_string(),
                 dif: format!(
                     "Default update: '{:?}' -> '{:?}'",
-                    now_default, required_default
+                    db.get_default(),
+                    required.get_default()
                 ),
                 err: format!("Failed to execute {}. Reason: {:?}", sql, err),
             });
