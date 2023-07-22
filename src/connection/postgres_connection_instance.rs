@@ -1,6 +1,6 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
-use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use tokio_postgres::Row;
 
@@ -23,16 +23,14 @@ pub struct PostgresConnectionInstance {
 
 impl PostgresConnectionInstance {
     pub async fn new(
-        app_name: StrOrString<'static>,
+        app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        sql_request_timeout: Duration,
 
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
-            app_name.as_str().to_string(),
+            app_name,
             postgres_settings,
-            sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.clone(),
         ));
@@ -90,12 +88,14 @@ impl PostgresConnectionInstance {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         self.inner
             .execute_sql(
                 sql,
                 process_name,
+                sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -106,12 +106,14 @@ impl PostgresConnectionInstance {
         &self,
         sql_with_params: Vec<SqlData>,
         process_name: &str,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         self.inner
             .execute_bulk_sql(
                 sql_with_params,
                 process_name,
+                sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -123,6 +125,7 @@ impl PostgresConnectionInstance {
         sql: &SqlData,
         process_name: Option<&str>,
         transform: TTransform,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let result_rows_set = self
@@ -130,6 +133,7 @@ impl PostgresConnectionInstance {
             .execute_sql_as_vec(
                 sql,
                 process_name,
+                sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -148,6 +152,7 @@ impl PostgresConnectionInstance {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TCountResult>, MyPostgresError> {
         let mut result = self
@@ -155,6 +160,7 @@ impl PostgresConnectionInstance {
                 sql,
                 process_name,
                 |db_row| TCountResult::from_db_row(db_row),
+                sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )

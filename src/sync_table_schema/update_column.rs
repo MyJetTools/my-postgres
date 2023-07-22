@@ -3,6 +3,8 @@ use crate::{
     PostgresConnection,
 };
 
+use super::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT;
+
 pub struct UpdateColumnError {
     pub column_name: String,
     pub dif: String,
@@ -168,6 +170,7 @@ async fn try_to_update_is_nullable(
             .execute_sql(
                 &sql.into(),
                 None,
+                SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
             )
@@ -186,6 +189,7 @@ async fn try_to_update_is_nullable(
         .execute_sql(
             &sql.clone().into(),
             None,
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -220,6 +224,7 @@ async fn try_to_update_column_type(
         .execute_sql(
             &sql.clone().into(),
             None,
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -283,6 +288,7 @@ async fn try_to_update_default(
         .execute_sql(
             &sql.clone().into(),
             None,
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )

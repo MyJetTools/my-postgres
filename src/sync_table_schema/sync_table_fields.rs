@@ -3,6 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use rust_extensions::StrOrString;
 
 use crate::{
+    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
     MyPostgresError, PostgresConnection,
 };
@@ -97,6 +98,7 @@ async fn create_table(conn_string: &PostgresConnection, table_schema: &TableSche
         .execute_sql(
             &create_table_sql.into(),
             "create_table".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -118,12 +120,17 @@ async fn get_db_fields(
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     let result = conn_string
-        .execute_sql_as_vec(&sql.into(), "get_db_fields".into(), |db_row| TableColumn {
-            name: db_row.get("column_name"),
-            sql_type: get_sql_type(db_row),
-            is_nullable: get_is_nullable(db_row),
-            default: get_column_default(&db_row),
-        })
+        .execute_sql_as_vec(
+            &sql.into(),
+            "get_db_fields".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            |db_row| TableColumn {
+                name: db_row.get("column_name"),
+                sql_type: get_sql_type(db_row),
+                is_nullable: get_is_nullable(db_row),
+                default: get_column_default(&db_row),
+            },
+        )
         .await?;
 
     #[cfg(feature = "with-logs-and-telemetry")]
@@ -131,6 +138,7 @@ async fn get_db_fields(
         .execute_sql_as_vec(
             &sql.into(),
             "get_db_fields".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             |db_row| TableColumn {
                 name: db_row.get("column_name"),
                 sql_type: get_sql_type(db_row),
@@ -180,6 +188,7 @@ async fn add_column_to_table(
         .execute_sql(
             &add_column_sql.into(),
             "add_column_to_table".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )

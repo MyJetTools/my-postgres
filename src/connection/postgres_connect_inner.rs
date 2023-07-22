@@ -66,7 +66,6 @@ impl PostgresConnectionSingleThreaded {
 pub struct PostgresConnectionInner {
     pub inner: Arc<RwLock<PostgresConnectionSingleThreaded>>,
     pub connected: Arc<AtomicBool>,
-    pub sql_request_time_out: Duration,
     pub app_name: String,
     pub postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     pub to_be_disposable: AtomicBool,
@@ -78,7 +77,6 @@ impl PostgresConnectionInner {
     pub fn new(
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
@@ -88,7 +86,7 @@ impl PostgresConnectionInner {
             postgres_settings,
             inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new())),
             connected: Arc::new(AtomicBool::new(false)),
-            sql_request_time_out,
+
             to_be_disposable: AtomicBool::new(false),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
@@ -155,6 +153,7 @@ impl PostgresConnectionInner {
         sql: Option<&str>,
         process_name: &str,
         execution: TFuture,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
@@ -164,11 +163,11 @@ impl PostgresConnectionInner {
         >,
     ) -> Result<TResult, MyPostgresError> {
         let timeout_result: Result<Result<TResult, tokio_postgres::Error>, Elapsed> =
-            tokio::time::timeout(self.sql_request_time_out, execution).await;
+            tokio::time::timeout(sql_request_time_out, execution).await;
 
         let result = if timeout_result.is_err() {
             self.connected.store(false, Ordering::Relaxed);
-            Err(MyPostgresError::TimeOut(self.sql_request_time_out))
+            Err(MyPostgresError::TimeOut(sql_request_time_out))
         } else {
             match timeout_result.unwrap() {
                 Ok(result) => Ok(result),
@@ -241,6 +240,7 @@ impl PostgresConnectionInner {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
         >,
@@ -278,6 +278,7 @@ impl PostgresConnectionInner {
                             Some(&sql.sql),
                             process_name,
                             execution,
+                            sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
                             &self.logger,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -300,6 +301,7 @@ impl PostgresConnectionInner {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
         >,
@@ -337,6 +339,7 @@ impl PostgresConnectionInner {
                             Some(&sql.sql),
                             process_name,
                             execution,
+                            sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
                             &self.logger,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -359,6 +362,7 @@ impl PostgresConnectionInner {
         &self,
         sql_with_params: Vec<SqlData>,
         process_name: &str,
+        sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
         >,
@@ -393,6 +397,7 @@ impl PostgresConnectionInner {
                 None,
                 process_name,
                 execution,
+                sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 &self.logger,
                 #[cfg(feature = "with-logs-and-telemetry")]

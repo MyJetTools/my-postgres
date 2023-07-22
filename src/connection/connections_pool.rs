@@ -4,14 +4,13 @@ use rust_extensions::{
     objects_pool::{ObjectsPool, RentedObject},
     StrOrString,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use crate::{PostgresConnectionInstance, PostgresSettings};
 
 struct MyPostgresFactory {
     app_name: StrOrString<'static>,
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-    exec_timeout: Duration,
     #[cfg(feature = "with-logs-and-telemetry")]
     logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
@@ -20,13 +19,11 @@ impl MyPostgresFactory {
     pub fn new(
         app_name: StrOrString<'static>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        exec_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             postgres_settings,
             app_name,
-            exec_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -39,9 +36,8 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
 {
     async fn create_new(&self) -> PostgresConnectionInstance {
         PostgresConnectionInstance::new(
-            self.app_name.clone(),
+            self.app_name.as_str().to_string(),
             self.postgres_settings.clone(),
-            self.exec_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             self.logger.clone(),
         )
@@ -60,7 +56,6 @@ impl ConnectionsPool {
         app_name: StrOrString<'static>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
-        request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
@@ -71,7 +66,6 @@ impl ConnectionsPool {
                 Arc::new(MyPostgresFactory::new(
                     app_name.clone(),
                     postgres_settings.clone(),
-                    request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )),

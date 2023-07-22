@@ -7,12 +7,24 @@ use crate::{
     MyPostgres, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
 };
 
-pub struct MyPostgresBuilder {
-    connection: Arc<PostgresConnection>,
+pub enum MyPostgresBuilder {
+    AsSettings {
+        postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+        app_name: String,
+        table_schema_data: Option<TableSchema>,
+        sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
+    },
+    AsSharedConnection {
+        connection: Arc<PostgresConnection>,
+        table_schema_data: Option<TableSchema>,
+        sql_request_timeout: Duration,
+    },
 }
 
 impl MyPostgresBuilder {
-    pub async fn new(
+    pub fn new(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
@@ -21,46 +33,43 @@ impl MyPostgresBuilder {
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
-        let connection = PostgresConnectionInstance::new(
-            app_name,
+        Self::AsSettings {
+            app_name: app_name.to_string(),
             postgres_settings,
-            Duration::from_secs(5),
+            table_schema_data: None,
+            sql_request_timeout: Duration::from_secs(5),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
-        )
-        .await;
-
-        Self {
-            connection: Arc::new(PostgresConnection::Single(connection)),
         }
     }
     pub fn from_connection(connection: Arc<PostgresConnection>) -> Self {
-        Self { connection }
+        Self::AsSharedConnection {
+            connection,
+            table_schema_data: None,
+            sql_request_timeout: Duration::from_secs(5),
+        }
     }
 
-    pub async fn with_table_schema_verification<TTableSchemaProvider: TableSchemaProvider>(
-        self,
+    pub fn set_sql_request_timeout(mut self, value: Duration) -> Self {
+        match &mut self {
+            MyPostgresBuilder::AsSettings {
+                sql_request_timeout,
+                ..
+            } => *sql_request_timeout = value,
+            MyPostgresBuilder::AsSharedConnection {
+                sql_request_timeout,
+                ..
+            } => *sql_request_timeout = value,
+        }
+
+        self
+    }
+
+    pub fn with_table_schema_verification<TTableSchemaProvider: TableSchemaProvider>(
+        mut self,
         table_name: &'static str,
         primary_key_name: Option<String>,
-    ) -> MyPostgres {
-        self.check_table_schema::<TTableSchemaProvider>(table_name, primary_key_name)
-            .await;
-        MyPostgres::create(self.connection)
-    }
-
-    pub async fn with_no_table_schema_verification(self) -> MyPostgres {
-        MyPostgres::create(self.connection)
-    }
-
-    pub async fn check_table_schema<TTableSchemaProvider: TableSchemaProvider>(
-        &self,
-        table_name: &'static str,
-        primary_key_name: Option<String>,
-    ) {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
-        let columns = TTableSchemaProvider::get_columns();
-
+    ) -> Self {
         let primary_key = if let Some(primary_key_name) = primary_key_name {
             if let Some(primary_key_columns) = TTableSchemaProvider::PRIMARY_KEY_COLUMNS {
                 Some((
@@ -77,33 +86,86 @@ impl MyPostgresBuilder {
             None
         };
 
-        let indexes = TTableSchemaProvider::get_indexes();
+        let table_schema = TableSchema {
+            table_name,
+            primary_key,
+            columns: TTableSchemaProvider::get_columns(),
+            indexes: TTableSchemaProvider::get_indexes(),
+        };
 
-        let table_schema = TableSchema::new(table_name, primary_key, columns, indexes);
+        match &mut self {
+            MyPostgresBuilder::AsSettings {
+                table_schema_data, ..
+            } => *table_schema_data = Some(table_schema),
+            MyPostgresBuilder::AsSharedConnection {
+                table_schema_data, ..
+            } => *table_schema_data = Some(table_schema),
+        }
 
-        let started = DateTimeAsMicroseconds::now();
+        self
+    }
 
-        while let Err(err) =
-            crate::sync_table_schema::sync_schema(&self.connection, &table_schema).await
-        {
-            println!(
-                "Can not verify schema for table {} because of error {:?}",
-                table_name, err
-            );
+    pub async fn build(self) -> MyPostgres {
+        match self {
+            MyPostgresBuilder::AsSettings {
+                postgres_settings,
+                app_name,
+                mut table_schema_data,
+                sql_request_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                logger,
+            } => {
+                let connection = PostgresConnectionInstance::new(
+                    app_name,
+                    postgres_settings,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    logger,
+                )
+                .await;
 
-            if DateTimeAsMicroseconds::now()
-                .duration_since(started)
-                .as_positive_or_zero()
-                > Duration::from_secs(20)
-            {
-                panic!(
-                    "Aborting  the process due to the failing to verify table {} schema during 20 seconds.",
-                    table_name
-                );
-            } else {
-                println!("Retrying in 3 seconds...");
-                tokio::time::sleep(Duration::from_secs(3)).await;
+                let connection = Arc::new(PostgresConnection::Single(connection));
+
+                if let Some(table_schema) = table_schema_data.take() {
+                    check_table_schema(&connection, table_schema).await;
+                }
+
+                MyPostgres::create(connection, sql_request_timeout)
             }
+            MyPostgresBuilder::AsSharedConnection {
+                connection,
+                mut table_schema_data,
+                sql_request_timeout,
+            } => {
+                if let Some(table_schema) = table_schema_data.take() {
+                    check_table_schema(&connection, table_schema).await;
+                }
+                MyPostgres::create(connection, sql_request_timeout)
+            }
+        }
+    }
+}
+
+pub async fn check_table_schema(connection: &PostgresConnection, table_schema: TableSchema) {
+    let started = DateTimeAsMicroseconds::now();
+
+    while let Err(err) = crate::sync_table_schema::sync_schema(connection, &table_schema).await {
+        println!(
+            "Can not verify schema for table {} because of error {:?}",
+            table_schema.table_name, err
+        );
+
+        if DateTimeAsMicroseconds::now()
+            .duration_since(started)
+            .as_positive_or_zero()
+            > Duration::from_secs(20)
+        {
+            panic!(
+                "Aborting  the process due to the failing to verify table {} schema during 20 seconds.",
+                table_schema.table_name
+            );
+        } else {
+            println!("Retrying in 3 seconds...");
+            tokio::time::sleep(Duration::from_secs(3)).await;
         }
     }
 }

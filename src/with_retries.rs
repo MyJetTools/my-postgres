@@ -17,6 +17,7 @@ pub struct SqlOperationWithRetries {
     connection: Arc<PostgresConnection>,
     delay: Duration,
     retries_amount: usize,
+    sql_request_timeout: Duration,
 }
 
 impl SqlOperationWithRetries {
@@ -24,11 +25,13 @@ impl SqlOperationWithRetries {
         connection: Arc<PostgresConnection>,
         delay: Duration,
         retries_amount: usize,
+        sql_request_timeout: Duration,
     ) -> Self {
         Self {
             connection,
             delay,
             retries_amount,
+            sql_request_timeout,
         }
     }
 
@@ -48,6 +51,7 @@ impl SqlOperationWithRetries {
                 .insert_db_entity_if_not_exists(
                     entity,
                     table_name,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -76,6 +80,7 @@ impl SqlOperationWithRetries {
                 .get_count(
                     table_name,
                     where_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -104,6 +109,7 @@ impl SqlOperationWithRetries {
                 .query_single_row(
                     table_name,
                     where_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -138,6 +144,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     &post_processing,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -165,6 +172,7 @@ impl SqlOperationWithRetries {
                 .execute_sql(
                     &sql,
                     None,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -195,6 +203,7 @@ impl SqlOperationWithRetries {
                 .execute_sql_as_vec(
                     &sql,
                     None,
+                    self.sql_request_timeout,
                     |row| TEntity::from(row),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
@@ -227,6 +236,7 @@ impl SqlOperationWithRetries {
                 .query_rows(
                     table_name,
                     where_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -261,6 +271,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     &post_processing,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -294,6 +305,7 @@ impl SqlOperationWithRetries {
                 .bulk_query_rows_with_transformation(
                     sql_builder,
                     &transform,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,
                 )
@@ -322,6 +334,7 @@ impl SqlOperationWithRetries {
                 .bulk_insert_db_entities(
                     entities,
                     table_name,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -350,6 +363,7 @@ impl SqlOperationWithRetries {
                 .bulk_insert_db_entities_if_not_exists(
                     table_name,
                     entities,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -380,6 +394,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     &update_conflict_type,
                     entities,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -410,6 +425,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     &update_conflict_type,
                     entity,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -438,6 +454,7 @@ impl SqlOperationWithRetries {
                 .delete_db_entity(
                     table_name,
                     where_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -466,6 +483,7 @@ impl SqlOperationWithRetries {
                 .update_db_entity(
                     entity,
                     table_name,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -495,6 +513,7 @@ impl SqlOperationWithRetries {
                 .bulk_delete(
                     table_name,
                     entities,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -531,6 +550,7 @@ impl SqlOperationWithRetries {
                     where_model,
                     &crate_new_model,
                     &update_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -559,6 +579,7 @@ impl SqlOperationWithRetries {
                 .insert_db_entity(
                     entity,
                     table_name,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )

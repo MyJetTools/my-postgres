@@ -21,14 +21,12 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
         let connection = PostgresConnectionInstance::new(
-            app_name,
+            app_name.to_string(),
             postgres_settings,
-            sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         )
@@ -40,7 +38,6 @@ impl PostgresConnection {
     pub fn new_as_multiple_connections(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        sql_request_timeout: Duration,
         max_pool_size: usize,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
@@ -49,7 +46,6 @@ impl PostgresConnection {
             app_name,
             postgres_settings,
             max_pool_size,
-            sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         ))
@@ -59,6 +55,7 @@ impl PostgresConnection {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         match self {
@@ -67,6 +64,7 @@ impl PostgresConnection {
                     .execute_sql(
                         sql,
                         process_name,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -79,6 +77,7 @@ impl PostgresConnection {
                     .execute_sql(
                         sql,
                         process_name,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -91,6 +90,7 @@ impl PostgresConnection {
         &self,
         sql_with_params: Vec<SqlData>,
         process_name: &str,
+        sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         match self {
@@ -99,6 +99,7 @@ impl PostgresConnection {
                     .execute_bulk_sql(
                         sql_with_params,
                         process_name,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -111,6 +112,7 @@ impl PostgresConnection {
                     .execute_bulk_sql(
                         sql_with_params,
                         process_name,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -167,6 +169,7 @@ impl PostgresConnection {
         &self,
         sql: &SqlData,
         process_name: Option<&str>,
+        sql_request_timeout: Duration,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
@@ -177,6 +180,7 @@ impl PostgresConnection {
                         &sql,
                         process_name,
                         transform,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )
@@ -190,6 +194,7 @@ impl PostgresConnection {
                         sql,
                         process_name,
                         transform,
+                        sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
                     )

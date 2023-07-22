@@ -1,4 +1,5 @@
 use crate::{
+    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{PrimaryKeySchema, TableSchema},
     MyPostgresError, PostgresConnection,
 };
@@ -88,6 +89,7 @@ async fn update_primary_key(
             .execute_sql(
                 &sql.into(),
                 "update_primary_key".into(),
+                SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
             )
@@ -120,6 +122,7 @@ async fn get_primary_key_fields_from_db(
         .execute_sql_as_vec(
             &sql.into(),
             "get_db_fields".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             |db_row| {
                 let result: String = db_row.get(0);
                 result

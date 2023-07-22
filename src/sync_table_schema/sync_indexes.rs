@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{IndexSchema, TableSchema, DEFAULT_SCHEMA},
     MyPostgresError, PostgresConnection,
 };
@@ -72,6 +73,7 @@ async fn create_index(
         .execute_sql(
             &sql.into(),
             "create_new_index".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -102,6 +104,7 @@ async fn update_index(
         .execute_sql(
             &sql.into(),
             "create_new_index".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -127,6 +130,7 @@ async fn get_indexes_from_db(
         .execute_sql_as_vec(
             &sql.into(),
             "get_db_fields".into(),
+            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             |db_row| {
                 let index_name: String = db_row.get("indexname");
                 let index_def: String = db_row.get("indexdef");
