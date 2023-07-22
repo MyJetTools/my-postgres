@@ -23,10 +23,17 @@ pub async fn sync_table_fields(
     let schema_difference = SchemaDifference::new(table_schema, db_fields);
 
     if schema_difference.to_update.len() > 0 {
-        println!(
-            "Please update columns manually {:?}",
-            schema_difference.to_update
-        );
+        if let Err(err) = super::update_column(
+            conn_string,
+            &table_schema.table_name,
+            schema_difference.to_update.as_slice(),
+        )
+        .await
+        {
+            println!("Reason: {}", err.err);
+
+            println!("Failed to update column {}. {}", err.column_name, err.dif);
+        }
 
         #[cfg(feature = "with-logs-and-telemetry")]
         {
