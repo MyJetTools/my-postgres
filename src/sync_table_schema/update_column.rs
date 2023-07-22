@@ -1,7 +1,7 @@
 use rust_extensions::StrOrString;
 
 use crate::{
-    table_schema::{ColumnDifference, TableColumnType, DEFAULT_SCHEMA},
+    table_schema::{ColumnDifference, TableColumn, TableColumnType, DEFAULT_SCHEMA},
     PostgresConnection,
 };
 
@@ -50,7 +50,7 @@ pub async fn update_column(
             try_to_update_default(
                 conn_string,
                 table_name,
-                difference.db.name.as_str(),
+                &difference.required,
                 &difference.db.default,
                 &difference.required.default,
             )
@@ -154,7 +154,7 @@ async fn try_to_update_column_type(
 async fn try_to_update_default(
     conn_string: &PostgresConnection,
     table_name: &str,
-    column_name: &str,
+    table_column: &TableColumn,
     now_default: &Option<StrOrString<'static>>,
     required_default: &Option<StrOrString<'static>>,
 ) -> Result<(), UpdateColumnError> {
@@ -167,21 +167,23 @@ async fn try_to_update_default(
                 format!(
                     r#"alter table {DEFAULT_SCHEMA}.{table_name}
                     alter column {column_name} set default {now_default}"#,
+                    column_name = table_column.name.as_str(),
                     now_default = now_default.as_str()
                 )
             }
         } else {
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
-                alter column {column_name} drop default"#
+                alter column {column_name} drop default"#,
+                column_name = table_column.name.as_str(),
             )
         }
     } else {
-        if let Some(required_default) = required_default {
+        if let Some(now_default) = table_column.get_default() {
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
            alter column {column_name} set default {now_default}"#,
-                now_default = required_default.as_str()
+                column_name = table_column.name.as_str(),
             )
         } else {
             println!("BUG: We should not be here: #2");
@@ -201,7 +203,7 @@ async fn try_to_update_default(
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(UpdateColumnError {
-                column_name: column_name.to_string(),
+                column_name: table_column.name.to_string(),
                 dif: format!(
                     "Default update: '{:?}' -> '{:?}'",
                     now_default, required_default
