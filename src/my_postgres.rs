@@ -30,7 +30,7 @@ pub enum ConcurrentOperationResult<TModel> {
 }
 
 impl MyPostgres {
-    pub fn start_builder(
+    pub fn from_settings(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -43,7 +43,7 @@ impl MyPostgres {
         )
     }
 
-    pub fn build_with_shared_connection(connection: Arc<PostgresConnection>) -> MyPostgresBuilder {
+    pub fn from_connection_string(connection: Arc<PostgresConnection>) -> MyPostgresBuilder {
         MyPostgresBuilder::from_connection(connection)
     }
 
