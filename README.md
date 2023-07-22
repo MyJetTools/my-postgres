@@ -51,8 +51,86 @@ async fn main() {
 
   let application_name = "TestApp";
 
-  let my_postgres =
-    my_postgres::MyPostgres::new(conn_string, application_name)
+    let my_postgres = my_postgres::MyPostgres::from_settings(application_name, postgres_settings)
+        .build()
+        .await;
+}
+
+```
+
+
+If there is a table schema to be applied
+```rust
+
+#[derive(TableSchema)]
+pub struct TestETagDto {
+    #[primary_key(0)]
+    pub id: i32,
+
+    #[sql_type("timestamp")]
+    pub date: DateTimeAsMicroseconds,
+
+    #[default_value("test")]
+    pub value: String,
+
+    #[db_field_name("etag")]
+    #[e_tag]
+    pub e_tag: i64,
+}
+
+
+#[tokio::main]
+async fn main() {
+  let postgres_settings = Arc::new(MySettings);
+
+  let application_name = "TestApp";
+
+    let partition_key_name = "test_pk";
+
+    let my_postgres = my_postgres::MyPostgres::from_settings(application_name, postgres_settings)
+        .with_table_schema_verification::<TestDto>("test", Some(partition_key_name.to_string()))
+        .build()
+        .await;
+}
+```
+
+
+### Sql request timeout
+
+Default SqlRequest timeout is 5 seconds. To specify the other one please use
+
+```rust
+
+#[tokio::main]
+async fn main() {
+  let postgres_settings = Arc::new(MySettings);
+
+  let application_name = "TestApp";
+
+    let my_postgres = my_postgres::MyPostgres::from_settings(application_name, postgres_settings)
+        .set_sql_request_timeout(Duration::from_secs(1))
+        .build()
+        .await;
+}
+```
+
+
+### Shared Sql connection
+
+The Connection can be created and then injected into several MyPostgres structures
+
+
+```rust
+
+#[tokio::main]
+async fn main() {
+    let postgres_connection =
+        PostgresConnection::new_as_single_connection(application_name, postgres_settings).await;
+
+    let postgres_connection = Arc::new(postgres_connection);
+
+    let my_postgres = my_postgres::MyPostgres::from_connection_string(postgres_connection)
+        .build()
         .await;
 }
 
