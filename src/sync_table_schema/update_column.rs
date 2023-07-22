@@ -58,8 +58,6 @@ pub async fn update_column(
                 &difference.required.sql_type,
             )
             .await?;
-
-            return Ok(());
         }
 
         if difference.db.is_nullable != difference.required.is_nullable {
@@ -104,7 +102,6 @@ pub async fn update_column(
                 difference.required.is_nullable,
             )
             .await?;
-            return Ok(());
         }
 
         if !difference.db.is_default_the_same(&difference.required) {
@@ -148,7 +145,6 @@ pub async fn update_column(
                 &difference.required,
             )
             .await?;
-            return Ok(());
         }
     }
 
