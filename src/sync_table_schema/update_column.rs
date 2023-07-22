@@ -62,7 +62,7 @@ pub async fn update_column(
             return Ok(());
         }
 
-        if difference.db.is_nullable && !difference.required.is_nullable {
+        if difference.db.is_nullable != difference.required.is_nullable {
             #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
                 "DB: {}. Updating column {} nullable: {}->{}",
