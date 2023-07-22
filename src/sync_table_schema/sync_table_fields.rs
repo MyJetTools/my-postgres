@@ -39,13 +39,16 @@ pub async fn sync_table_fields(
 
             #[cfg(feature = "with-logs-and-telemetry")]
             {
+                let mut ctx = HashMap::new();
+
+                ctx.insert("difference".to_string(), err.dif);
+                ctx.insert("column".to_string(), err.column_name.to_string());
+                ctx.insert("err".to_string(), err.err);
+
                 conn_string.get_logger().write_warning(
                     super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!(
-                        "Please update columns manually {:?}",
-                        schema_difference.to_update
-                    ),
-                    None,
+                    format!("Can not update column {}", err.column_name),
+                    Some(ctx),
                 );
             }
 

@@ -27,7 +27,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
             #[cfg(not(feature = "with-tls"))]
             {
                 #[cfg(feature = "with-logs-and-telemetry")]
-                logger.write_error(
+                inner.logger.write_error(
                     "PostgresConnection".to_string(),
                     "Postgres connection with sslmode=require is not supported without tls feature"
                         .to_string(),
@@ -43,7 +43,9 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
         inner.disconnect();
     }
 
-    println!("Postgres Connection loop is stopped");
+    if std::env::var("DEBUG").is_ok() {
+        println!("Postgres Connection loop is stopped");
+    }
 }
 
 async fn create_and_start_no_tls_connection(

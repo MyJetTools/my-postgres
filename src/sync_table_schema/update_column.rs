@@ -20,6 +20,7 @@ pub async fn update_column(
             .sql_type
             .equals_to(&difference.required.sql_type)
         {
+            #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
                 "DB: {}. Updating column {}  type: {:?}->{:?}",
                 table_name,
@@ -27,6 +28,27 @@ pub async fn update_column(
                 difference.db.get_default(),
                 difference.required.get_default(),
             );
+
+            #[cfg(feature = "with-logs-and-telemetry")]
+            {
+                let mut ctx = std::collections::HashMap::new();
+
+                ctx.insert("table".to_string(), table_name.to_string());
+                ctx.insert(
+                    "db_type".to_string(),
+                    difference.db.sql_type.to_db_type().to_string(),
+                );
+                ctx.insert(
+                    "required_type".to_string(),
+                    difference.required.sql_type.to_db_type().to_string(),
+                );
+
+                conn_string.get_logger().write_warning(
+                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                    format!("Updating Type of column {}.", difference.db.name.as_str()),
+                    Some(ctx),
+                );
+            }
 
             try_to_update_column_type(
                 conn_string,
@@ -41,6 +63,7 @@ pub async fn update_column(
         }
 
         if difference.db.is_nullable && !difference.required.is_nullable {
+            #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
                 "DB: {}. Updating column {} nullable: {}->{}",
                 table_name,
@@ -48,6 +71,30 @@ pub async fn update_column(
                 difference.db.is_nullable,
                 difference.required.is_nullable,
             );
+
+            #[cfg(feature = "with-logs-and-telemetry")]
+            {
+                let mut ctx = std::collections::HashMap::new();
+
+                ctx.insert("table".to_string(), table_name.to_string());
+                ctx.insert(
+                    "db_nullable".to_string(),
+                    difference.db.is_nullable.to_string(),
+                );
+                ctx.insert(
+                    "required_nullable".to_string(),
+                    difference.required.is_nullable.to_string(),
+                );
+
+                conn_string.get_logger().write_warning(
+                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                    format!(
+                        "Updating IsNullable of column {}.",
+                        difference.db.name.as_str()
+                    ),
+                    Some(ctx),
+                );
+            }
 
             try_to_update_is_nullable(
                 conn_string,
@@ -61,6 +108,7 @@ pub async fn update_column(
         }
 
         if !difference.db.is_default_the_same(&difference.required) {
+            #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
                 "DB: {}. Updating column {} default: {:?}->{:?}",
                 table_name,
@@ -68,6 +116,31 @@ pub async fn update_column(
                 difference.db.get_default(),
                 difference.required.get_default(),
             );
+
+            #[cfg(feature = "with-logs-and-telemetry")]
+            {
+                let mut ctx = std::collections::HashMap::new();
+
+                ctx.insert("table".to_string(), table_name.to_string());
+                ctx.insert(
+                    "db_default".to_string(),
+                    format!("{:?}", difference.db.get_default()),
+                );
+                ctx.insert(
+                    "required_default".to_string(),
+                    format!("{:?}", difference.required.get_default()),
+                );
+
+                conn_string.get_logger().write_warning(
+                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                    format!(
+                        "Updating Default of column {}.",
+                        difference.db.name.as_str()
+                    ),
+                    Some(ctx),
+                );
+            }
+
             try_to_update_default(
                 conn_string,
                 table_name,
