@@ -31,7 +31,7 @@ pub async fn sync_table_fields(
         .await
         {
             println!("Reason: {}", err.err);
-
+            println!("---------------------");
             println!("Failed to update column {}. {}", err.column_name, err.dif);
         }
 
