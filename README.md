@@ -129,7 +129,34 @@ async fn main() {
 
     let postgres_connection = Arc::new(postgres_connection);
 
-    let my_postgres = my_postgres::MyPostgres::from_connection_string(postgres_connection)
+    let my_postgres1 = my_postgres::MyPostgres::from_connection_string(postgres_connection.clone())
+        .build()
+        .await;
+
+    let my_postgres2 = my_postgres::MyPostgres::from_connection_string(postgres_connection)
+        .build()
+        .await;
+}
+
+```
+
+
+### Sql connection pool
+
+```rust
+
+#[tokio::main]
+async fn main() {
+    let postgres_connection =
+        PostgresConnection::new_as_multiple_connections(application_name, postgres_settings, 3);
+
+    let postgres_connection = Arc::new(postgres_connection);
+
+    let my_postgres1 = my_postgres::MyPostgres::from_connection_string(postgres_connection.clone())
+        .build()
+        .await;
+
+    let my_postgres2 = my_postgres::MyPostgres::from_connection_string(postgres_connection)
         .build()
         .await;
 }
