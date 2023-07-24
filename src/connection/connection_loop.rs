@@ -83,7 +83,7 @@ async fn create_and_start_no_tls_connection(
                         );
 
                         #[cfg(feature = "with-logs-and-telemetry")]
-                        logger_spawned.write_fatal_error(
+                        logger_spawned.write_debug_info(
                             "Postgres background".to_string(),
                             format!("Exist connection loop"),
                             None,
@@ -146,7 +146,7 @@ async fn create_and_start_with_tls(
                     );
                 }
                 #[cfg(feature = "with-logs-and-telemetry")]
-                logger_spawned.write_fatal_error(
+                logger_spawned.write_debug_info(
                     "Postgres background".to_string(),
                     format!("Exist connection loop"),
                     None,
