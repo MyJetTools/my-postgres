@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
+use rust_extensions::{date_time::DateTimeAsMicroseconds, lazy::LazyVec, StrOrString};
 
 use crate::{
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
@@ -11,14 +11,14 @@ pub enum MyPostgresBuilder {
     AsSettings {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         app_name: String,
-        table_schema_data: Option<TableSchema>,
+        table_schema_data: LazyVec<TableSchema>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")]
         logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
     },
     AsSharedConnection {
         connection: Arc<PostgresConnection>,
-        table_schema_data: Option<TableSchema>,
+        table_schema_data: LazyVec<TableSchema>,
         sql_request_timeout: Duration,
     },
 }
@@ -36,7 +36,7 @@ impl MyPostgresBuilder {
         Self::AsSettings {
             app_name: app_name.to_string(),
             postgres_settings,
-            table_schema_data: None,
+            table_schema_data: LazyVec::new(),
             sql_request_timeout: Duration::from_secs(5),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
@@ -45,7 +45,7 @@ impl MyPostgresBuilder {
     pub fn from_connection(connection: Arc<PostgresConnection>) -> Self {
         Self::AsSharedConnection {
             connection,
-            table_schema_data: None,
+            table_schema_data: LazyVec::new(),
             sql_request_timeout: Duration::from_secs(5),
         }
     }
@@ -96,10 +96,10 @@ impl MyPostgresBuilder {
         match &mut self {
             MyPostgresBuilder::AsSettings {
                 table_schema_data, ..
-            } => *table_schema_data = Some(table_schema),
+            } => table_schema_data.add(table_schema),
             MyPostgresBuilder::AsSharedConnection {
                 table_schema_data, ..
-            } => *table_schema_data = Some(table_schema),
+            } => table_schema_data.add(table_schema),
         }
 
         self
@@ -110,7 +110,7 @@ impl MyPostgresBuilder {
             MyPostgresBuilder::AsSettings {
                 postgres_settings,
                 app_name,
-                mut table_schema_data,
+                table_schema_data,
                 sql_request_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger,
@@ -125,19 +125,23 @@ impl MyPostgresBuilder {
 
                 let connection = Arc::new(PostgresConnection::Single(connection));
 
-                if let Some(table_schema) = table_schema_data.take() {
-                    check_table_schema(&connection, table_schema).await;
+                if let Some(table_schema_data) = table_schema_data.get_result() {
+                    for table_schema in table_schema_data {
+                        check_table_schema(&connection, table_schema).await;
+                    }
                 }
 
                 MyPostgres::create(connection, sql_request_timeout)
             }
             MyPostgresBuilder::AsSharedConnection {
                 connection,
-                mut table_schema_data,
+                table_schema_data,
                 sql_request_timeout,
             } => {
-                if let Some(table_schema) = table_schema_data.take() {
-                    check_table_schema(&connection, table_schema).await;
+                if let Some(table_schema_data) = table_schema_data.get_result() {
+                    for table_schema in table_schema_data {
+                        check_table_schema(&connection, table_schema).await;
+                    }
                 }
                 MyPostgres::create(connection, sql_request_timeout)
             }
