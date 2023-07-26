@@ -53,127 +53,90 @@ impl Into<ColumnName> for String {
 }
 
 pub fn is_reserved(name: &str) -> bool {
-    RESERVED.contains(name)
+    RESERVED.contains(name.to_lowercase().as_str())
 }
 
 lazy_static::lazy_static! {
     pub static ref RESERVED: HashSet<&'static str> = {
         let mut result = HashSet::new();
-        result.insert("A");
+
         result.insert("a");
-        result.insert("ABORT");
+
         result.insert("abort");
-        result.insert("ABS");
+
         result.insert("abs");
-        result.insert("ABSENT");
+
         result.insert("absent");
-        result.insert("ABSOLUTE");
+
         result.insert("absolute");
-        result.insert("ACCESS");
+
         result.insert("access");
-        result.insert("ACCORDING");
+
         result.insert("according");
-        result.insert("ACOS");
+
         result.insert("acos");
-        result.insert("ACTION");
+
         result.insert("action");
-        result.insert("ADA");
+
         result.insert("ada");
-        result.insert("ADD");
+
         result.insert("add");
-        result.insert("ADMIN");
+
         result.insert("admin");
-        result.insert("AFTER");
+
         result.insert("after");
-        result.insert("AGGREGATE");
+
         result.insert("aggregate");
-        result.insert("ALL");
+
         result.insert("all");
-        result.insert("ALLOCATE");
+
         result.insert("allocate");
-        result.insert("ALSO");
+
         result.insert("also");
-        result.insert("ALTER");
+
         result.insert("alter");
-        result.insert("ALWAYS");
+
         result.insert("always");
-        result.insert("ANALYSE");
+
         result.insert("analyse");
-        result.insert("ANALYZE");
+
         result.insert("analyze");
-        result.insert("AND");
         result.insert("and");
-        result.insert("ANY");
         result.insert("any");
-        result.insert("ARE");
         result.insert("are");
-        result.insert("ARRAY");
         result.insert("array");
-        result.insert("ARRAY_AGG");
         result.insert("array_agg");
-        result.insert("ARRAY_​MAX_​CARDINALITY");
         result.insert("array_​max_​cardinality");
-        result.insert("AS");
         result.insert("as");
-        result.insert("ASC");
         result.insert("asc");
-        result.insert("ASENSITIVE");
         result.insert("asensitive");
-        result.insert("ASIN");
         result.insert("asin");
-        result.insert("ASSERTION");
         result.insert("assertion");
-        result.insert("ASSIGNMENT");
         result.insert("assignment");
-        result.insert("ASYMMETRIC");
         result.insert("asymmetric");
-        result.insert("AT");
         result.insert("at");
-        result.insert("ATAN");
         result.insert("atan");
-        result.insert("ATOMIC");
         result.insert("atomic");
-        result.insert("ATTACH");
         result.insert("attach");
-        result.insert("ATTRIBUTE");
         result.insert("attribute");
-        result.insert("ATTRIBUTES");
         result.insert("attributes");
-        result.insert("AUTHORIZATION");
         result.insert("authorization");
-        result.insert("AVG");
         result.insert("avg");
-        result.insert("BACKWARD");
         result.insert("backward");
-        result.insert("BASE64");
         result.insert("base64");
-        result.insert("BEFORE");
         result.insert("before");
-        result.insert("BEGIN");
         result.insert("begin");
-        result.insert("BEGIN_FRAME");
         result.insert("begin_frame");
-        result.insert("BEGIN_PARTITION");
         result.insert("begin_partition");
-        result.insert("BERNOULLI");
         result.insert("bernoulli");
-        result.insert("BETWEEN");
         result.insert("between");
-        result.insert("BIGINT");
         result.insert("bigint");
-        result.insert("BINARY");
         result.insert("binary");
-        result.insert("BIT");
         result.insert("bit");
-        result.insert("BIT_LENGTH");
         result.insert("bit_length");
-        result.insert("BLOB");
         result.insert("blob");
-        result.insert("BLOCKED");
         result.insert("blocked");
-        result.insert("BOM");
         result.insert("bom");
-        result.insert("BOOLEAN");
         result.insert("boolean");
         result.insert("BOTH");
         result.insert("both");
