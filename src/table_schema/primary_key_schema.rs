@@ -1,32 +1,30 @@
-use rust_extensions::StrOrString;
-
-use crate::table_schema::DEFAULT_SCHEMA;
+use crate::{table_schema::DEFAULT_SCHEMA, ColumnName};
 
 #[derive(Debug, Clone)]
-pub struct PrimaryKeySchema(Option<Vec<StrOrString<'static>>>);
+pub struct PrimaryKeySchema(Option<Vec<ColumnName>>);
 
 impl PrimaryKeySchema {
-    pub fn from_vec_of_string(src: Vec<String>) -> Self {
+    pub fn from_vec_of_string(src: Vec<ColumnName>) -> Self {
         if src.len() == 0 {
             return Self(None);
         }
 
         let mut result = Vec::with_capacity(src.len());
         for itm in src {
-            result.push(StrOrString::create_as_string(itm));
+            result.push(itm);
         }
 
         Self(Some(result))
     }
 
-    pub fn from_vec_of_str(src: &[&'static str]) -> Self {
+    pub fn from_vec_of_str(src: &[ColumnName]) -> Self {
         if src.len() == 0 {
             return Self(None);
         }
 
         let mut result = Vec::with_capacity(src.len());
         for itm in src {
-            result.push(StrOrString::create_as_str(itm));
+            result.push(itm.clone());
         }
 
         Self(Some(result))
@@ -40,8 +38,8 @@ impl PrimaryKeySchema {
                 }
 
                 for i in 0..self_elements.len() {
-                    if self_elements.get(i).unwrap().as_str()
-                        != other_elements.get(i).unwrap().as_str()
+                    if self_elements.get(i).unwrap().name.as_str()
+                        != other_elements.get(i).unwrap().name.as_str()
                     {
                         return false;
                     }
@@ -110,7 +108,7 @@ impl PrimaryKeySchema {
                 if no > 0 {
                     result.push_str(", ");
                 }
-                result.push_str(column_name.as_str());
+                result.push_str(column_name.name.as_str());
                 no += 1;
             }
 

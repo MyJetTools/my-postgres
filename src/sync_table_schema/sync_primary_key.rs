@@ -1,7 +1,7 @@
 use crate::{
     sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{PrimaryKeySchema, TableSchema},
-    MyPostgresError, PostgresConnection,
+    ColumnName, MyPostgresError, PostgresConnection,
 };
 
 pub async fn sync_primary_key(
@@ -125,7 +125,7 @@ async fn get_primary_key_fields_from_db(
             SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             |db_row| {
                 let result: String = db_row.get(0);
-                result
+                ColumnName::new(result.into())
             },
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
