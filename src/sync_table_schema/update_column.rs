@@ -47,7 +47,10 @@ pub async fn update_column(
 
                 conn_string.get_logger().write_warning(
                     super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!("Updating Type of column {}.", difference.db.name.as_str()),
+                    format!(
+                        "Updating Type of column {}.",
+                        difference.db.name.name.as_str()
+                    ),
                     Some(ctx),
                 );
             }
@@ -90,7 +93,7 @@ pub async fn update_column(
                     super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
                     format!(
                         "Updating IsNullable of column {}.",
-                        difference.db.name.as_str()
+                        difference.db.name.name.as_str()
                     ),
                     Some(ctx),
                 );
@@ -134,7 +137,7 @@ pub async fn update_column(
                     super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
                     format!(
                         "Updating Default of column {}.",
-                        difference.db.name.as_str()
+                        difference.db.name.name.as_str()
                     ),
                     Some(ctx),
                 );

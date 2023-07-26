@@ -142,11 +142,14 @@ async fn get_db_fields(
             &sql.into(),
             "get_db_fields".into(),
             SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
-            |db_row| TableColumn {
-                name: db_row.get("column_name"),
-                sql_type: get_sql_type(db_row),
-                is_nullable: get_is_nullable(db_row),
-                default: get_column_default(&db_row),
+            |db_row| {
+                let name: String = db_row.get("column_name");
+                TableColumn {
+                    name: name.into(),
+                    sql_type: get_sql_type(db_row),
+                    is_nullable: get_is_nullable(db_row),
+                    default: get_column_default(&db_row),
+                }
             },
             None,
         )
