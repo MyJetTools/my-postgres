@@ -53,6 +53,7 @@ impl TableColumnType {
             "json" => Some(TableColumnType::Json),
             "jsonb" => Some(TableColumnType::Jsonb),
             "timestamp" => Some(TableColumnType::Timestamp),
+            "character varying" => Some(TableColumnType::Text),
             _ => None,
         }
     }
