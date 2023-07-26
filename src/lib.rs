@@ -29,3 +29,5 @@ pub use connection_sql_operations::*;
 pub use my_postgres_builder::*;
 pub use update_conflict_type::*;
 pub use with_retries::*;
+mod column_name;
+pub use column_name::*;

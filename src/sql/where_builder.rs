@@ -1,3 +1,5 @@
+use crate::ColumnName;
+
 #[derive(Debug)]
 pub enum SqlWhereValue {
     None,
@@ -98,7 +100,7 @@ impl SqlWhereValue {
 }
 
 pub struct WhereCondition {
-    pub db_column_name: &'static str,
+    pub db_column_name: ColumnName,
     pub op: &'static str,
     pub value: SqlWhereValue,
 }
@@ -116,7 +118,7 @@ impl WhereBuilder {
 
     pub fn push_where_condition(
         &mut self,
-        db_column_name: &'static str,
+        db_column_name: ColumnName,
         op: &'static str,
         value: SqlWhereValue,
     ) {
@@ -141,7 +143,7 @@ impl WhereBuilder {
             if index > 0 {
                 sql.push_str(" AND ");
             }
-            sql.push_str(condition.db_column_name);
+            condition.db_column_name.push_name(sql);
             sql.push_str(condition.op);
             condition.value.push_value(sql);
             index += 1;

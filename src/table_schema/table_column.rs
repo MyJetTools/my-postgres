@@ -1,10 +1,12 @@
 use rust_extensions::StrOrString;
 
+use crate::ColumnName;
+
 use super::TableColumnType;
 
 #[derive(Debug, Clone)]
 pub struct TableColumn {
-    pub name: String,
+    pub name: ColumnName,
     pub sql_type: TableColumnType,
     pub is_nullable: bool,
     pub default: Option<StrOrString<'static>>,

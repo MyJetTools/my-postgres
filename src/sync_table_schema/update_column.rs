@@ -1,6 +1,6 @@
 use crate::{
     table_schema::{ColumnDifference, TableColumn, TableColumnType, DEFAULT_SCHEMA},
-    PostgresConnection,
+    ColumnName, PostgresConnection,
 };
 
 use super::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT;
@@ -26,7 +26,7 @@ pub async fn update_column(
             println!(
                 "DB: {}. Updating column {}  type: {:?}->{:?}",
                 table_name,
-                difference.required.name,
+                difference.required.name.to_string(),
                 difference.db.get_default(),
                 difference.required.get_default(),
             );
@@ -55,7 +55,7 @@ pub async fn update_column(
             try_to_update_column_type(
                 conn_string,
                 table_name,
-                difference.db.name.as_str(),
+                &difference.db.name,
                 &difference.db.sql_type,
                 &difference.required.sql_type,
             )
@@ -67,7 +67,7 @@ pub async fn update_column(
             println!(
                 "DB: {}. Updating column {} nullable: {}->{}",
                 table_name,
-                difference.required.name,
+                difference.required.name.to_string(),
                 difference.db.is_nullable,
                 difference.required.is_nullable,
             );
@@ -99,7 +99,7 @@ pub async fn update_column(
             try_to_update_is_nullable(
                 conn_string,
                 table_name,
-                difference.db.name.as_str(),
+                &difference.db.name,
                 difference.db.is_nullable,
                 difference.required.is_nullable,
             )
@@ -111,7 +111,7 @@ pub async fn update_column(
             println!(
                 "DB: {}. Updating column {} default: {:?}->{:?}",
                 table_name,
-                difference.required.name,
+                difference.required.name.to_string(),
                 difference.db.get_default(),
                 difference.required.get_default(),
             );
@@ -156,14 +156,15 @@ pub async fn update_column(
 async fn try_to_update_is_nullable(
     conn_string: &PostgresConnection,
     table_name: &str,
-    column_name: &str,
+    column_name: &ColumnName,
     db_nullable: bool,
     required_to_be_nullable: bool,
 ) -> Result<(), UpdateColumnError> {
     if required_to_be_nullable {
         let sql = format!(
             r#"alter table {DEFAULT_SCHEMA}.{table_name}
-        alter column {column_name} drop not null;"#
+        alter column {column_name} drop not null;"#,
+            column_name = column_name.to_string()
         );
 
         conn_string
@@ -182,7 +183,8 @@ async fn try_to_update_is_nullable(
 
     let sql = format!(
         r#"alter table {DEFAULT_SCHEMA}.{table_name}
-    alter column {column_name} set not null;"#
+    alter column {column_name} set not null;"#,
+        column_name = column_name.to_string()
     );
 
     match conn_string
@@ -209,7 +211,7 @@ async fn try_to_update_is_nullable(
 async fn try_to_update_column_type(
     conn_string: &PostgresConnection,
     table_name: &str,
-    column_name: &str,
+    column_name: &ColumnName,
     now_type: &TableColumnType,
     required_type: &TableColumnType,
 ) -> Result<(), UpdateColumnError> {
@@ -217,7 +219,8 @@ async fn try_to_update_column_type(
 
     let sql = format!(
         r#"alter table {DEFAULT_SCHEMA}.{table_name}
-    alter column {column_name} type {db_type} using test::{db_type};"#
+    alter column {column_name} type {db_type} using test::{db_type};"#,
+        column_name = column_name.to_string()
     );
 
     match conn_string
@@ -260,7 +263,7 @@ async fn try_to_update_default(
                 format!(
                     r#"alter table {DEFAULT_SCHEMA}.{table_name}
                     alter column {column_name} set default {now_default}"#,
-                    column_name = db.name.as_str(),
+                    column_name = db.name.to_string(),
                     now_default = now_default.as_str()
                 )
             }
@@ -268,7 +271,7 @@ async fn try_to_update_default(
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
                 alter column {column_name} drop default"#,
-                column_name = db.name.as_str(),
+                column_name = db.name.to_string(),
             )
         }
     } else {
@@ -276,7 +279,7 @@ async fn try_to_update_default(
             format!(
                 r#"alter table {DEFAULT_SCHEMA}.{table_name}
            alter column {column_name} set default {req_default}"#,
-                column_name = required.name.as_str(),
+                column_name = required.name.to_string(),
             )
         } else {
             println!("BUG: We should not be here: #2");

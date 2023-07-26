@@ -1,6 +1,8 @@
 use core::panic;
 use std::collections::HashMap;
 
+use crate::ColumnName;
+
 use super::{IndexSchema, PrimaryKeySchema, TableColumn, DEFAULT_SCHEMA};
 
 #[derive(Debug, Clone)]
@@ -42,7 +44,7 @@ impl TableSchema {
                 result.push_str(",\n");
             }
             result.push_str("  ");
-            result.push_str(column.name.as_str());
+            column.name.push_name(&mut result);
             result.push_str(" ");
             result.push_str(column.sql_type.to_db_type());
 
@@ -86,11 +88,15 @@ impl TableSchema {
         result
     }
 
-    pub fn generate_add_column_sql(&self, column_name: &str) -> String {
-        if let Some(column) = self.columns.iter().find(|itm| itm.name == column_name) {
+    pub fn generate_add_column_sql(&self, column_name: &ColumnName) -> String {
+        if let Some(column) = self
+            .columns
+            .iter()
+            .find(|itm| itm.name.name.as_str() == column_name.name.as_str())
+        {
             let schema = DEFAULT_SCHEMA;
             let table_name = self.table_name;
-            let column_name = column.name.as_str();
+            let column_name = column.name.to_string();
             let column_type = column.sql_type.to_db_type();
             let default = if let Some(default) = column.get_default() {
                 format!("default {}", default.as_str())
@@ -105,7 +111,7 @@ impl TableSchema {
 
         panic!(
             "Somehow column {} was not found in table schema",
-            column_name
+            column_name.to_string()
         )
     }
 }

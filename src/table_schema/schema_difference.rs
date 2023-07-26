@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::ColumnName;
+
 use super::{TableColumn, TableSchema};
 
 #[derive(Debug, Clone)]
@@ -9,7 +11,7 @@ pub struct ColumnDifference {
 }
 
 pub struct SchemaDifference {
-    pub to_add: Vec<String>,
+    pub to_add: Vec<ColumnName>,
     pub to_update: Vec<ColumnDifference>,
 }
 
@@ -19,7 +21,7 @@ impl SchemaDifference {
         let mut to_update = Vec::new();
 
         for schema_column in &table_schema.columns {
-            if let Some(db_field) = db_fields.get(&schema_column.name) {
+            if let Some(db_field) = db_fields.get(schema_column.name.name.as_str()) {
                 if !db_field.is_the_same_to(schema_column) {
                     to_update.push(ColumnDifference {
                         db: db_field.clone(),

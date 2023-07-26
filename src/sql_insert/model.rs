@@ -1,8 +1,8 @@
-use crate::sql_update::SqlUpdateModelValue;
+use crate::{sql_update::SqlUpdateModelValue, ColumnName};
 
 pub trait SqlInsertModel {
     fn get_fields_amount() -> usize;
-    fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
+    fn get_column_name(no: usize) -> (ColumnName, Option<ColumnName>);
     fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
 
     fn get_e_tag_column_name() -> Option<&'static str>;
@@ -18,10 +18,12 @@ pub trait SqlInsertModel {
             }
             no += 1;
             let (field_name, additional_field_name) = Self::get_column_name(field_no);
-            sql.push_str(field_name);
+
+            field_name.push_name(sql);
+
             if let Some(additional_field_name) = additional_field_name {
                 sql.push(',');
-                sql.push_str(additional_field_name);
+                additional_field_name.push_name(sql);
                 no += 1;
             }
         }

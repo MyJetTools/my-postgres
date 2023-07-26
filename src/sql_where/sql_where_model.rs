@@ -1,10 +1,10 @@
 use crate::{
     sql::{SqlData, SqlValues, WhereBuilder},
-    SqlValueMetadata, SqlWhereValueProvider,
+    ColumnName, SqlValueMetadata, SqlWhereValueProvider,
 };
 
 pub struct WhereFieldData<'s> {
-    pub field_name: &'static str,
+    pub column_name: ColumnName,
     pub op: Option<&'static str>,
     pub ignore_if_none: bool,
     pub value: Option<&'s dyn SqlWhereValueProvider>,
@@ -34,12 +34,12 @@ pub trait SqlWhereModel {
                         value.get_default_operator()
                     };
 
-                    result.push_where_condition(field_data.field_name, op, where_value);
+                    result.push_where_condition(field_data.column_name, op, where_value);
                 }
                 None => {
                     if !field_data.ignore_if_none {
                         result.push_where_condition(
-                            field_data.field_name,
+                            field_data.column_name,
                             " IS ",
                             crate::sql::SqlWhereValue::NonStringValue(NULL_VALUE.into()),
                         );

@@ -5,7 +5,7 @@ use rust_extensions::StrOrString;
 use crate::{
     sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
-    MyPostgresError, PostgresConnection,
+    ColumnName, MyPostgresError, PostgresConnection,
 };
 
 pub async fn sync_table_fields(
@@ -124,11 +124,14 @@ async fn get_db_fields(
             &sql.into(),
             "get_db_fields".into(),
             SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
-            |db_row| TableColumn {
-                name: db_row.get("column_name"),
-                sql_type: get_sql_type(db_row),
-                is_nullable: get_is_nullable(db_row),
-                default: get_column_default(&db_row),
+            |db_row| {
+                let name: String = db_row.get("column_name");
+                TableColumn {
+                    name: name.into(),
+                    sql_type: get_sql_type(db_row),
+                    is_nullable: get_is_nullable(db_row),
+                    default: get_column_default(&db_row),
+                }
             },
         )
         .await?;
@@ -155,14 +158,14 @@ async fn get_db_fields(
 
     Ok(Some(rust_extensions::linq::to_hash_map(
         result.into_iter(),
-        |itm| (itm.name.clone(), itm),
+        |itm| (itm.name.to_string(), itm),
     )))
 }
 
 async fn add_column_to_table(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
-    column_name: &str,
+    column_name: &ColumnName,
 ) -> Result<(), MyPostgresError> {
     let add_column_sql = table_schema.generate_add_column_sql(column_name);
 

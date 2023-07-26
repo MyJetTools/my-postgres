@@ -1,9 +1,9 @@
-use crate::sql::SqlValues;
+use crate::{sql::SqlValues, ColumnName};
 
 use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel {
-    fn get_column_name(no: usize) -> (&'static str, Option<&'static str>);
+    fn get_column_name(no: usize) -> (ColumnName, Option<ColumnName>);
     fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
     fn get_fields_amount() -> usize;
 
@@ -16,13 +16,14 @@ pub trait SqlUpdateModel {
             match related_column_name {
                 Some(related_column_name) => {
                     sql.push('(');
-                    sql.push_str(column_name);
+                    column_name.push_name(sql);
+
                     sql.push(',');
-                    sql.push_str(related_column_name);
+                    related_column_name.push_name(sql);
                     sql.push(')');
                 }
                 None => {
-                    sql.push_str(column_name);
+                    column_name.push_name(sql);
                 }
             }
 
@@ -41,11 +42,11 @@ pub trait SqlUpdateModel {
                 has_first_column = true;
             }
 
-            sql.push_str(column_name);
+            column_name.push_name(sql);
 
             if let Some(related_column_name) = related_column_name {
                 sql.push(',');
-                sql.push_str(related_column_name);
+                related_column_name.push_name(sql);
             }
         }
         sql.push(')');
@@ -92,15 +93,16 @@ pub trait SqlUpdateModel {
             }
             let (column_name, related_name) = Self::get_column_name(i);
 
-            sql.push_str(column_name);
+            column_name.push_name(sql);
+
             sql.push_str("=EXCLUDED.");
-            sql.push_str(column_name);
+            column_name.push_name(sql);
 
             if let Some(additional_name) = related_name {
                 sql.push(',');
-                sql.push_str(additional_name);
+                additional_name.push_name(sql);
                 sql.push_str("=EXCLUDED.");
-                sql.push_str(additional_name);
+                additional_name.push_name(sql);
             }
         }
     }

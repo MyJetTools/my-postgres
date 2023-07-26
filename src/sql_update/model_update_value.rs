@@ -1,4 +1,4 @@
-use crate::{sql::SqlValues, SqlValueMetadata};
+use crate::{sql::SqlValues, ColumnName, SqlValueMetadata};
 
 use super::SqlUpdateValueProvider;
 
@@ -12,7 +12,7 @@ impl<'s> SqlUpdateModelValue<'s> {
         &self,
         sql: &mut String,
         params: &mut SqlValues,
-        get_column_name: impl Fn() -> (&'static str, Option<&'static str>),
+        get_column_name: impl Fn() -> (ColumnName, Option<ColumnName>),
     ) {
         match &self.value {
             Some(value) => {
