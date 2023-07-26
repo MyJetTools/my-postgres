@@ -126,9 +126,16 @@ async fn get_db_fields(
             SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
             |db_row| {
                 let name: String = db_row.get("column_name");
+
+                let sql_type = match get_sql_type(db_row) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        panic!("Can not get sql type for column {}. Reason: {}", name, err);
+                    }
+                };
                 TableColumn {
                     name: name.into(),
-                    sql_type: get_sql_type(db_row),
+                    sql_type,
                     is_nullable: get_is_nullable(db_row),
                     default: get_column_default(&db_row),
                 }
@@ -203,12 +210,12 @@ async fn add_column_to_table(
     Ok(())
 }
 
-fn get_sql_type(db_row: &tokio_postgres::Row) -> TableColumnType {
+fn get_sql_type(db_row: &tokio_postgres::Row) -> Result<TableColumnType, String> {
     let column_type: String = db_row.get("data_type");
     match TableColumnType::from_db_string(&column_type) {
-        Some(result) => result,
+        Some(result) => Ok(result),
         None => {
-            panic!("Unknown column type: {}", column_type);
+            return Err(format!("Unknown column type: {}", column_type));
         }
     }
 }
