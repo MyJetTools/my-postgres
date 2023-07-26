@@ -3,8 +3,8 @@ use super::SqlWhereModel;
 pub struct NoneWhereModel;
 
 impl NoneWhereModel {
-    pub fn new() -> Option<Self> {
-        Some(Self)
+    pub fn new() -> Option<&'static Self> {
+        None
     }
 }
 
