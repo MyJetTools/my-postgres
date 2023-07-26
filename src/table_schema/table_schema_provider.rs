@@ -5,7 +5,7 @@ use crate::ColumnName;
 use super::{IndexSchema, TableColumn};
 
 pub trait TableSchemaProvider {
-    const PRIMARY_KEY_COLUMNS: Option<&'static [ColumnName]>;
+    fn get_primary_key_columns() -> Option<Vec<ColumnName>>;
     fn get_columns() -> Vec<TableColumn>;
     fn get_indexes() -> Option<HashMap<String, IndexSchema>>;
 }

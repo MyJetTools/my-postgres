@@ -4,7 +4,7 @@ use crate::{table_schema::DEFAULT_SCHEMA, ColumnName};
 pub struct PrimaryKeySchema(Option<Vec<ColumnName>>);
 
 impl PrimaryKeySchema {
-    pub fn from_vec_of_string(src: Vec<ColumnName>) -> Self {
+    pub fn from_vec(src: Vec<ColumnName>) -> Self {
         if src.len() == 0 {
             return Self(None);
         }
@@ -12,19 +12,6 @@ impl PrimaryKeySchema {
         let mut result = Vec::with_capacity(src.len());
         for itm in src {
             result.push(itm);
-        }
-
-        Self(Some(result))
-    }
-
-    pub fn from_vec_of_str(src: &[ColumnName]) -> Self {
-        if src.len() == 0 {
-            return Self(None);
-        }
-
-        let mut result = Vec::with_capacity(src.len());
-        for itm in src {
-            result.push(itm.clone());
         }
 
         Self(Some(result))

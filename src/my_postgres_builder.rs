@@ -71,10 +71,10 @@ impl MyPostgresBuilder {
         primary_key_name: Option<String>,
     ) -> Self {
         let primary_key = if let Some(primary_key_name) = primary_key_name {
-            if let Some(primary_key_columns) = TTableSchemaProvider::PRIMARY_KEY_COLUMNS {
+            if let Some(primary_key_columns) = TTableSchemaProvider::get_primary_key_columns() {
                 Some((
                     primary_key_name,
-                    PrimaryKeySchema::from_vec_of_str(primary_key_columns),
+                    PrimaryKeySchema::from_vec(primary_key_columns),
                 ))
             } else {
                 panic!(

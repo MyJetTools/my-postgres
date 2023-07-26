@@ -132,5 +132,5 @@ async fn get_primary_key_fields_from_db(
         )
         .await?;
 
-    Ok(PrimaryKeySchema::from_vec_of_string(result))
+    Ok(PrimaryKeySchema::from_vec(result))
 }
