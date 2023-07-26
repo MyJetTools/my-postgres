@@ -1,4 +1,6 @@
-use rust_extensions::{slice_of_u8_utils::SliceOfU8Ext, StrOrString};
+use rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
+
+use crate::ColumnName;
 
 #[derive(Clone, Debug)]
 pub enum IndexOrder {
@@ -33,7 +35,7 @@ impl IndexOrder {
 
 #[derive(Clone, Debug)]
 pub struct IndexField {
-    pub name: StrOrString<'static>,
+    pub name: ColumnName,
     pub order: IndexOrder,
 }
 
@@ -58,7 +60,7 @@ impl IndexField {
         }
 
         Self {
-            name: StrOrString::create_as_string(first.unwrap().to_string()),
+            name: first.unwrap().to_string().into(),
             order: IndexOrder::from_str(second),
         }
     }
@@ -117,7 +119,8 @@ impl IndexSchema {
             if i > 0 {
                 result.push(',');
             }
-            result.push_str(field.name.as_str());
+
+            field.name.push_name(&mut result);
             match field.order {
                 IndexOrder::Asc => result.push_str(" ASC"),
                 IndexOrder::Desc => result.push_str(" DESC"),
@@ -142,7 +145,7 @@ impl IndexSchema {
             let field = self.fields.get(i).unwrap();
             let other_field = other.fields.get(i).unwrap();
 
-            if field.name.as_str() != other_field.name.as_str() {
+            if field.name.name.as_str() != other_field.name.name.as_str() {
                 return false;
             }
 
@@ -207,7 +210,7 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.as_str(), "id");
+        assert_eq!(item.name.name.as_str(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 
@@ -221,7 +224,7 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.as_str(), "id");
+        assert_eq!(item.name.name.as_str(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 
@@ -235,11 +238,11 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.as_str(), "email");
+        assert_eq!(item.name.name.as_str(), "email");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Desc), true);
 
         let item = schema.fields.get(1).unwrap();
-        assert_eq!(item.name.as_str(), "id");
+        assert_eq!(item.name.name.as_str(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 }
