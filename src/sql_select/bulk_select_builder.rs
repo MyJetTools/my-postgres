@@ -30,6 +30,7 @@ impl<TWhereModel: SqlWhereModel> BulkSelectBuilder<TWhereModel> {
             }
 
             let mut select_builder = SelectBuilder::new();
+            select_builder.push(crate::sql::SelectFieldValue::LineNo(line_no));
 
             TSelectEntity::fill_select_fields(&mut select_builder);
 
