@@ -252,6 +252,9 @@ impl MyPostgres {
         table_name: &str,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
+        if entities.len() == 0 {
+            panic!("Attempt to bulk_insert_db_entities 0 entities");
+        }
         self.connection
             .bulk_insert_db_entities(
                 entities,
@@ -304,6 +307,10 @@ impl MyPostgres {
         entities: &[TEntity],
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
+        if entities.len() == 0 {
+            panic!("Attempt to bulk_insert_or_update_db_entity 0 entities");
+        }
+
         self.connection
             .bulk_insert_or_update_db_entity(
                 table_name,
