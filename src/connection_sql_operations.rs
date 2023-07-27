@@ -85,7 +85,7 @@ impl PostgresConnection {
     ) -> Result<Option<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
 
-        let sql = select_builder.build_select_sql(table_name, where_model);
+        let sql = select_builder.to_sql_string(table_name, where_model);
 
         let mut result = self
             .execute_sql_as_vec(
@@ -119,7 +119,7 @@ impl PostgresConnection {
     ) -> Result<Option<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
 
-        let mut sql = select_builder.build_select_sql(table_name, where_model);
+        let mut sql = select_builder.to_sql_string(table_name, where_model);
 
         post_processing(&mut sql.sql);
 
@@ -153,7 +153,7 @@ impl PostgresConnection {
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
 
-        let sql = select_builder.build_select_sql(table_name, where_model);
+        let sql = select_builder.to_sql_string(table_name, where_model);
 
         self.execute_sql_as_vec(
             &sql,
@@ -180,7 +180,7 @@ impl PostgresConnection {
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
 
-        let mut sql = select_builder.build_select_sql(table_name, where_model);
+        let mut sql = select_builder.to_sql_string(table_name, where_model);
 
         post_processing(&mut sql.sql);
 

@@ -25,28 +25,20 @@ impl<TWhereModel: SqlWhereModel> BulkSelectBuilder<TWhereModel> {
         let mut line_no = 0;
 
         for where_model in &self.where_models {
-            let mut select_builder = SelectBuilder::new();
             if line_no > 0 {
                 sql.push_str("UNION ALL\n");
             }
 
-            sql.push_str("SELECT ");
-
-            select_builder.push(crate::sql::SelectFieldValue::LineNo(line_no));
+            let mut select_builder = SelectBuilder::new();
 
             TSelectEntity::fill_select_fields(&mut select_builder);
 
-            sql.push_str(" FROM ");
-            sql.push_str(self.table_name);
-
-            let where_condition = where_model.build_where_sql_part(&mut params);
-
-            if where_condition.has_conditions() {
-                sql.push_str(" WHERE ");
-                where_condition.build(&mut sql);
-            }
-
-            where_model.fill_limit_and_offset(&mut sql);
+            select_builder.build_select_sql(
+                &mut sql,
+                &mut params,
+                self.table_name,
+                Some(where_model),
+            );
 
             sql.push('\n');
             line_no += 1;

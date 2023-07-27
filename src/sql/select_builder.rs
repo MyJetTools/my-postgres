@@ -116,77 +116,118 @@ impl SelectBuilder {
     }
 
     pub fn fill_select_fields(&self, sql: &mut String) {
-        let mut no = 0;
-        for value in &self.items {
-            if no > 0 {
-                sql.push_str(",");
-            }
-
-            match value {
-                SelectFieldValue::Field(field_name) => {
-                    sql.push_str(field_name);
-                }
-                SelectFieldValue::Json(field_name) => {
-                    sql.push_str(field_name);
-                    sql.push_str(" #>> '{}' as \"");
-                    sql.push_str(field_name);
-                    sql.push('"');
-                }
-                SelectFieldValue::DateTimeAsTimestamp(field_name) => {
-                    sql.push_str("(extract(EPOCH FROM ");
-                    sql.push_str(field_name);
-                    sql.push_str(") * 1000000)::bigint as \"");
-                    sql.push_str(field_name);
-                    sql.push('"');
-                }
-                SelectFieldValue::DateTimeAsBigint(field_name) => {
-                    sql.push_str(field_name);
-                }
-                SelectFieldValue::LineNo(line_no) => {
-                    sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
-                }
-            }
-
-            no += 1;
-        }
+        fill_select_fields(sql, &self.items)
     }
 
-    pub fn build_select_sql<TSqlWhereModel: SqlWhereModel>(
+    pub fn to_sql_string<TSqlWhereModel: SqlWhereModel>(
         &self,
         table_name: &str,
         where_model: Option<&TSqlWhereModel>,
     ) -> SqlData {
         let mut sql = String::new();
         let mut values = SqlValues::new();
+        build_select(
+            &mut sql,
+            &mut values,
+            table_name,
+            self.items.as_slice(),
+            where_model,
+            self.order_by_columns,
+            self.group_by_columns,
+        );
 
-        sql.push_str("SELECT ");
+        SqlData { sql, values }
+    }
 
-        self.fill_select_fields(&mut sql);
+    pub fn build_select_sql<TSqlWhereModel: SqlWhereModel>(
+        &self,
+        sql: &mut String,
+        values: &mut SqlValues,
+        table_name: &str,
+        where_model: Option<&TSqlWhereModel>,
+    ) {
+        build_select(
+            sql,
+            values,
+            table_name,
+            self.items.as_slice(),
+            where_model,
+            self.order_by_columns,
+            self.group_by_columns,
+        );
+    }
+}
 
-        sql.push_str(" FROM ");
-        sql.push_str(table_name);
+pub fn build_select<TSqlWhereModel: SqlWhereModel>(
+    sql: &mut String,
+    values: &mut SqlValues,
+    table_name: &str,
+    items: &[SelectFieldValue],
+    where_model: Option<&TSqlWhereModel>,
+    order_by_columns: Option<&'static str>,
+    group_by_columns: Option<&'static str>,
+) {
+    sql.push_str("SELECT ");
 
-        if let Some(where_model) = where_model {
-            let where_condition = where_model.build_where_sql_part(&mut values);
+    fill_select_fields(sql, items);
 
-            if where_condition.has_conditions() {
-                sql.push_str(" WHERE ");
-                where_condition.build(&mut sql);
+    sql.push_str(" FROM ");
+    sql.push_str(table_name);
+
+    if let Some(where_model) = where_model {
+        let where_condition = where_model.build_where_sql_part(values);
+
+        if where_condition.has_conditions() {
+            sql.push_str(" WHERE ");
+            where_condition.build(sql);
+        }
+    }
+
+    if let Some(order_by_fields) = order_by_columns {
+        sql.push_str(order_by_fields);
+    }
+
+    if let Some(group_by_fields) = group_by_columns {
+        sql.push_str(group_by_fields);
+    }
+
+    if let Some(where_model) = where_model {
+        where_model.fill_limit_and_offset(sql);
+    }
+}
+
+pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
+    let mut no = 0;
+    for value in items {
+        if no > 0 {
+            sql.push_str(",");
+        }
+
+        match value {
+            SelectFieldValue::Field(field_name) => {
+                sql.push_str(field_name);
+            }
+            SelectFieldValue::Json(field_name) => {
+                sql.push_str(field_name);
+                sql.push_str(" #>> '{}' as \"");
+                sql.push_str(field_name);
+                sql.push('"');
+            }
+            SelectFieldValue::DateTimeAsTimestamp(field_name) => {
+                sql.push_str("(extract(EPOCH FROM ");
+                sql.push_str(field_name);
+                sql.push_str(") * 1000000)::bigint as \"");
+                sql.push_str(field_name);
+                sql.push('"');
+            }
+            SelectFieldValue::DateTimeAsBigint(field_name) => {
+                sql.push_str(field_name);
+            }
+            SelectFieldValue::LineNo(line_no) => {
+                sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
             }
         }
 
-        if let Some(order_by_fields) = self.order_by_columns {
-            sql.push_str(order_by_fields);
-        }
-
-        if let Some(group_by_fields) = self.group_by_columns {
-            sql.push_str(group_by_fields);
-        }
-
-        if let Some(where_model) = where_model {
-            where_model.fill_limit_and_offset(&mut sql);
-        }
-
-        SqlData { sql, values }
+        no += 1;
     }
 }
