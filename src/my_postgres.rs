@@ -22,6 +22,7 @@ pub struct MyPostgres {
     sql_request_timeout: Duration,
 }
 
+#[derive(Debug)]
 pub enum ConcurrentOperationResult<TModel> {
     Created(TModel),
     CreatedCanceled,
