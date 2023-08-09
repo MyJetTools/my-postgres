@@ -13,13 +13,13 @@ pub trait SqlInsertModel {
         sql.push('(');
         let mut no = 0;
         for field_no in 0..Self::get_fields_amount() {
-            if no > 0 {
-                sql.push(',');
-            }
-            no += 1;
             let (column_name, additional_field_name) = Self::get_column_name(field_no);
 
             if !used_columns.has_column(&column_name) {
+                if no > 0 {
+                    sql.push(',');
+                }
+                no += 1;
                 column_name.push_name(sql);
             }
 
