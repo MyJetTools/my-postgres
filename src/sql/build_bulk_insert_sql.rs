@@ -33,6 +33,28 @@ fn fill_bulk_insert_values_sql<TSqlInsertModel: SqlInsertModel>(
             sql.push(',');
         }
         model_no += 1;
-        super::generate_insert_fields_values(model, sql, params);
+        generate_insert_fields_values(model, sql, params);
     }
+}
+
+pub fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
+    model: &TInsertSql,
+    sql: &mut String,
+    params: &mut SqlValues,
+) {
+    sql.push('(');
+
+    let mut field_no_rendered = 0;
+    for field_no in 0..TInsertSql::get_fields_amount() {
+        let update_value = model.get_field_value(field_no);
+
+        if field_no_rendered > 0 {
+            sql.push(',');
+        }
+
+        field_no_rendered += 1;
+
+        update_value.write_value(sql, params, || TInsertSql::get_column_name(field_no));
+    }
+    sql.push(')');
 }

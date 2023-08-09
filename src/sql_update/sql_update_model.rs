@@ -86,24 +86,18 @@ pub trait SqlUpdateModel {
         self.fill_update_values(sql, params);
     }
 
-    fn fill_upsert_sql_part(sql: &mut String) {
-        for i in 0..Self::get_fields_amount() {
+    fn fill_upsert_sql_part(sql: &mut String, columns: &[ColumnName]) {
+        let mut i = 0;
+        for column_name in columns {
             if i > 0 {
                 sql.push(',');
             }
-            let (column_name, related_name) = Self::get_column_name(i);
+            i += 1;
 
             column_name.push_name(sql);
 
             sql.push_str("=EXCLUDED.");
             column_name.push_name(sql);
-
-            if let Some(additional_name) = related_name {
-                sql.push(',');
-                additional_name.push_name(sql);
-                sql.push_str("=EXCLUDED.");
-                additional_name.push_name(sql);
-            }
         }
     }
 

@@ -30,4 +30,17 @@ pub trait SqlInsertModel {
 
         sql.push(')');
     }
+
+    fn get_columns_list() -> Vec<ColumnName> {
+        let fields_amount = Self::get_fields_amount();
+        let mut result = Vec::with_capacity(fields_amount);
+        for field_no in 0..Self::get_fields_amount() {
+            let (field_name, additional_field_name) = Self::get_column_name(field_no);
+            result.push(field_name);
+            if let Some(additional_field_name) = additional_field_name {
+                result.push(additional_field_name);
+            }
+        }
+        result
+    }
 }

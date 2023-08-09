@@ -4,6 +4,7 @@ use super::SqlUpdateValueProvider;
 
 pub struct SqlUpdateModelValue<'s> {
     pub metadata: Option<SqlValueMetadata>,
+    pub ignore_if_none: bool,
     pub value: Option<&'s dyn SqlUpdateValueProvider>,
 }
 

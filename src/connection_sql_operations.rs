@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    sql::{SelectBuilder, SqlData, SqlValues},
+    sql::{SelectBuilder, SqlData, SqlValues, UpsertColumns},
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
@@ -20,7 +20,8 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let mut sql_data = crate::sql::build_insert_sql(entity, table_name);
+        let mut sql_data =
+            crate::sql::build_insert_sql(entity, table_name, &mut UpsertColumns::as_none());
         sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
@@ -420,7 +421,7 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let sql = crate::sql::build_insert_sql(entity, table_name);
+        let sql = crate::sql::build_insert_sql(entity, table_name, &mut UpsertColumns::as_none());
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
 
