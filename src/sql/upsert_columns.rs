@@ -32,4 +32,24 @@ impl UpsertColumns {
             &[]
         }
     }
+
+    pub fn has_column(&self, column: &ColumnName) -> bool {
+        if let Some(columns) = self.columns.as_ref() {
+            for my_column in columns {
+                if my_column.name.as_str() == column.name.as_str() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
+
+impl Into<UpsertColumns> for Vec<ColumnName> {
+    fn into(self) -> UpsertColumns {
+        UpsertColumns {
+            columns: Some(self),
+        }
+    }
 }

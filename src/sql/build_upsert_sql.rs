@@ -21,7 +21,7 @@ pub fn build_upsert_sql<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
 
     sql_data.sql.push_str(" DO UPDATE SET ");
 
-    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, columns.as_slice());
+    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, &columns);
 
     fill_upsert_where_condition::<TSqlInsertModel>(&mut sql_data.sql, old_e_tag);
 

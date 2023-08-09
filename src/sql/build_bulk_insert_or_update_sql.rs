@@ -15,7 +15,7 @@ pub fn build_bulk_insert_or_update_sql<TSqlInsertModel: SqlInsertModel + SqlUpda
 
     let columns = TSqlInsertModel::get_columns_list();
 
-    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, columns.as_slice());
+    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, &columns.into());
 
     sql_data
 }

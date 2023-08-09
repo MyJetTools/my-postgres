@@ -14,7 +14,7 @@ pub fn build_insert_or_update_sql<'s, TSqlInsertModel: SqlInsertModel + SqlUpdat
 
     sql_data.sql.push_str(" DO UPDATE SET ");
 
-    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, columns.as_slice());
+    TSqlInsertModel::fill_upsert_sql_part(&mut sql_data.sql, &columns.into());
 
     sql_data
 }

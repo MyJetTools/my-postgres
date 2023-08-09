@@ -1,4 +1,7 @@
-use crate::{sql::SqlValues, ColumnName};
+use crate::{
+    sql::{SqlValues, UpsertColumns},
+    ColumnName,
+};
 
 use super::SqlUpdateModelValue;
 
@@ -86,18 +89,28 @@ pub trait SqlUpdateModel {
         self.fill_update_values(sql, params);
     }
 
-    fn fill_upsert_sql_part(sql: &mut String, columns: &[ColumnName]) {
-        let mut i = 0;
-        for column_name in columns {
+    fn fill_upsert_sql_part(sql: &mut String, columns: &UpsertColumns) {
+        for i in 0..Self::get_fields_amount() {
             if i > 0 {
                 sql.push(',');
             }
-            i += 1;
+            let (column_name, related_name) = Self::get_column_name(i);
 
-            column_name.push_name(sql);
+            if columns.has_column(&column_name) {
+                column_name.push_name(sql);
 
-            sql.push_str("=EXCLUDED.");
-            column_name.push_name(sql);
+                sql.push_str("=EXCLUDED.");
+                column_name.push_name(sql);
+            }
+
+            if let Some(additional_name) = related_name {
+                if columns.has_column(&additional_name) {
+                    sql.push(',');
+                    additional_name.push_name(sql);
+                    sql.push_str("=EXCLUDED.");
+                    additional_name.push_name(sql);
+                }
+            }
         }
     }
 
