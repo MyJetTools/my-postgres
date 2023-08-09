@@ -1,6 +1,6 @@
 use crate::{sql_insert::SqlInsertModel, sql_update::SqlUpdateModel};
 
-use super::{SqlData, UpsertColumns};
+use super::{SqlData, UsedColumns};
 
 pub fn build_upsert_sql<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
     model: &TSqlInsertModel,
@@ -13,7 +13,7 @@ pub fn build_upsert_sql<TSqlInsertModel: SqlInsertModel + SqlUpdateModel>(
         model.set_e_tag_value(e_tag_value);
     }
 
-    let mut columns = UpsertColumns::new_as_active();
+    let mut columns = UsedColumns::new_as_active();
 
     let mut sql_data = crate::sql::build_insert_sql(model, table_name, &mut columns);
 

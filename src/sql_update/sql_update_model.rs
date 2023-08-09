@@ -1,5 +1,5 @@
 use crate::{
-    sql::{SqlValues, UpsertColumns},
+    sql::{SqlValues, UsedColumns},
     ColumnName,
 };
 
@@ -89,14 +89,17 @@ pub trait SqlUpdateModel {
         self.fill_update_values(sql, params);
     }
 
-    fn fill_upsert_sql_part(sql: &mut String, columns: &UpsertColumns) {
-        for i in 0..Self::get_fields_amount() {
-            if i > 0 {
-                sql.push(',');
-            }
+    fn fill_upsert_sql_part(sql: &mut String, columns: &UsedColumns) {
+        let mut i = 0;
+        for _ in 0..Self::get_fields_amount() {
             let (column_name, related_name) = Self::get_column_name(i);
 
             if columns.has_column(&column_name) {
+                if i > 0 {
+                    sql.push(',');
+                }
+
+                i += 1;
                 column_name.push_name(sql);
 
                 sql.push_str("=EXCLUDED.");
@@ -105,7 +108,11 @@ pub trait SqlUpdateModel {
 
             if let Some(additional_name) = related_name {
                 if columns.has_column(&additional_name) {
-                    sql.push(',');
+                    if i > 0 {
+                        sql.push(',');
+                    }
+                    i += 1;
+
                     additional_name.push_name(sql);
                     sql.push_str("=EXCLUDED.");
                     additional_name.push_name(sql);

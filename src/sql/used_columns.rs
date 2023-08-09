@@ -1,10 +1,10 @@
 use crate::ColumnName;
 
-pub struct UpsertColumns {
+pub struct UsedColumns {
     columns: Option<Vec<ColumnName>>,
 }
 
-impl UpsertColumns {
+impl UsedColumns {
     pub fn new_as_active() -> Self {
         Self {
             columns: Some(Vec::new()),
@@ -46,9 +46,9 @@ impl UpsertColumns {
     }
 }
 
-impl Into<UpsertColumns> for Vec<ColumnName> {
-    fn into(self) -> UpsertColumns {
-        UpsertColumns {
+impl Into<UsedColumns> for Vec<ColumnName> {
+    fn into(self) -> UsedColumns {
+        UsedColumns {
             columns: Some(self),
         }
     }

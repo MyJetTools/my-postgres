@@ -1,17 +1,22 @@
 use crate::sql_insert::SqlInsertModel;
 
-use super::{SqlData, SqlValues};
+use super::{SqlData, SqlValues, UsedColumns};
 
 pub fn build_bulk_insert_sql<TSqlInsertModel: SqlInsertModel>(
     models: &[TSqlInsertModel],
     table_name: &str,
+    used_columns: &UsedColumns,
 ) -> SqlData {
+    if models.is_empty() {
+        panic!("No models to insert");
+    }
+
     let mut result = String::new();
 
     result.push_str("INSERT INTO ");
     result.push_str(table_name);
 
-    TSqlInsertModel::generate_insert_fields(&mut result);
+    TSqlInsertModel::generate_insert_fields(&mut result, used_columns);
 
     result.push_str(" VALUES ");
 

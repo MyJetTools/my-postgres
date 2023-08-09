@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use crate::{
     count_result::CountResult,
-    sql::{SelectBuilder, SqlData, SqlValues, UpsertColumns},
+    sql::{SelectBuilder, SqlData, SqlValues, UsedColumns},
     sql_insert::SqlInsertModel,
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
@@ -21,7 +21,7 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let mut sql_data =
-            crate::sql::build_insert_sql(entity, table_name, &mut UpsertColumns::as_none());
+            crate::sql::build_insert_sql(entity, table_name, &mut UsedColumns::as_none());
         sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
@@ -249,7 +249,13 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let sql_data = crate::sql::build_bulk_insert_sql(entities, table_name);
+        if entities.len() == 0 {
+            return Ok(());
+        }
+
+        let used_columns = entities[0].get_insert_columns_list();
+
+        let sql_data = crate::sql::build_bulk_insert_sql(entities, table_name, &used_columns);
 
         let process_name = format!("bulk_insert_db_entities into table {}", table_name);
 
@@ -272,7 +278,13 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let mut sql_data = crate::sql::build_bulk_insert_sql(entities, table_name);
+        if entities.len() == 0 {
+            return Ok(());
+        }
+
+        let used_columns = entities[0].get_insert_columns_list();
+
+        let mut sql_data = crate::sql::build_bulk_insert_sql(entities, table_name, &used_columns);
 
         sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
 
@@ -421,7 +433,7 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        let sql = crate::sql::build_insert_sql(entity, table_name, &mut UpsertColumns::as_none());
+        let sql = crate::sql::build_insert_sql(entity, table_name, &mut UsedColumns::as_none());
 
         let process_name: String = format!("insert_db_entity into table {}", table_name);
 

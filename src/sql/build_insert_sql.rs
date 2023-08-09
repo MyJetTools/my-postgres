@@ -1,11 +1,11 @@
 use crate::sql_insert::SqlInsertModel;
 
-use super::{SqlData, SqlValues, UpsertColumns};
+use super::{SqlData, SqlValues, UsedColumns};
 
 pub fn build_insert_sql<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     table_name: &str,
-    upsert_columns_to_fill: &mut UpsertColumns,
+    upsert_columns_to_fill: &mut UsedColumns,
 ) -> SqlData {
     let mut sql = String::new();
 
@@ -13,7 +13,10 @@ pub fn build_insert_sql<TInsertSql: SqlInsertModel>(
 
     sql.push_str("INSERT INTO ");
     sql.push_str(table_name);
-    TInsertSql::generate_insert_fields(&mut sql);
+
+    let used_columns = model.get_insert_columns_list();
+
+    TInsertSql::generate_insert_fields(&mut sql, &used_columns);
     sql.push_str(" VALUES ");
     generate_insert_fields_values(model, &mut sql, &mut values, upsert_columns_to_fill);
 
@@ -30,9 +33,11 @@ pub fn build_insert_sql_owned<TInsertSql: SqlInsertModel>(
 
     sql.push_str("INSERT INTO ");
     sql.push_str(table_name);
-    TInsertSql::generate_insert_fields(&mut sql);
+
+    let used_columns = model.get_insert_columns_list();
+    TInsertSql::generate_insert_fields(&mut sql, &used_columns);
     sql.push_str(" VALUES ");
-    generate_insert_fields_values(&model, &mut sql, &mut values, &mut UpsertColumns::as_none());
+    generate_insert_fields_values(&model, &mut sql, &mut values, &mut UsedColumns::as_none());
 
     SqlData { sql, values }
 }
@@ -41,7 +46,7 @@ pub fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     sql: &mut String,
     params: &mut SqlValues,
-    upsert_columns_to_fill: &mut UpsertColumns,
+    upsert_columns_to_fill: &mut UsedColumns,
 ) {
     sql.push('(');
 
