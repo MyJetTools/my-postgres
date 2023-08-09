@@ -91,8 +91,8 @@ pub trait SqlUpdateModel {
 
     fn fill_upsert_sql_part(sql: &mut String, columns: &UsedColumns) {
         let mut i = 0;
-        for _ in 0..Self::get_fields_amount() {
-            let (column_name, related_name) = Self::get_column_name(i);
+        for no in 0..Self::get_fields_amount() {
+            let (column_name, related_name) = Self::get_column_name(no);
 
             if columns.has_column(&column_name) {
                 if i > 0 {
