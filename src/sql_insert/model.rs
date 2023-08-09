@@ -15,7 +15,7 @@ pub trait SqlInsertModel {
         for field_no in 0..Self::get_fields_amount() {
             let (column_name, additional_field_name) = Self::get_column_name(field_no);
 
-            if !used_columns.has_column(&column_name) {
+            if used_columns.has_column(&column_name) {
                 if no > 0 {
                     sql.push(',');
                 }
@@ -24,7 +24,7 @@ pub trait SqlInsertModel {
             }
 
             if let Some(additional_field_name) = additional_field_name {
-                if !used_columns.has_column(&additional_field_name) {
+                if used_columns.has_column(&additional_field_name) {
                     sql.push(',');
                     additional_field_name.push_name(sql);
                     no += 1;
