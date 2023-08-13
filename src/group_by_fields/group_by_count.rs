@@ -1,6 +1,8 @@
-use crate::{sql::SelectBuilder, SqlValueMetadata};
-
-use super::{FromDbRow, SelectValueProvider};
+use crate::{
+    sql::SelectBuilder,
+    sql_select::{FromDbRow, SelectValueProvider},
+    SqlValueMetadata,
+};
 
 pub struct GroupByCount(i32);
 
@@ -16,7 +18,10 @@ impl SelectValueProvider for GroupByCount {
         field_name: &'static str,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(crate::sql::SelectFieldValue::CountWithGroupBy(field_name));
+        sql.push(crate::sql::SelectFieldValue::GroupByField {
+            field_name,
+            statement: "COUNT(*)".into(),
+        });
     }
 }
 

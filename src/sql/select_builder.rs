@@ -1,3 +1,5 @@
+use rust_extensions::StrOrString;
+
 use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel};
 
 use super::{SqlData, SqlValues};
@@ -8,7 +10,10 @@ pub enum SelectFieldValue {
     Json(&'static str),
     DateTimeAsBigint(&'static str),
     DateTimeAsTimestamp(&'static str),
-    CountWithGroupBy(&'static str),
+    GroupByField {
+        statement: StrOrString<'static>,
+        field_name: &'static str,
+    },
 }
 
 impl SelectFieldValue {
@@ -23,8 +28,8 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                panic!("Value is CountWithGroupBy: {}", field_name)
+            SelectFieldValue::GroupByField { field_name, .. } => {
+                panic!("Value is GroupByField: {}", field_name)
             }
         }
     }
@@ -40,8 +45,8 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                panic!("Value is CountWithGroupBy: {}", field_name)
+            SelectFieldValue::GroupByField { field_name, .. } => {
+                panic!("Value is GroupByField: {}", field_name)
             }
         }
     }
@@ -57,8 +62,8 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                panic!("Value is CountWithGroupBy: {}", field_name)
+            SelectFieldValue::GroupByField { field_name, .. } => {
+                panic!("Value is GroupByField: {}", field_name)
             }
         }
     }
@@ -72,8 +77,8 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                panic!("Value is CountWithGroupBy: {}", field_name)
+            SelectFieldValue::GroupByField { field_name, .. } => {
+                panic!("Value is GroupByField: {}", field_name)
             }
         }
     }
@@ -86,8 +91,8 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 panic!("Value is DateTimeAsBigint: {}", field_name)
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                panic!("Value is CountWithGroupBy: {}", field_name)
+            SelectFieldValue::GroupByField { field_name, .. } => {
+                panic!("Value is GroupByField: {}", field_name)
             }
             SelectFieldValue::DateTimeAsTimestamp(field_name) => field_name,
         }
@@ -242,8 +247,11 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
             SelectFieldValue::LineNo(line_no) => {
                 sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
             }
-            SelectFieldValue::CountWithGroupBy(field_name) => {
-                sql.push_str(format!("count(*) as \"{}\"", field_name).as_str());
+            SelectFieldValue::GroupByField {
+                field_name,
+                statement,
+            } => {
+                sql.push_str(format!("{} as \"{}\"", statement.as_str(), field_name).as_str());
             }
         }
 
