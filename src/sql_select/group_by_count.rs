@@ -2,15 +2,15 @@ use crate::{sql::SelectBuilder, SqlValueMetadata};
 
 use super::{FromDbRow, SelectValueProvider};
 
-pub struct CountWithGroupValue(i32);
+pub struct GroupByCount(i32);
 
-impl CountWithGroupValue {
+impl GroupByCount {
     pub fn get_value(&self) -> i32 {
         self.0
     }
 }
 
-impl SelectValueProvider for CountWithGroupValue {
+impl SelectValueProvider for GroupByCount {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
@@ -20,21 +20,21 @@ impl SelectValueProvider for CountWithGroupValue {
     }
 }
 
-impl FromDbRow<CountWithGroupValue> for CountWithGroupValue {
+impl FromDbRow<GroupByCount> for GroupByCount {
     fn from_db_row(
         row: &crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> CountWithGroupValue {
-        CountWithGroupValue(row.get(name))
+    ) -> GroupByCount {
+        GroupByCount(row.get(name))
     }
 
     fn from_db_row_opt(
         row: &crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> Option<CountWithGroupValue> {
+    ) -> Option<GroupByCount> {
         let result: Option<i32> = row.get(name);
-        Some(CountWithGroupValue(result?))
+        Some(GroupByCount(result?))
     }
 }
