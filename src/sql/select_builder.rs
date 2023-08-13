@@ -8,6 +8,7 @@ pub enum SelectFieldValue {
     Json(&'static str),
     DateTimeAsBigint(&'static str),
     DateTimeAsTimestamp(&'static str),
+    CountWithGroupBy(&'static str),
 }
 
 impl SelectFieldValue {
@@ -21,6 +22,9 @@ impl SelectFieldValue {
             }
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
+            }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                panic!("Value is CountWithGroupBy: {}", field_name)
             }
         }
     }
@@ -36,6 +40,9 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                panic!("Value is CountWithGroupBy: {}", field_name)
+            }
         }
     }
 
@@ -50,6 +57,9 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                panic!("Value is CountWithGroupBy: {}", field_name)
+            }
         }
     }
 
@@ -62,6 +72,9 @@ impl SelectFieldValue {
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
                 panic!("Value is DateTimeAsTimestamp: {}", field_name)
             }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                panic!("Value is CountWithGroupBy: {}", field_name)
+            }
         }
     }
 
@@ -72,6 +85,9 @@ impl SelectFieldValue {
             SelectFieldValue::Json(field_name) => panic!("Value is Json: {}", field_name),
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 panic!("Value is DateTimeAsBigint: {}", field_name)
+            }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                panic!("Value is CountWithGroupBy: {}", field_name)
             }
             SelectFieldValue::DateTimeAsTimestamp(field_name) => field_name,
         }
@@ -225,6 +241,9 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
             }
             SelectFieldValue::LineNo(line_no) => {
                 sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
+            }
+            SelectFieldValue::CountWithGroupBy(field_name) => {
+                sql.push_str(format!("count(*) as \"{}\"", field_name).as_str());
             }
         }
 

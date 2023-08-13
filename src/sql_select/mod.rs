@@ -12,3 +12,5 @@ pub use select_entity::*;
 pub use select_part_value::*;
 pub use select_with_params::*;
 pub use to_sql_string::*;
+mod count_with_group_by;
+pub use count_with_group_by::*;
