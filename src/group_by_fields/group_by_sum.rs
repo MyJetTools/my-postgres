@@ -20,7 +20,7 @@ impl SelectValueProvider for GroupBySum {
     ) {
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("SUM({})", field_name).into(),
+            statement: format!("SUM({})::int", field_name).into(),
         });
     }
 }

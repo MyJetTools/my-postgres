@@ -20,7 +20,7 @@ impl SelectValueProvider for GroupByCount {
     ) {
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: "COUNT(*)".into(),
+            statement: "COUNT(*)::int".into(),
         });
     }
 }

@@ -20,7 +20,7 @@ impl SelectValueProvider for GroupByMax {
     ) {
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("MAX({})", field_name).into(),
+            statement: format!("MAX({})::int", field_name).into(),
         });
     }
 }
