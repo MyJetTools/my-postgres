@@ -42,7 +42,7 @@ pub fn build_insert_sql_owned<TInsertSql: SqlInsertModel>(
     SqlData { sql, values }
 }
 
-pub fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
+fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     sql: &mut String,
     params: &mut SqlValues,

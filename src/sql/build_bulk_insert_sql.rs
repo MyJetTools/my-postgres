@@ -42,7 +42,7 @@ fn fill_bulk_insert_values_sql<TSqlInsertModel: SqlInsertModel>(
     }
 }
 
-pub fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
+fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
     model: &TInsertSql,
     sql: &mut String,
     params: &mut SqlValues,
