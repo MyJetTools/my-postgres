@@ -23,7 +23,7 @@ impl SqlUpdateValueProvider for String {
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         let index = params.push(self.into());
-        SqlUpdateValue::Index(index, None)
+        SqlUpdateValue::Index(index)
     }
 }
 
@@ -34,7 +34,7 @@ impl<'s> SqlUpdateValueProvider for &'s str {
         _metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         let index = params.push((*self).into());
-        SqlUpdateValue::Index(index, None)
+        SqlUpdateValue::Index(index)
     }
 }
 
