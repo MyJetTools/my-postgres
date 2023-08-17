@@ -16,7 +16,10 @@ pub fn get_case_and_model<'s>(value: &'s str) -> (&'s str, &'s str) {
 
         match itm.get_name().unwrap() {
             "case" => case = Some(itm.get_value().unwrap().as_str().unwrap()),
-            "model" => model = Some(itm.get_value().unwrap().as_str().unwrap()),
+            "model" => {
+                model =
+                    Some(std::str::from_utf8(itm.get_value().unwrap().as_bytes().unwrap()).unwrap())
+            }
             _ => {}
         }
     }
