@@ -23,5 +23,6 @@ async-trait = "*"
 tokio = { version = "*", features = ["full"] }
 my-telemetry = { tag = "0.3.0", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
 serde = { version = "*", features = ["derive"] }
+my-json = { tag = "0.2.0", git = "https://github.com/MyJetTools/my-json.git" }
 serde_json = "*"
 lazy_static = "*"

@@ -59,12 +59,8 @@ fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
         }
 
         if upsert_columns_to_fill.is_active() {
-            let (column_name, related_column_name) = TInsertSql::get_column_name(field_no);
+            let column_name = TInsertSql::get_column_name(field_no);
             upsert_columns_to_fill.push(column_name);
-
-            if let Some(related_column_name) = related_column_name {
-                upsert_columns_to_fill.push(related_column_name);
-            }
         }
 
         if field_no_rendered > 0 {
@@ -73,7 +69,7 @@ fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
 
         field_no_rendered += 1;
 
-        update_value.write_value(sql, params, || TInsertSql::get_column_name(field_no));
+        update_value.write_value(sql, params);
     }
     sql.push(')');
 }

@@ -6,7 +6,7 @@ use crate::{
 use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel {
-    fn get_column_name(no: usize) -> (ColumnName, Option<ColumnName>);
+    fn get_column_name(no: usize) -> ColumnName;
     fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
     fn get_fields_amount() -> usize;
 
@@ -14,21 +14,8 @@ pub trait SqlUpdateModel {
         let amount = Self::get_fields_amount();
 
         if amount == 1 {
-            let (column_name, related_column_name) = Self::get_column_name(0);
-
-            match related_column_name {
-                Some(related_column_name) => {
-                    sql.push('(');
-                    column_name.push_name(sql);
-
-                    sql.push(',');
-                    related_column_name.push_name(sql);
-                    sql.push(')');
-                }
-                None => {
-                    column_name.push_name(sql);
-                }
-            }
+            let column_name = Self::get_column_name(0);
+            column_name.push_name(sql);
 
             return;
         }
@@ -37,7 +24,7 @@ pub trait SqlUpdateModel {
 
         let mut has_first_column = false;
         for no in 0..amount {
-            let (column_name, related_column_name) = Self::get_column_name(no);
+            let column_name = Self::get_column_name(no);
 
             if has_first_column {
                 sql.push(',');
@@ -46,11 +33,6 @@ pub trait SqlUpdateModel {
             }
 
             column_name.push_name(sql);
-
-            if let Some(related_column_name) = related_column_name {
-                sql.push(',');
-                related_column_name.push_name(sql);
-            }
         }
         sql.push(')');
     }
@@ -58,12 +40,7 @@ pub trait SqlUpdateModel {
     fn fill_update_values(&self, sql: &mut String, params: &mut SqlValues) {
         let fields_amount = Self::get_fields_amount();
 
-        let need_parentheses = if fields_amount == 1 {
-            let columns = Self::get_column_name(0);
-            columns.1.is_some()
-        } else {
-            true
-        };
+        let need_parentheses = fields_amount > 1;
 
         if need_parentheses {
             sql.push('(');
@@ -75,7 +52,7 @@ pub trait SqlUpdateModel {
             }
 
             let update_data = self.get_field_value(i);
-            update_data.write_value(sql, params, || Self::get_column_name(i));
+            update_data.write_value(sql, params);
         }
 
         if need_parentheses {
@@ -92,7 +69,7 @@ pub trait SqlUpdateModel {
     fn fill_upsert_sql_part(sql: &mut String, columns: &UsedColumns) {
         let mut i = 0;
         for no in 0..Self::get_fields_amount() {
-            let (column_name, related_name) = Self::get_column_name(no);
+            let column_name = Self::get_column_name(no);
 
             if columns.has_column(&column_name) {
                 if i > 0 {
@@ -104,19 +81,6 @@ pub trait SqlUpdateModel {
 
                 sql.push_str("=EXCLUDED.");
                 column_name.push_name(sql);
-            }
-
-            if let Some(additional_name) = related_name {
-                if columns.has_column(&additional_name) {
-                    if i > 0 {
-                        sql.push(',');
-                    }
-                    i += 1;
-
-                    additional_name.push_name(sql);
-                    sql.push_str("=EXCLUDED.");
-                    additional_name.push_name(sql);
-                }
             }
         }
     }

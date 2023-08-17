@@ -59,7 +59,7 @@ fn generate_insert_fields_values<TInsertSql: SqlInsertModel>(
 
         field_no_rendered += 1;
 
-        update_value.write_value(sql, params, || TInsertSql::get_column_name(field_no));
+        update_value.write_value(sql, params);
     }
     sql.push(')');
 }
