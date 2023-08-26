@@ -58,7 +58,7 @@ impl MyPostgres {
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
         &self,
         table_name: &str,
-        where_model: &TWhereModel,
+        where_model: Option<&TWhereModel>,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TResult>, MyPostgresError> {
         self.connection

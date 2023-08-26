@@ -39,7 +39,7 @@ impl PostgresConnection {
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
         &self,
         table_name: &str,
-        where_model: &TWhereModel,
+        where_model: Option<&TWhereModel>,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TResult>, MyPostgresError> {
@@ -52,13 +52,16 @@ impl PostgresConnection {
         sql.push_str(" FROM ");
         sql.push_str(table_name);
 
-        let where_condition = where_model.build_where_sql_part(&mut values);
+        if let Some(where_model) = where_model {
+            let where_condition = where_model.build_where_sql_part(&mut values);
 
-        if where_condition.has_conditions() {
-            sql.push_str(" WHERE ");
-            where_condition.build(&mut sql);
+            if where_condition.has_conditions() {
+                sql.push_str(" WHERE ");
+                where_condition.build(&mut sql);
+            }
+
+            where_model.fill_limit_and_offset(&mut sql);
         }
-        where_model.fill_limit_and_offset(&mut sql);
 
         let mut result = self
             .execute_sql_as_vec(
