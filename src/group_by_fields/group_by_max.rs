@@ -16,8 +16,17 @@ impl SelectValueProvider for GroupByMax {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
+        if let Some(metadata) = metadata {
+            if let Some(sql_type) = metadata.sql_type {
+                sql.push(crate::sql::SelectFieldValue::GroupByField {
+                    field_name,
+                    statement: format!("MAX({})::{}", field_name, sql_type).into(),
+                });
+            }
+        }
+
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
             statement: format!("MAX({})::int", field_name).into(),
