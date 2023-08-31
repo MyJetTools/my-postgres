@@ -24,6 +24,7 @@ impl SelectValueProvider for GroupByMax {
                     field_name,
                     statement: format!("MAX({})::{}", field_name, sql_type).into(),
                 });
+                return;
             }
         }
 

@@ -24,6 +24,7 @@ impl SelectValueProvider for GroupByCount {
                     field_name,
                     statement: format!("COUNT({})::{}", field_name, sql_type).into(),
                 });
+                return;
             }
         }
 

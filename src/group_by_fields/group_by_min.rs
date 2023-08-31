@@ -24,6 +24,7 @@ impl SelectValueProvider for GroupByMin {
                     field_name,
                     statement: format!("MIN({})::{}", field_name, sql_type).into(),
                 });
+                return;
             }
         }
 

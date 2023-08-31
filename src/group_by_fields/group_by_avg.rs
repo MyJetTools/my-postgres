@@ -24,6 +24,7 @@ impl SelectValueProvider for GroupByAvg {
                     field_name,
                     statement: format!("AVG({})::{}", field_name, sql_type).into(),
                 });
+                return;
             }
         }
         sql.push(crate::sql::SelectFieldValue::GroupByField {

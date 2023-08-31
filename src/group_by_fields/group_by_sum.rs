@@ -24,6 +24,8 @@ impl SelectValueProvider for GroupBySum {
                     field_name,
                     statement: format!("SUM({})::{}", field_name, sql_type).into(),
                 });
+
+                return;
             }
         }
 
