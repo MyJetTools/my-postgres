@@ -8,3 +8,5 @@ mod group_by_max;
 pub use group_by_max::*;
 mod group_by_min;
 pub use group_by_min::*;
+mod group_by_field_type;
+pub use group_by_field_type::*;

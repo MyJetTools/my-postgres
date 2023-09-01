@@ -5,18 +5,26 @@ use serde::de::DeserializeOwned;
 
 use crate::SqlValueMetadata;
 
-pub trait FromDbRow<TResult> {
-    fn from_db_row(row: &crate::DbRow, name: &str, metadata: &Option<SqlValueMetadata>) -> TResult;
+pub trait FromDbRow<'s, TResult> {
+    fn from_db_row(
+        row: &'s crate::DbRow,
+        name: &str,
+        metadata: &Option<SqlValueMetadata>,
+    ) -> TResult;
 
     fn from_db_row_opt(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         metadata: &Option<SqlValueMetadata>,
     ) -> Option<TResult>;
 }
 
-impl FromDbRow<String> for String {
-    fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> String {
+impl<'s> FromDbRow<'s, String> for String {
+    fn from_db_row(
+        row: &'s crate::DbRow,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> String {
         row.get(name)
     }
 
@@ -29,7 +37,7 @@ impl FromDbRow<String> for String {
     }
 }
 
-impl FromDbRow<i64> for i64 {
+impl<'s> FromDbRow<'s, i64> for i64 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> i64 {
         row.get(name)
     }
@@ -43,7 +51,7 @@ impl FromDbRow<i64> for i64 {
     }
 }
 
-impl FromDbRow<u64> for u64 {
+impl<'s> FromDbRow<'s, u64> for u64 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> u64 {
         let result: i64 = row.get(name);
         result as u64
@@ -60,7 +68,7 @@ impl FromDbRow<u64> for u64 {
     }
 }
 
-impl FromDbRow<i32> for i32 {
+impl<'s> FromDbRow<'s, i32> for i32 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> i32 {
         row.get(name)
     }
@@ -74,7 +82,7 @@ impl FromDbRow<i32> for i32 {
     }
 }
 
-impl FromDbRow<u32> for u32 {
+impl<'s> FromDbRow<'s, u32> for u32 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> u32 {
         let result: i64 = row.get(name);
         result as u32
@@ -91,7 +99,7 @@ impl FromDbRow<u32> for u32 {
     }
 }
 
-impl FromDbRow<bool> for bool {
+impl<'s> FromDbRow<'s, bool> for bool {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> bool {
         row.get(name)
     }
@@ -105,14 +113,18 @@ impl FromDbRow<bool> for bool {
     }
 }
 
-impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
-    fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> Vec<T> {
+impl<'s, T: DeserializeOwned> FromDbRow<'s, Vec<T>> for Vec<T> {
+    fn from_db_row(
+        row: &'s crate::DbRow,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Vec<T> {
         let value: String = row.get(name);
         serde_json::from_str(&value).unwrap()
     }
 
     fn from_db_row_opt(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<Vec<T>> {
@@ -124,8 +136,8 @@ impl<T: DeserializeOwned> FromDbRow<Vec<T>> for Vec<T> {
     }
 }
 
-impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<HashMap<TKey, TValue>>
-    for HashMap<TKey, TValue>
+impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
+    FromDbRow<'s, HashMap<TKey, TValue>> for HashMap<TKey, TValue>
 {
     fn from_db_row(
         row: &crate::DbRow,
@@ -148,7 +160,7 @@ impl<TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned> FromDbRow<Has
     }
 }
 
-impl FromDbRow<f64> for f64 {
+impl<'s> FromDbRow<'s, f64> for f64 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> f64 {
         row.get(name)
     }
@@ -162,7 +174,7 @@ impl FromDbRow<f64> for f64 {
     }
 }
 
-impl FromDbRow<f32> for f32 {
+impl<'s> FromDbRow<'s, f32> for f32 {
     fn from_db_row(row: &crate::DbRow, name: &str, _metadata: &Option<SqlValueMetadata>) -> f32 {
         row.get(name)
     }
@@ -176,7 +188,7 @@ impl FromDbRow<f32> for f32 {
     }
 }
 
-impl FromDbRow<DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
+impl<'s> FromDbRow<'s, DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
     fn from_db_row(
         row: &crate::DbRow,
         name: &str,

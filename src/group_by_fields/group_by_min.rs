@@ -1,55 +1,57 @@
+use tokio_postgres::types::FromSql;
+
 use crate::{
     sql::SelectBuilder,
     sql_select::{FromDbRow, SelectValueProvider},
-    SqlValueMetadata,
+    GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupByMin(i32);
+pub struct GroupByMin<T>(T);
 
-impl GroupByMin {
-    pub fn get_value(&self) -> i32 {
+impl<'s, T: Copy + FromSql<'s>> GroupByMin<T> {
+    pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl SelectValueProvider for GroupByMin {
+impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMin<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
         metadata: &Option<SqlValueMetadata>,
     ) {
-        if let Some(metadata) = metadata {
+        let sql_type = if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
-                sql.push(crate::sql::SelectFieldValue::GroupByField {
-                    field_name,
-                    statement: format!("MIN({})::{}", field_name, sql_type).into(),
-                });
-                return;
+                sql_type
+            } else {
+                T::DB_SQL_TYPE
             }
-        }
+        } else {
+            T::DB_SQL_TYPE
+        };
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("MIN({})::int", field_name).into(),
+            statement: format!("MIN({field_name})::{} as {field_name}", sql_type).into(),
         });
     }
 }
 
-impl FromDbRow<GroupByMin> for GroupByMin {
+impl<'s, T: Copy + FromSql<'s>> FromDbRow<'s, GroupByMin<T>> for GroupByMin<T> {
     fn from_db_row(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> GroupByMin {
+    ) -> GroupByMin<T> {
         GroupByMin(row.get(name))
     }
 
     fn from_db_row_opt(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> Option<GroupByMin> {
-        let result: Option<i32> = row.get(name);
+    ) -> Option<GroupByMin<T>> {
+        let result: Option<T> = row.get(name);
         Some(GroupByMin(result?))
     }
 }

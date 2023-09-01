@@ -1,55 +1,57 @@
+use tokio_postgres::types::FromSql;
+
 use crate::{
     sql::SelectBuilder,
     sql_select::{FromDbRow, SelectValueProvider},
-    SqlValueMetadata,
+    GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupByMax(i32);
+pub struct GroupByMax<T>(T);
 
-impl GroupByMax {
-    pub fn get_value(&self) -> i32 {
+impl<'s, T: Copy + FromSql<'s>> GroupByMax<T> {
+    pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl SelectValueProvider for GroupByMax {
+impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMax<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
         metadata: &Option<SqlValueMetadata>,
     ) {
-        if let Some(metadata) = metadata {
+        let sql_type = if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
-                sql.push(crate::sql::SelectFieldValue::GroupByField {
-                    field_name,
-                    statement: format!("MAX({})::{}", field_name, sql_type).into(),
-                });
-                return;
+                sql_type
+            } else {
+                T::DB_SQL_TYPE
             }
-        }
+        } else {
+            T::DB_SQL_TYPE
+        };
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("MAX({})::int", field_name).into(),
+            statement: format!("MAX({field_name})::{} as {field_name}", sql_type).into(),
         });
     }
 }
 
-impl FromDbRow<GroupByMax> for GroupByMax {
+impl<'s, T: Copy + FromSql<'s>> FromDbRow<'s, GroupByMax<T>> for GroupByMax<T> {
     fn from_db_row(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> GroupByMax {
+    ) -> GroupByMax<T> {
         GroupByMax(row.get(name))
     }
 
     fn from_db_row_opt(
-        row: &crate::DbRow,
+        row: &'s crate::DbRow,
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> Option<GroupByMax> {
-        let result: Option<i32> = row.get(name);
+    ) -> Option<GroupByMax<T>> {
+        let result: Option<T> = row.get(name);
         Some(GroupByMax(result?))
     }
 }
