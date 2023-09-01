@@ -6,15 +6,15 @@ use crate::{
     GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupByMax<T>(T);
+pub struct GroupByMax<T: Send + Sync + 'static>(T);
 
-impl<'s, T: Copy + FromSql<'s>> GroupByMax<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupByMax<T> {
     pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMax<T> {
+impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupByMax<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
@@ -37,7 +37,9 @@ impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMax<T> {
     }
 }
 
-impl<'s, T: Copy + FromSql<'s>> FromDbRow<'s, GroupByMax<T>> for GroupByMax<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> FromDbRow<'s, GroupByMax<T>>
+    for GroupByMax<T>
+{
     fn from_db_row(
         row: &'s crate::DbRow,
         name: &str,

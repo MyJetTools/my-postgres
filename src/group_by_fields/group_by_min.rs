@@ -6,15 +6,15 @@ use crate::{
     GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupByMin<T>(T);
+pub struct GroupByMin<T: Send + Sync + 'static>(T);
 
-impl<'s, T: Copy + FromSql<'s>> GroupByMin<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupByMin<T> {
     pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMin<T> {
+impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupByMin<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
@@ -37,7 +37,9 @@ impl<'s, T: GroupByFieldType> SelectValueProvider for GroupByMin<T> {
     }
 }
 
-impl<'s, T: Copy + FromSql<'s>> FromDbRow<'s, GroupByMin<T>> for GroupByMin<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> FromDbRow<'s, GroupByMin<T>>
+    for GroupByMin<T>
+{
     fn from_db_row(
         row: &'s crate::DbRow,
         name: &str,

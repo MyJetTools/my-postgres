@@ -6,15 +6,15 @@ use crate::{
     GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupBySum<T>(T);
+pub struct GroupBySum<T: Send + Sync + 'static>(T);
 
-impl<'s, T: Copy + FromSql<'s>> GroupBySum<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupBySum<T> {
     pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl<'s, T: GroupByFieldType> SelectValueProvider for GroupBySum<T> {
+impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupBySum<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
@@ -37,7 +37,9 @@ impl<'s, T: GroupByFieldType> SelectValueProvider for GroupBySum<T> {
     }
 }
 
-impl<'s, T: Copy + FromSql<'s>> FromDbRow<'s, GroupBySum<T>> for GroupBySum<T> {
+impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> FromDbRow<'s, GroupBySum<T>>
+    for GroupBySum<T>
+{
     fn from_db_row(
         row: &'s crate::DbRow,
         name: &str,
