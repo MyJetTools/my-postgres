@@ -32,7 +32,7 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("MIN({field_name})::{} as {field_name}", sql_type).into(),
+            statement: format!("MIN({field_name})::{}", sql_type).into(),
         });
     }
 }

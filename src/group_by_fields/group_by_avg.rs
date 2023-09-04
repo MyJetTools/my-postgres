@@ -32,7 +32,7 @@ impl<T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupB
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("AVG({field_name})::{} as {field_name}", sql_type).into(),
+            statement: format!("AVG({field_name})::{}", sql_type).into(),
         });
     }
 }
