@@ -3,7 +3,6 @@ use std::{collections::HashMap, time::Duration};
 use rust_extensions::StrOrString;
 
 use crate::{
-    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
     ColumnName, MyPostgresError, PostgresConnection,
 };
@@ -11,11 +10,12 @@ use crate::{
 pub async fn sync_table_fields(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
+    sql_timeout: Duration,
 ) -> Result<bool, MyPostgresError> {
-    let db_fields = get_db_fields(conn_string, table_schema.table_name).await?;
+    let db_fields = get_db_fields(conn_string, table_schema.table_name, sql_timeout).await?;
 
     if db_fields.is_none() {
-        create_table(conn_string, table_schema).await;
+        create_table(conn_string, table_schema, sql_timeout).await;
         return Ok(true);
     }
 
@@ -28,6 +28,7 @@ pub async fn sync_table_fields(
             conn_string,
             &table_schema.table_name,
             schema_difference.to_update.as_slice(),
+            sql_timeout,
         )
         .await
         {
@@ -61,7 +62,7 @@ pub async fn sync_table_fields(
 
     if schema_difference.to_add.len() > 0 {
         for column_name in &schema_difference.to_add {
-            add_column_to_table(conn_string, table_schema, column_name).await?;
+            add_column_to_table(conn_string, table_schema, column_name, sql_timeout).await?;
         }
 
         return Ok(true);
@@ -70,7 +71,11 @@ pub async fn sync_table_fields(
     Ok(false)
 }
 
-async fn create_table(conn_string: &PostgresConnection, table_schema: &TableSchema) {
+async fn create_table(
+    conn_string: &PostgresConnection,
+    table_schema: &TableSchema,
+    sql_timeout: Duration,
+) {
     let create_table_sql = table_schema.generate_create_table_script();
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     println!("Table not found. Creating Table");
@@ -98,7 +103,7 @@ async fn create_table(conn_string: &PostgresConnection, table_schema: &TableSche
         .execute_sql(
             &create_table_sql.into(),
             "create_table".into(),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -109,6 +114,7 @@ async fn create_table(conn_string: &PostgresConnection, table_schema: &TableSche
 async fn get_db_fields(
     conn_string: &PostgresConnection,
     table_name: &str,
+    sql_timeout: Duration,
 ) -> Result<Option<HashMap<String, TableColumn>>, MyPostgresError> {
     let sql = format!(
         r#"SELECT column_name, column_default, is_nullable, data_type
@@ -120,27 +126,22 @@ async fn get_db_fields(
 
     #[cfg(not(feature = "with-logs-and-telemetry"))]
     let result = conn_string
-        .execute_sql_as_vec(
-            &sql.into(),
-            "get_db_fields".into(),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
-            |db_row| {
-                let name: String = db_row.get("column_name");
+        .execute_sql_as_vec(&sql.into(), "get_db_fields".into(), sql_timeout, |db_row| {
+            let name: String = db_row.get("column_name");
 
-                let sql_type = match get_sql_type(db_row) {
-                    Ok(result) => result,
-                    Err(err) => {
-                        panic!("Can not get sql type for column {}. Reason: {}", name, err);
-                    }
-                };
-                TableColumn {
-                    name: name.into(),
-                    sql_type,
-                    is_nullable: get_is_nullable(db_row),
-                    default: get_column_default(&db_row),
+            let sql_type = match get_sql_type(db_row) {
+                Ok(result) => result,
+                Err(err) => {
+                    panic!("Can not get sql type for column {}. Reason: {}", name, err);
                 }
-            },
-        )
+            };
+            TableColumn {
+                name: name.into(),
+                sql_type,
+                is_nullable: get_is_nullable(db_row),
+                default: get_column_default(&db_row),
+            }
+        })
         .await?;
 
     #[cfg(feature = "with-logs-and-telemetry")]
@@ -148,7 +149,7 @@ async fn get_db_fields(
         .execute_sql_as_vec(
             &sql.into(),
             "get_db_fields".into(),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             |db_row| {
                 let name: String = db_row.get("column_name");
                 let sql_type = match get_sql_type(db_row) {
@@ -182,6 +183,7 @@ async fn add_column_to_table(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     column_name: &ColumnName,
+    sql_timeout: Duration,
 ) -> Result<(), MyPostgresError> {
     let add_column_sql = table_schema.generate_add_column_sql(column_name);
 
@@ -207,7 +209,7 @@ async fn add_column_to_table(
         .execute_sql(
             &add_column_sql.into(),
             "add_column_to_table".into(),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )

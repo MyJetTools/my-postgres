@@ -1,9 +1,11 @@
-use crate::{
-    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT, MyPostgresError, PostgresConnection,
-    PostgresConnectionInstance, PostgresSettings,
-};
+use std::time::Duration;
 
-pub async fn check_if_db_exists(connection: &PostgresConnection) -> Result<(), MyPostgresError> {
+use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
+
+pub async fn check_if_db_exists(
+    connection: &PostgresConnection,
+    sql_timeout: Duration,
+) -> Result<(), MyPostgresError> {
     let (app_name, connection_string) = connection.get_connection_string().await;
 
     let tech_conn_string =
@@ -28,7 +30,7 @@ pub async fn check_if_db_exists(connection: &PostgresConnection) -> Result<(), M
         .get_count(
             &sql.into(),
             Some("checking_if_db_exists".into()),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -60,7 +62,7 @@ pub async fn check_if_db_exists(connection: &PostgresConnection) -> Result<(), M
         .execute_sql(
             &sql.into(),
             None,
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )

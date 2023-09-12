@@ -1,5 +1,6 @@
+use std::time::Duration;
+
 use crate::{
-    sync_table_schema::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
     table_schema::{PrimaryKeySchema, TableSchema},
     ColumnName, MyPostgresError, PostgresConnection,
 };
@@ -7,6 +8,7 @@ use crate::{
 pub async fn sync_primary_key(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
+    sql_timeout: Duration,
 ) -> Result<bool, MyPostgresError> {
     if table_schema.primary_key.is_none() {
         #[cfg(not(feature = "with-logs-and-telemetry"))]
@@ -31,7 +33,7 @@ pub async fn sync_primary_key(
     let (primary_key_name, primary_key_schema) = table_schema.primary_key.as_ref().unwrap();
 
     let primary_key_from_db =
-        get_primary_key_fields_from_db(conn_string, table_schema.table_name).await?;
+        get_primary_key_fields_from_db(conn_string, table_schema.table_name, sql_timeout).await?;
 
     if primary_key_schema.is_same_with(&primary_key_from_db) {
         return Ok(false);
@@ -43,6 +45,7 @@ pub async fn sync_primary_key(
         primary_key_name,
         primary_key_schema,
         &primary_key_from_db,
+        sql_timeout,
     )
     .await;
 
@@ -55,6 +58,7 @@ async fn update_primary_key(
     primary_key_name: &str,
     primary_key_schema: &PrimaryKeySchema,
     primary_key_from_db: &PrimaryKeySchema,
+    sql_timeout: Duration,
 ) {
     let update_primary_key_sql = primary_key_schema.generate_update_primary_key_sql(
         table_name,
@@ -89,7 +93,7 @@ async fn update_primary_key(
             .execute_sql(
                 &sql.into(),
                 "update_primary_key".into(),
-                SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+                sql_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
             )
@@ -101,6 +105,7 @@ async fn update_primary_key(
 async fn get_primary_key_fields_from_db(
     conn_string: &PostgresConnection,
     table_name: &str,
+    sql_timeout: Duration,
 ) -> Result<PrimaryKeySchema, MyPostgresError> {
     // cSpell: disable
     let sql = format!(
@@ -122,7 +127,7 @@ async fn get_primary_key_fields_from_db(
         .execute_sql_as_vec(
             &sql.into(),
             "get_db_fields".into(),
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             |db_row| {
                 let result: String = db_row.get(0);
                 ColumnName::new(result.into())

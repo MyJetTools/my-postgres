@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{MyPostgresError, PostgresConnection};
 
 use crate::table_schema::TableSchema;
@@ -5,8 +7,9 @@ use crate::table_schema::TableSchema;
 pub async fn sync_schema(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
+    sql_timeout: Duration,
 ) -> Result<(), MyPostgresError> {
-    if let Err(error) = super::check_if_db_exists(conn_string).await {
+    if let Err(error) = super::check_if_db_exists(conn_string, sql_timeout).await {
         println!(
             "Can not execute script which checks DataBase existence. Error: {:?}",
             error
@@ -33,15 +36,15 @@ pub async fn sync_schema(
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
 
-        if super::sync_table_fields(conn_string, table_schema).await? {
+        if super::sync_table_fields(conn_string, table_schema, sql_timeout).await? {
             continue;
         }
 
-        if super::sync_primary_key(conn_string, table_schema).await? {
+        if super::sync_primary_key(conn_string, table_schema, sql_timeout).await? {
             continue;
         }
 
-        if super::sync_indexes(conn_string, table_schema).await? {
+        if super::sync_indexes(conn_string, table_schema, sql_timeout).await? {
             continue;
         }
 

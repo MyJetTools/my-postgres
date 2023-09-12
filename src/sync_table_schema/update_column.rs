@@ -1,9 +1,9 @@
+use std::time::Duration;
+
 use crate::{
     table_schema::{ColumnDifference, TableColumn, TableColumnType, DEFAULT_SCHEMA},
     ColumnName, PostgresConnection,
 };
-
-use super::SCHEMA_SYNC_SQL_REQUEST_TIMEOUT;
 
 pub struct UpdateColumnError {
     pub column_name: String,
@@ -15,6 +15,7 @@ pub async fn update_column(
     conn_string: &PostgresConnection,
     table_name: &str,
     differences: &[ColumnDifference],
+    sql_timeout: Duration,
 ) -> Result<(), UpdateColumnError> {
     for difference in differences {
         if !difference
@@ -61,6 +62,7 @@ pub async fn update_column(
                 &difference.db.name,
                 &difference.db.sql_type,
                 &difference.required.sql_type,
+                sql_timeout,
             )
             .await?;
         }
@@ -105,6 +107,7 @@ pub async fn update_column(
                 &difference.db.name,
                 difference.db.is_nullable,
                 difference.required.is_nullable,
+                sql_timeout,
             )
             .await?;
         }
@@ -148,6 +151,7 @@ pub async fn update_column(
                 table_name,
                 &difference.db,
                 &difference.required,
+                sql_timeout,
             )
             .await?;
         }
@@ -162,6 +166,7 @@ async fn try_to_update_is_nullable(
     column_name: &ColumnName,
     db_nullable: bool,
     required_to_be_nullable: bool,
+    sql_timeout: Duration,
 ) -> Result<(), UpdateColumnError> {
     if required_to_be_nullable {
         let sql = format!(
@@ -174,7 +179,7 @@ async fn try_to_update_is_nullable(
             .execute_sql(
                 &sql.into(),
                 None,
-                SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+                sql_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
             )
@@ -194,7 +199,7 @@ async fn try_to_update_is_nullable(
         .execute_sql(
             &sql.clone().into(),
             None,
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -217,6 +222,7 @@ async fn try_to_update_column_type(
     column_name: &ColumnName,
     now_type: &TableColumnType,
     required_type: &TableColumnType,
+    sql_timeout: Duration,
 ) -> Result<(), UpdateColumnError> {
     let db_type = required_type.to_db_type();
 
@@ -230,7 +236,7 @@ async fn try_to_update_column_type(
         .execute_sql(
             &sql.clone().into(),
             None,
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )
@@ -256,6 +262,7 @@ async fn try_to_update_default(
     table_name: &str,
     db: &TableColumn,
     required: &TableColumn,
+    sql_timeout: Duration,
 ) -> Result<(), UpdateColumnError> {
     let sql = if let Some(now_default) = db.default.as_ref() {
         if let Some(required_default) = required.default.as_ref() {
@@ -294,7 +301,7 @@ async fn try_to_update_default(
         .execute_sql(
             &sql.clone().into(),
             None,
-            SCHEMA_SYNC_SQL_REQUEST_TIMEOUT,
+            sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
         )

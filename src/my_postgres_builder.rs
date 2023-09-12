@@ -13,6 +13,7 @@ pub enum MyPostgresBuilder {
         app_name: String,
         table_schema_data: LazyVec<TableSchema>,
         sql_request_timeout: Duration,
+        sql_db_sync_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")]
         logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
     },
@@ -20,6 +21,7 @@ pub enum MyPostgresBuilder {
         connection: Arc<PostgresConnection>,
         table_schema_data: LazyVec<TableSchema>,
         sql_request_timeout: Duration,
+        sql_db_sync_timeout: Duration,
     },
 }
 
@@ -38,6 +40,7 @@ impl MyPostgresBuilder {
             postgres_settings,
             table_schema_data: LazyVec::new(),
             sql_request_timeout: Duration::from_secs(5),
+            sql_db_sync_timeout: Duration::from_secs(60),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -47,6 +50,7 @@ impl MyPostgresBuilder {
             connection,
             table_schema_data: LazyVec::new(),
             sql_request_timeout: Duration::from_secs(5),
+            sql_db_sync_timeout: Duration::from_secs(60),
         }
     }
 
@@ -60,6 +64,21 @@ impl MyPostgresBuilder {
                 sql_request_timeout,
                 ..
             } => *sql_request_timeout = value,
+        }
+
+        self
+    }
+
+    pub fn set_db_sync_timeout(mut self, value: Duration) -> Self {
+        match &mut self {
+            MyPostgresBuilder::AsSettings {
+                sql_db_sync_timeout,
+                ..
+            } => *sql_db_sync_timeout = value,
+            MyPostgresBuilder::AsSharedConnection {
+                sql_db_sync_timeout,
+                ..
+            } => *sql_db_sync_timeout = value,
         }
 
         self
@@ -111,7 +130,9 @@ impl MyPostgresBuilder {
                 postgres_settings,
                 app_name,
                 table_schema_data,
+
                 sql_request_timeout,
+                sql_db_sync_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger,
             } => {
@@ -127,7 +148,7 @@ impl MyPostgresBuilder {
 
                 if let Some(table_schema_data) = table_schema_data.get_result() {
                     for table_schema in table_schema_data {
-                        check_table_schema(&connection, table_schema).await;
+                        check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
                     }
                 }
 
@@ -137,10 +158,11 @@ impl MyPostgresBuilder {
                 connection,
                 table_schema_data,
                 sql_request_timeout,
+                sql_db_sync_timeout,
             } => {
                 if let Some(table_schema_data) = table_schema_data.get_result() {
                     for table_schema in table_schema_data {
-                        check_table_schema(&connection, table_schema).await;
+                        check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
                     }
                 }
                 MyPostgres::create(connection, sql_request_timeout)
@@ -149,10 +171,16 @@ impl MyPostgresBuilder {
     }
 }
 
-pub async fn check_table_schema(connection: &PostgresConnection, table_schema: TableSchema) {
+pub async fn check_table_schema(
+    connection: &PostgresConnection,
+    table_schema: TableSchema,
+    sql_timeout: Duration,
+) {
     let started = DateTimeAsMicroseconds::now();
 
-    while let Err(err) = crate::sync_table_schema::sync_schema(connection, &table_schema).await {
+    while let Err(err) =
+        crate::sync_table_schema::sync_schema(connection, &table_schema, sql_timeout).await
+    {
         println!(
             "Can not verify schema for table {} because of error {:?}",
             table_schema.table_name, err
