@@ -119,14 +119,14 @@ fn generate_struct(
 
     if has_reference {
         result.push(quote::quote! {
-            #[derive(my_postgres_macros::WhereDbModel)]
+            #[derive(my_postgres::macros::WhereDbModel)]
             pub struct #struct_name<'s>{
                 #(#fields)*
             }
         });
     } else {
         result.push(quote::quote! {
-            #[derive(my_postgres_macros::WhereDbModel)]
+            #[derive(my_postgres::macros::WhereDbModel)]
             pub struct #struct_name{
                 #(#fields)*
             }
