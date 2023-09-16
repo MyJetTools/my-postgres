@@ -162,3 +162,6 @@ async fn main() {
 }
 
 ```
+
+### My Postgres Macros
+https://github.com/MyJetTools/my-postgres-macros/wiki
