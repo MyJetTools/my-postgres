@@ -74,7 +74,10 @@ pub trait SqlWhereModel {
 
         let where_builder = self.build_where_sql_part(&mut params);
 
-        where_builder.build(&mut sql);
+        if where_builder.has_conditions() {
+            sql.push_str(" WHERE ");
+            where_builder.build(&mut sql);
+        }
 
         self.fill_limit_and_offset(&mut sql);
         SqlData::new(sql, params)
