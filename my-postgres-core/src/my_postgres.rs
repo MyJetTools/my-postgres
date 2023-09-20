@@ -49,6 +49,10 @@ impl MyPostgres {
     }
 
     pub fn create(connection: Arc<PostgresConnection>, sql_request_timeout: Duration) -> Self {
+        println!(
+            "Created connection with sql_timeout: {:?}",
+            sql_request_timeout
+        );
         Self {
             connection,
             sql_request_timeout,
