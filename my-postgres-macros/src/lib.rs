@@ -110,6 +110,7 @@ pub fn postgres_insert_model(input: TokenStream) -> TokenStream {
         default_if_null,
         ignore_if_none,
         wrap_column_name,
+        json,
     )
 )]
 pub fn postgres_update_model(input: TokenStream) -> TokenStream {
