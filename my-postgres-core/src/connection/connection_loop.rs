@@ -26,11 +26,15 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
         let my_conn_string = get_conn_string(&conn_string);
 
         if my_conn_string.get_ssl_require() {
-            println!("Starting Postgres connection with SSLMODE=require");
             #[cfg(feature = "with-tls")]
-            create_and_start_with_tls(conn_string, &inner).await;
+            {
+                println!("Starting Postgres connection with SSLMODE=require. 'with-tls' feature is enabled");
+                create_and_start_with_tls(conn_string, &inner).await;
+            }
+
             #[cfg(not(feature = "with-tls"))]
             {
+                println!("Starting Postgres connection with SSLMODE=require. 'with-tls' feature is disabled");
                 #[cfg(feature = "with-logs-and-telemetry")]
                 inner.logger.write_error(
                     "PostgresConnection".to_string(),
@@ -39,7 +43,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
                     None,
                 );
 
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                tokio::time::sleep(Duration::from_secs(3)).await;
             }
         } else {
             println!("Starting Postgres connection without sslmode=require");
