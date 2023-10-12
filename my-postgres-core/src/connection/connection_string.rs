@@ -204,6 +204,14 @@ impl ConnectionString {
                     ssl_require = value == "require";
                 }
 
+                "ssl mode" => {
+                    let value = std::str::from_utf8(&conn_string[eq_pos + 1..end_of_value])
+                        .unwrap()
+                        .trim()
+                        .to_lowercase();
+                    ssl_require = value == "require";
+                }
+
                 _ => {}
             }
 
@@ -534,6 +542,38 @@ mod test {
     fn test_parsing_semicolon_separated_connection_string() {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "Server=localhost;UserId=usr;Password=password;Database=payments;sslmode=require;Port=5566",
+        );
+        let connection_string = ConnectionString::parse(conn_string_format);
+
+        assert_eq!(
+            "usr",
+            connection_string.get_field_value(&connection_string.user_name)
+        );
+
+        assert_eq!(
+            "password",
+            connection_string.get_field_value(&connection_string.password)
+        );
+
+        assert_eq!(
+            "localhost",
+            connection_string.get_field_value(&connection_string.host)
+        );
+
+        assert_eq!(5566, connection_string.port);
+
+        assert_eq!(
+            "payments",
+            connection_string.get_field_value(&connection_string.db_name)
+        );
+
+        assert_eq!(true, connection_string.ssl_require,);
+    }
+
+    #[test]
+    fn test_parsing_semicolon_separated_connection_string_with_spaces() {
+        let conn_string_format = ConnectionStringFormat::parse_and_detect(
+            "Server=localhost;User Id=usr;Password=password;Database=payments;Ssl Mode=require;Port=5566",
         );
         let connection_string = ConnectionString::parse(conn_string_format);
 
