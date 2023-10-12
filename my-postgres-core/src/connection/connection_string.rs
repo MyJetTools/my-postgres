@@ -34,6 +34,10 @@ impl ConnectionString {
         self.get_field_value(&self.db_name)
     }
 
+    pub fn get_ssl_require(&self) -> bool {
+        self.ssl_require
+    }
+
     fn parse_space_separated(conn_string: Vec<u8>) -> Self {
         let mut user_name = None;
         let mut password = None;

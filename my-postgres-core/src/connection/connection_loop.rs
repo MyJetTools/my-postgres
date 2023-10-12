@@ -8,6 +8,8 @@ use openssl::ssl::{SslConnector, SslMethod};
 #[cfg(feature = "with-tls")]
 use postgres_openssl::MakeTlsConnector;
 
+use crate::ConnectionString;
+
 use super::postgres_connect_inner::PostgresConnectionInner;
 
 pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
@@ -21,7 +23,10 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
         let conn_string =
             super::connection_string::format(conn_string.as_str(), inner.app_name.as_str());
 
-        if conn_string.contains("sslmode=require") {
+        let my_conn_string = get_conn_string(&conn_string);
+
+        if my_conn_string.get_ssl_require() {
+            println!("Starting Postgres connection with SSLMODE=require");
             #[cfg(feature = "with-tls")]
             create_and_start_with_tls(conn_string, &inner).await;
             #[cfg(not(feature = "with-tls"))]
@@ -37,6 +42,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         } else {
+            println!("Starting Postgres connection without sslmode=require");
             create_and_start_no_tls_connection(conn_string, &inner).await;
         }
 
@@ -169,4 +175,9 @@ async fn create_and_start_with_tls(
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     }
+}
+
+fn get_conn_string(src: &str) -> ConnectionString {
+    let conn_string_format = crate::ConnectionStringFormat::parse_and_detect(src);
+    ConnectionString::parse(conn_string_format)
 }

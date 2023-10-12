@@ -25,7 +25,6 @@ impl PostgresConnectionInstance {
     pub async fn new(
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
