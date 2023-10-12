@@ -132,7 +132,9 @@ async fn create_and_start_with_tls(
     connection_string: String,
     inner: &Arc<PostgresConnectionInner>,
 ) {
-    let builder = SslConnector::builder(SslMethod::tls()).unwrap();
+    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+
+    builder.set_verify_callback(openssl::ssl::SslVerifyMode::all(), |_, _| true);
 
     let connector = MakeTlsConnector::new(builder.build());
 
