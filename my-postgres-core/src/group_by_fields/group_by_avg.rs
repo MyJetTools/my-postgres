@@ -6,15 +6,18 @@ use crate::{
     GroupByFieldType, SqlValueMetadata,
 };
 
-pub struct GroupByAvg<T: Send + Sync + 'static>(T);
+#[derive(Debug)]
+pub struct GroupByAvg<T: std::fmt::Debug + Send + Sync + 'static>(T);
 
-impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupByAvg<T> {
+impl<'s, T: std::fmt::Debug + Copy + FromSql<'s> + Send + Sync + 'static> GroupByAvg<T> {
     pub fn get_value(&self) -> T {
         self.0
     }
 }
 
-impl<T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupByAvg<T> {
+impl<T: std::fmt::Debug + GroupByFieldType + Send + Sync + 'static> SelectValueProvider
+    for GroupByAvg<T>
+{
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
@@ -37,8 +40,8 @@ impl<T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupB
     }
 }
 
-impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> FromDbRow<'s, GroupByAvg<T>>
-    for GroupByAvg<T>
+impl<'s, T: std::fmt::Debug + Copy + FromSql<'s> + Send + Sync + 'static>
+    FromDbRow<'s, GroupByAvg<T>> for GroupByAvg<T>
 {
     fn from_db_row(
         row: &'s crate::DbRow,

@@ -57,7 +57,7 @@ fn impl_db_columns(
                     format!("Primary key order id {} is already used", value),
                 ));
             }
-            primary_keys.insert(value, field_name.clone());
+            primary_keys.insert(value, field_name);
             last_primary_key_id += 1;
         };
 
