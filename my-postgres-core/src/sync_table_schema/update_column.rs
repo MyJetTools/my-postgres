@@ -178,7 +178,7 @@ async fn try_to_update_is_nullable(
         conn_string
             .execute_sql(
                 &sql.into(),
-                None,
+                format!("ALTER TABLE {} ", table_name),
                 sql_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 None,
@@ -198,7 +198,7 @@ async fn try_to_update_is_nullable(
     match conn_string
         .execute_sql(
             &sql.clone().into(),
-            None,
+            format!("ALTER TABLE {} ", table_name),
             sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -235,7 +235,11 @@ async fn try_to_update_column_type(
     match conn_string
         .execute_sql(
             &sql.clone().into(),
-            None,
+            format!(
+                "ALTER column {} of table {} ",
+                column_name.name.as_str(),
+                table_name
+            ),
             sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -300,7 +304,7 @@ async fn try_to_update_default(
     match conn_string
         .execute_sql(
             &sql.clone().into(),
-            None,
+            format!("Updating default for table {} ", table_name),
             sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,

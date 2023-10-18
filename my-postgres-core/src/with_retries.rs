@@ -171,7 +171,7 @@ impl SqlOperationWithRetries {
                 .connection
                 .execute_sql(
                     &sql,
-                    None,
+                    format!("execute_sql"),
                     self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
@@ -202,7 +202,7 @@ impl SqlOperationWithRetries {
                 .connection
                 .execute_sql_as_vec(
                     &sql,
-                    None,
+                    format!("execute_sql_as_vec"),
                     self.sql_request_timeout,
                     |row| TEntity::from(row),
                     #[cfg(feature = "with-logs-and-telemetry")]

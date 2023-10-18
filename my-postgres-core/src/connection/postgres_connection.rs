@@ -54,7 +54,7 @@ impl PostgresConnection {
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -89,7 +89,7 @@ impl PostgresConnection {
     pub async fn execute_bulk_sql(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: &str,
+        process_name: String,
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -168,7 +168,7 @@ impl PostgresConnection {
     pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_timeout: Duration,
         transform: TTransform,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,

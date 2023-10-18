@@ -9,10 +9,6 @@ impl<'s> SqlData {
     pub fn new(sql: String, values: SqlValues) -> Self {
         Self { sql, values }
     }
-
-    pub fn get_sql_as_process_name(&self) -> &str {
-        &self.sql
-    }
 }
 
 impl<'s> Into<SqlData> for String {

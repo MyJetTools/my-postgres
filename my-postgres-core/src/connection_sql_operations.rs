@@ -66,7 +66,7 @@ impl PostgresConnection {
         let mut result = self
             .execute_sql_as_vec(
                 &SqlData::new(sql, values),
-                None,
+                format!("SELECT COUNT(*) FROM {}...", table_name),
                 sql_request_timeout,
                 |row| TResult::from_db_row(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -94,7 +94,7 @@ impl PostgresConnection {
         let mut result = self
             .execute_sql_as_vec(
                 &sql,
-                None,
+                format!("Select single row from {}", table_name),
                 sql_request_timeout,
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -130,7 +130,7 @@ impl PostgresConnection {
         let mut result = self
             .execute_sql_as_vec(
                 &sql,
-                None,
+                format!("Select single row from {}", table_name),
                 sql_request_timeout,
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -161,7 +161,7 @@ impl PostgresConnection {
 
         self.execute_sql_as_vec(
             &sql,
-            None,
+            format!("Select rows from {}", table_name),
             sql_request_timeout,
             |row| TEntity::from(row),
             #[cfg(feature = "with-logs-and-telemetry")]
@@ -190,7 +190,7 @@ impl PostgresConnection {
 
         self.execute_sql_as_vec(
             &sql,
-            None,
+            format!("Select rows from {}", table_name),
             sql_request_timeout,
             |row| TEntity::from(row),
             #[cfg(feature = "with-logs-and-telemetry")]
@@ -217,7 +217,7 @@ impl PostgresConnection {
         let response = {
             self.execute_sql_as_vec(
                 &sql,
-                Some(process_name.as_str()),
+                process_name,
                 sql_request_timeout,
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -264,7 +264,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(process_name.as_str()),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -298,7 +298,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(process_name.as_str()),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -330,7 +330,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(process_name.as_str()),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -355,7 +355,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(process_name.as_str()),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -376,7 +376,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            None,
+            format!("Delete entity from {}", table_name),
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -399,7 +399,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(&process_name),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
@@ -421,7 +421,7 @@ impl PostgresConnection {
 
         self.execute_sql(
             &sql_data,
-            Some(process_name.as_str()),
+            process_name,
             sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,

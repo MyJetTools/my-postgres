@@ -124,7 +124,7 @@ impl MyPostgres {
         self.connection
             .execute_sql(
                 &sql,
-                None,
+                "execute_sql".to_string(),
                 self.sql_request_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
@@ -143,7 +143,7 @@ impl MyPostgres {
         self.connection
             .execute_sql_as_vec(
                 &sql,
-                None,
+                "execute_sql_as_vec".to_string(),
                 self.sql_request_timeout,
                 |row| TEntity::from(row),
                 #[cfg(feature = "with-logs-and-telemetry")]

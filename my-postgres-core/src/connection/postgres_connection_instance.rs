@@ -86,7 +86,7 @@ impl PostgresConnectionInstance {
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -104,7 +104,7 @@ impl PostgresConnectionInstance {
     pub async fn execute_bulk_sql<'s>(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: &str,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
@@ -122,7 +122,7 @@ impl PostgresConnectionInstance {
     pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         transform: TTransform,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
@@ -150,7 +150,7 @@ impl PostgresConnectionInstance {
     pub async fn get_count<TCountResult: CountResult>(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TCountResult>, MyPostgresError> {

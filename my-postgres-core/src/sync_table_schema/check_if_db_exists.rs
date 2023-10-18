@@ -29,7 +29,7 @@ pub async fn check_if_db_exists(
     let result: Option<usize> = tech_connection
         .get_count(
             &sql.into(),
-            Some("checking_if_db_exists".into()),
+            format!("checking_if_db_exists {}", db_name),
             sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,
@@ -61,7 +61,7 @@ pub async fn check_if_db_exists(
     tech_connection
         .execute_sql(
             &sql.into(),
-            None,
+            format!("creating_db_{}", db_name),
             sql_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             None,

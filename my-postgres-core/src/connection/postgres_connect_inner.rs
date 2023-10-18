@@ -151,7 +151,7 @@ impl PostgresConnectionInner {
     >(
         &self,
         sql: Option<&str>,
-        process_name: &str,
+        process_name: String,
         execution: TFuture,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<
@@ -197,9 +197,9 @@ impl PostgresConnectionInner {
                         .write_success(
                             telemetry_context,
                             started,
-                            process_name.to_string(),
+                            process_name,
                             "Ok".to_string(),
-                            None,
+                            get_sql_telemetry_tags(sql),
                         )
                         .await;
                 }
@@ -207,7 +207,7 @@ impl PostgresConnectionInner {
                     write_fail_telemetry_and_log(
                         started,
                         "execute_sql".to_string(),
-                        Some(process_name),
+                        sql,
                         format!("{:?}", err),
                         telemetry_context,
                         logger,
@@ -239,7 +239,7 @@ impl PostgresConnectionInner {
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
@@ -263,12 +263,6 @@ impl PostgresConnectionInner {
                     if std::env::var("DEBUG").is_ok() {
                         println!("SQL: {}", &sql.sql);
                     }
-
-                    let process_name = if let Some(process_name) = process_name {
-                        process_name
-                    } else {
-                        sql.get_sql_as_process_name()
-                    };
 
                     #[cfg(feature = "with-logs-and-telemetry")]
                     let started = DateTimeAsMicroseconds::now();
@@ -300,7 +294,7 @@ impl PostgresConnectionInner {
     pub async fn execute_sql_as_vec<'s>(
         &self,
         sql: &SqlData,
-        process_name: Option<&str>,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
@@ -327,12 +321,6 @@ impl PostgresConnectionInner {
 
                     let params = sql.values.get_values_to_invoke();
                     let execution = connection_access.query(&sql.sql, params.as_slice());
-
-                    let process_name = if let Some(process_name) = process_name {
-                        process_name
-                    } else {
-                        sql.get_sql_as_process_name()
-                    };
 
                     let result = self
                         .execute_with_timeout(
@@ -361,7 +349,7 @@ impl PostgresConnectionInner {
     pub async fn execute_bulk_sql<'s>(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: &str,
+        process_name: String,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
             &my_telemetry::MyTelemetryContext,
@@ -456,6 +444,28 @@ async fn write_fail_telemetry_and_log(
         return;
     }
     my_telemetry::TELEMETRY_INTERFACE
-        .write_fail(telemetry_context, started, process, fail, None)
+        .write_fail(
+            telemetry_context,
+            started,
+            process,
+            fail,
+            get_sql_telemetry_tags(sql),
+        )
         .await;
+}
+
+#[cfg(feature = "with-logs-and-telemetry")]
+fn get_sql_telemetry_tags(sql: Option<&str>) -> Option<Vec<my_telemetry::TelemetryEventTag>> {
+    if let Some(sql) = sql {
+        Some(vec![my_telemetry::TelemetryEventTag {
+            key: "SQL".to_string(),
+            value: if sql.len() > 255 {
+                sql[..255].to_string()
+            } else {
+                sql.to_string()
+            },
+        }])
+    } else {
+        None
+    }
 }
