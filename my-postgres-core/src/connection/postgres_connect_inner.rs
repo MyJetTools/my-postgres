@@ -459,8 +459,8 @@ fn get_sql_telemetry_tags(sql: Option<&str>) -> Option<Vec<my_telemetry::Telemet
     if let Some(sql) = sql {
         Some(vec![my_telemetry::TelemetryEventTag {
             key: "SQL".to_string(),
-            value: if sql.len() > 255 {
-                sql[..255].to_string()
+            value: if sql.len() > 2048 {
+                sql[..2048].to_string()
             } else {
                 sql.to_string()
             },
