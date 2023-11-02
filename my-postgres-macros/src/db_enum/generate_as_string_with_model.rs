@@ -71,7 +71,7 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
                 fn get_sql_type(
                     _metadata: Option<my_postgres::SqlValueMetadata>,
                 ) -> my_postgres::table_schema::TableColumnType {
-                    my_postgres::table_schema::TableColumnType::Text
+                    my_postgres::table_schema::TableColumnType::Jsonb
                 }
             }
 
