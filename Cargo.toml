@@ -3,4 +3,5 @@ members = [
     "my-postgres",
     "my-postgres-core",
     "my-postgres-macros",
+    "my-postgres-tests",
 ]

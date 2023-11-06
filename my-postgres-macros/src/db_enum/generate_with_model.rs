@@ -10,19 +10,11 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
     let enum_cases = EnumCase::read(ast)?;
 
-
-
     let fn_to_str = fn_to_str(enum_cases.as_slice())?;
-
-   
 
     let from_db_value =  fn_from_db_value(enum_cases.as_slice())?;
 
-
-
     let select_part = super::utils::render_select_part_as_json();
-
-
 
     let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body();
 

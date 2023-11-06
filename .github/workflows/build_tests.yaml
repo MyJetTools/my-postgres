@@ -7,15 +7,24 @@ on:
     branches: [ "*" ]
 
 jobs:
-  test-default:
+  SQL-GENERATORS-TESTS:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
+      - run: |
+          cd my-postgres-tests
+          cargo test
+
+  test-default:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable  
       - run: cargo test
   test-all-features:
     runs-on: ubuntu-latest
@@ -23,20 +32,18 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
+          toolchain: stable   
       - run: cargo test --all-features
+
   test-macros:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
+          toolchain: stable 
       - run: cargo build --features macros
+
   test-debug-table-schema:
     runs-on: ubuntu-latest
     steps:
@@ -44,8 +51,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
       - run: cargo build --features debug-table-schema
   test-with-tls:
     runs-on: ubuntu-latest
@@ -53,9 +58,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
+          toolchain: stable   
       - run: cargo build --features with-tls
   test-with-telemetry:
     runs-on: ubuntu-latest
@@ -64,6 +67,4 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1     
       - run: cargo build --features with-telemetry
