@@ -20,7 +20,7 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
 
 
-    let select_part = super::utils::render_select_part();
+    let select_part = super::utils::render_select_part_as_json();
 
 
 
