@@ -12,7 +12,7 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
     let fn_from_str =  generate_fn_from_str(&enum_cases)?;
 
 
-    let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body();
+    let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body_as_json();
 
     let select_part = super::utils::render_select_part_as_json();
 

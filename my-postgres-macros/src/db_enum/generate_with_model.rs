@@ -16,7 +16,7 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
     let select_part = super::utils::render_select_part_as_json();
 
-    let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body();
+    let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body_as_json();
 
     let result = quote! {
 
