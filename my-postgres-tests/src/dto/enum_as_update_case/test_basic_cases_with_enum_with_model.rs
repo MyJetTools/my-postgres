@@ -64,7 +64,7 @@ mod tests {
 
         assert_eq!(
             sql.sql,
-            "INSERT INTO test_table_name(client_id,key,value) VALUES ($1,$2,$3)"
+            "INSERT INTO test_table_name(client_id,key,value) VALUES ($1,$2,cast($3::text as json))"
         );
 
         assert_eq!(sql.values.len(), 3);
@@ -97,7 +97,7 @@ mod tests {
             &models,
         );
 
-        assert_eq!(sql.sql, "INSERT INTO test(client_id,key,value) VALUES ($1,$2,$3),($1,$4,$5) ON CONFLICT ON CONSTRAINT pk_name DO UPDATE SET value=EXCLUDED.value");
+        assert_eq!(sql.sql, "INSERT INTO test(client_id,key,value) VALUES ($1,$2,cast($3::text as json)),($1,$4,cast($5::text as json)) ON CONFLICT ON CONSTRAINT pk_name DO UPDATE SET value=EXCLUDED.value");
 
         assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
         assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
@@ -122,7 +122,7 @@ mod tests {
 
         assert_eq!(builder.get(0).unwrap().unwrap_as_field(), "client_id");
         assert_eq!(builder.get(1).unwrap().unwrap_as_field(), "key");
-        assert_eq!(builder.get(2).unwrap().unwrap_as_field(), "value");
+        assert_eq!(builder.get(2).unwrap().unwrap_as_json(), "value");
     }
 
     #[test]
@@ -131,7 +131,10 @@ mod tests {
 
         let sql = select_builder.to_sql_string::<TestWhereModel>("table_name", None);
 
-        assert_eq!("SELECT client_id,key,value FROM table_name", sql.sql);
+        assert_eq!(
+            "SELECT client_id,key,value #>> '{}' as \"value\" FROM table_name",
+            sql.sql
+        );
         assert_eq!(sql.values.len(), 0);
     }
 
@@ -144,7 +147,7 @@ mod tests {
         let sql = select_builder.to_sql_string("table_name", Some(&where_model));
 
         assert_eq!(
-            "SELECT client_id,key,value FROM table_name WHERE a=6",
+            "SELECT client_id,key,value #>> '{}' as \"value\" FROM table_name WHERE a=6",
             sql.sql
         );
         assert_eq!(sql.values.len(), 0);
@@ -162,7 +165,7 @@ mod tests {
 
         assert_eq!(
             sql.sql,
-            "UPDATE test SET value=$1 WHERE client_id=$2 AND key=$3"
+            "UPDATE test SET value=cast($1::text as json) WHERE client_id=$2 AND key=$3"
         );
 
         assert_eq!(sql.values.len(), 3);
