@@ -57,7 +57,7 @@ pub fn generate_select_models<'s>(
         }
 
         result.push(quote::quote! {
-            #[derive(my_postgres::macros::SelectDbEntity)]
+            #[derive(my_postgres::macros::SelectDbEntity, Debug)]
             pub struct #struct_name{
                 #(#fields)*
             }
