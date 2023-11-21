@@ -24,12 +24,14 @@ impl<'s> SqlData {
         }
     }
 
-    pub fn add_string_value(&mut self, value: impl Into<StrOrString<'static>>) {
+    pub fn add_string_value(&mut self, value: impl Into<StrOrString<'static>>) -> &mut Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
         let value: StrOrString<'static> = value.into();
         self.values.push(SqlString::AsString(value.to_string()));
+
+        self
     }
 }
 
