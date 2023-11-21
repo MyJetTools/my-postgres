@@ -68,13 +68,19 @@ mod tests {
         assert_eq!(3, sql.values.len());
 
         let result: HashMap<String, String> =
-            serde_json::from_str(sql.values.get(0).unwrap().as_str()).unwrap();
+            serde_json::from_str(sql.values.get(0).unwrap().as_str().unwrap()).unwrap();
 
         hash_maps_are_equal(&dto.field, &result);
 
-        assert_eq!("[\"1\",\"2\",\"3\"]", sql.values.get(1).unwrap().as_str());
+        assert_eq!(
+            "[\"1\",\"2\",\"3\"]",
+            sql.values.get(1).unwrap().as_str().unwrap()
+        );
 
-        assert_eq!("{\"data\":\"test\"}", sql.values.get(2).unwrap().as_str());
+        assert_eq!(
+            "{\"data\":\"test\"}",
+            sql.values.get(2).unwrap().as_str().unwrap()
+        );
     }
 
     #[test]
@@ -113,13 +119,25 @@ mod tests {
         assert_eq!(5, sql.values.len());
 
         let result: HashMap<String, String> =
-            serde_json::from_str(sql.values.get(0).unwrap().as_str()).unwrap();
+            serde_json::from_str(sql.values.get(0).unwrap().as_str().unwrap()).unwrap();
 
         hash_maps_are_equal(&dto.field, &result);
 
-        assert_eq!("[\"1\",\"2\",\"3\"]", sql.values.get(1).unwrap().as_str());
-        assert_eq!("[\"3\",\"4\",\"5\"]", sql.values.get(2).unwrap().as_str());
-        assert_eq!("{\"data\":\"test\"}", sql.values.get(3).unwrap().as_str());
-        assert_eq!("{\"data\":\"test2\"}", sql.values.get(4).unwrap().as_str());
+        assert_eq!(
+            "[\"1\",\"2\",\"3\"]",
+            sql.values.get(1).unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "[\"3\",\"4\",\"5\"]",
+            sql.values.get(2).unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "{\"data\":\"test\"}",
+            sql.values.get(3).unwrap().as_str().unwrap()
+        );
+        assert_eq!(
+            "{\"data\":\"test2\"}",
+            sql.values.get(4).unwrap().as_str().unwrap()
+        );
     }
 }

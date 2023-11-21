@@ -55,8 +55,8 @@ mod tests {
         );
 
         assert_eq!(sql.values.len(), 2);
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
     }
 
     #[test]
@@ -87,9 +87,9 @@ mod tests {
 
         assert_eq!(sql.values.len(), 3);
 
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
-        assert_eq!(sql.values.get(2).unwrap().as_str(), "key2");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
+        assert_eq!(sql.values.get(2).unwrap().as_str().unwrap(), "key2");
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
 
         assert_eq!(sql.values.len(), 2);
 
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
     }
 }

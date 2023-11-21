@@ -23,8 +23,10 @@ impl SqlValues {
         match self {
             SqlValues::Values(values) => {
                 for (idx, itm) in values.iter().enumerate() {
-                    if itm.as_str() == value {
-                        return Some(idx + 1);
+                    if let Some(itm) = itm.as_str() {
+                        if itm == value {
+                            return Some(idx + 1);
+                        }
                     }
                 }
             }
@@ -36,8 +38,10 @@ impl SqlValues {
 
     pub fn push(&mut self, value: SqlString) -> usize {
         let value: SqlString = value.into();
-        if let Some(result) = self.get_index_from_cache(value.as_str()) {
-            return result;
+        if let Some(value_as_str) = value.as_str() {
+            if let Some(result) = self.get_index_from_cache(value_as_str) {
+                return result;
+            }
         }
 
         match self {

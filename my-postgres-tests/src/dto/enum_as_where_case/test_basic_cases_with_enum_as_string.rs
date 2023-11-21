@@ -55,9 +55,9 @@ mod tests {
         );
 
         assert_eq!(sql.values.len(), 3);
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "TestCase1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
-        assert_eq!(sql.values.get(2).unwrap().as_str(), "value1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "TestCase1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
+        assert_eq!(sql.values.get(2).unwrap().as_str().unwrap(), "value1");
     }
 
     #[test]
@@ -88,13 +88,13 @@ mod tests {
 
         assert_eq!(sql.values.len(), 6);
 
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "TestCase1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
-        assert_eq!(sql.values.get(2).unwrap().as_str(), "value1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "TestCase1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
+        assert_eq!(sql.values.get(2).unwrap().as_str().unwrap(), "value1");
 
-        assert_eq!(sql.values.get(3).unwrap().as_str(), "TestCase2");
-        assert_eq!(sql.values.get(4).unwrap().as_str(), "key2");
-        assert_eq!(sql.values.get(5).unwrap().as_str(), "value2");
+        assert_eq!(sql.values.get(3).unwrap().as_str().unwrap(), "TestCase2");
+        assert_eq!(sql.values.get(4).unwrap().as_str().unwrap(), "key2");
+        assert_eq!(sql.values.get(5).unwrap().as_str().unwrap(), "value2");
     }
 
     #[test]
@@ -149,8 +149,8 @@ mod tests {
 
         assert_eq!(sql.values.len(), 3);
 
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "value1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "TestCase1");
-        assert_eq!(sql.values.get(2).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "value1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "TestCase1");
+        assert_eq!(sql.values.get(2).unwrap().as_str().unwrap(), "key1");
     }
 }

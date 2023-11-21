@@ -68,10 +68,10 @@ mod tests {
         );
 
         assert_eq!(sql.values.len(), 3);
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
         assert_eq!(
-            sql.values.get(2).unwrap().as_str(),
+            sql.values.get(2).unwrap().as_str().unwrap(),
             "{\"case\":\"Test\",\"model\":{\"a\":1,\"b\":true}}"
         );
     }
@@ -99,16 +99,16 @@ mod tests {
 
         assert_eq!(sql.sql, "INSERT INTO test(client_id,key,value) VALUES ($1,$2,cast($3::text as json)),($1,$4,cast($5::text as json)) ON CONFLICT ON CONSTRAINT pk_name DO UPDATE SET value=EXCLUDED.value");
 
-        assert_eq!(sql.values.get(0).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(0).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "key1");
         assert_eq!(
-            sql.values.get(2).unwrap().as_str(),
+            sql.values.get(2).unwrap().as_str().unwrap(),
             "{\"case\":\"Test\",\"model\":{\"a\":1,\"b\":true}}"
         );
 
-        assert_eq!(sql.values.get(3).unwrap().as_str(), "key2");
+        assert_eq!(sql.values.get(3).unwrap().as_str().unwrap(), "key2");
         assert_eq!(
-            sql.values.get(4).unwrap().as_str(),
+            sql.values.get(4).unwrap().as_str().unwrap(),
             "{\"case\":\"Test2\",\"model\":{\"c\":1,\"d\":true}}"
         );
     }
@@ -171,11 +171,11 @@ mod tests {
         assert_eq!(sql.values.len(), 3);
 
         assert_eq!(
-            sql.values.get(0).unwrap().as_str(),
+            sql.values.get(0).unwrap().as_str().unwrap(),
             "{\"case\":\"Test\",\"model\":{\"a\":1,\"b\":true}}"
         );
-        assert_eq!(sql.values.get(1).unwrap().as_str(), "client1");
-        assert_eq!(sql.values.get(2).unwrap().as_str(), "key1");
+        assert_eq!(sql.values.get(1).unwrap().as_str().unwrap(), "client1");
+        assert_eq!(sql.values.get(2).unwrap().as_str().unwrap(), "key1");
     }
 
     #[test]

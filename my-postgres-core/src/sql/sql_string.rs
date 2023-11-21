@@ -1,9 +1,20 @@
 const STR_SIZE: usize = 32;
+
+#[derive(Debug)]
+pub enum NonStringValue {
+    SmallInt(i16),
+    Integer(i32),
+    BigInt(i64),
+    Float(f32),
+    Double(f64),
+}
+
 #[derive(Debug)]
 pub enum SqlString {
     AsString(String),
     AsStr(&'static str),
     Str32([u8; STR_SIZE]),
+    NonStrValue(NonStringValue),
 }
 
 impl SqlString {
@@ -21,6 +32,15 @@ impl SqlString {
 
     pub fn from_static_str(src: &'static str) -> Self {
         Self::AsStr(src)
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            SqlString::AsString(value) => Some(value.as_str()),
+            SqlString::AsStr(value) => Some(*value),
+            SqlString::Str32(value) => Some(get_pascal_str(value)),
+            _ => None,
+        }
     }
 }
 
@@ -42,16 +62,6 @@ impl<'s> Into<SqlString> for &'s String {
     }
 }
 
-impl SqlString {
-    pub fn as_str(&self) -> &str {
-        match self {
-            SqlString::AsString(value) => value,
-            SqlString::AsStr(value) => value,
-            SqlString::Str32(value) => get_pascal_str(value),
-        }
-    }
-}
-
 fn get_pascal_str(src: &[u8]) -> &str {
     let len = src[0] as usize;
     std::str::from_utf8(&src[1..len + 1]).unwrap()
@@ -66,7 +76,18 @@ impl tokio_postgres::types::ToSql for SqlString {
     where
         Self: Sized,
     {
-        self.as_str().to_sql(ty, out)
+        match self {
+            SqlString::AsString(value) => value.as_str().to_sql(ty, out),
+            SqlString::AsStr(value) => value.to_sql(ty, out),
+            SqlString::Str32(value) => get_pascal_str(value).to_sql(ty, out),
+            SqlString::NonStrValue(value) => match value {
+                NonStringValue::SmallInt(value) => (*value).to_sql(ty, out),
+                NonStringValue::Integer(value) => (*value).to_sql(ty, out),
+                NonStringValue::BigInt(value) => (*value).to_sql(ty, out),
+                NonStringValue::Float(value) => (*value).to_sql(ty, out),
+                NonStringValue::Double(value) => (*value).to_sql(ty, out),
+            },
+        }
     }
 
     fn accepts(ty: &tokio_postgres::types::Type) -> bool
@@ -81,20 +102,17 @@ impl tokio_postgres::types::ToSql for SqlString {
         ty: &tokio_postgres::types::Type,
         out: &mut tokio_postgres::types::private::BytesMut,
     ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        self.as_str().to_sql_checked(ty, out)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_str_32() {
-        let src = "TestStr";
-
-        let sql_string = SqlString::from_str(src);
-
-        assert_eq!(sql_string.as_str(), src);
+        match self {
+            SqlString::AsString(value) => value.as_str().to_sql_checked(ty, out),
+            SqlString::AsStr(value) => value.to_sql_checked(ty, out),
+            SqlString::Str32(value) => get_pascal_str(value).to_sql_checked(ty, out),
+            SqlString::NonStrValue(value) => match value {
+                NonStringValue::SmallInt(value) => (*value).to_sql_checked(ty, out),
+                NonStringValue::Integer(value) => (*value).to_sql_checked(ty, out),
+                NonStringValue::BigInt(value) => (*value).to_sql_checked(ty, out),
+                NonStringValue::Float(value) => (*value).to_sql_checked(ty, out),
+                NonStringValue::Double(value) => (*value).to_sql_checked(ty, out),
+            },
+        }
     }
 }

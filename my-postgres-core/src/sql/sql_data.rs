@@ -29,7 +29,67 @@ impl<'s> SqlData {
             self.values = SqlValues::Values(Vec::new());
         }
         let value: StrOrString<'static> = value.into();
-        self.values.push(SqlString::AsString(value.to_string()));
+        self.values.push(SqlString::from_str(value.as_str()));
+
+        self
+    }
+
+    pub fn add_small_int_value(&mut self, value: i16) -> &mut Self {
+        if self.values.is_empty() {
+            self.values = SqlValues::Values(Vec::new());
+        }
+
+        self.values.push(SqlString::NonStrValue(
+            super::sql_string::NonStringValue::SmallInt(value),
+        ));
+
+        self
+    }
+
+    pub fn add_int_value(&mut self, value: i32) -> &mut Self {
+        if self.values.is_empty() {
+            self.values = SqlValues::Values(Vec::new());
+        }
+
+        self.values.push(SqlString::NonStrValue(
+            super::sql_string::NonStringValue::Integer(value),
+        ));
+
+        self
+    }
+
+    pub fn add_big_int_value(&mut self, value: i64) -> &mut Self {
+        if self.values.is_empty() {
+            self.values = SqlValues::Values(Vec::new());
+        }
+
+        self.values.push(SqlString::NonStrValue(
+            super::sql_string::NonStringValue::BigInt(value),
+        ));
+
+        self
+    }
+
+    pub fn add_float_value(&mut self, value: f32) -> &mut Self {
+        if self.values.is_empty() {
+            self.values = SqlValues::Values(Vec::new());
+        }
+
+        self.values.push(SqlString::NonStrValue(
+            super::sql_string::NonStringValue::Float(value),
+        ));
+
+        self
+    }
+
+    pub fn add_double_value(&mut self, value: f64) -> &mut Self {
+        if self.values.is_empty() {
+            self.values = SqlValues::Values(Vec::new());
+        }
+
+        self.values.push(SqlString::NonStrValue(
+            super::sql_string::NonStringValue::Double(value),
+        ));
 
         self
     }
@@ -41,5 +101,17 @@ impl<'s> Into<SqlData> for String {
             sql: self,
             values: SqlValues::Empty,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SqlData;
+
+    #[test]
+    fn example() {
+        let _sql = SqlData::builder("SELECT * FROM TABLE WHERE a=$1 AND b=$2")
+            .add_string_value("26")
+            .add_string_value("66");
     }
 }

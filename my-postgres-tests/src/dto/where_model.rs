@@ -80,7 +80,8 @@ mod tests {
             params
                 .get(result.value.unwrap_as_index() - 1)
                 .unwrap()
-                .as_str(),
+                .as_str()
+                .unwrap(),
             "test"
         );
 
@@ -109,7 +110,8 @@ mod tests {
             params
                 .get(result.value.unwrap_as_index() - 1)
                 .unwrap()
-                .as_str(),
+                .as_str()
+                .unwrap(),
             "Test"
         );
 
@@ -125,7 +127,8 @@ mod tests {
             params
                 .get(result.value.unwrap_as_index() - 1)
                 .unwrap()
-                .as_str(),
+                .as_str()
+                .unwrap(),
             "Test2"
         );
 

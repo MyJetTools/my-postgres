@@ -25,6 +25,6 @@ mod test {
 
         assert_eq!("id=$1", sql);
 
-        assert_eq!(params.get(0).unwrap().as_str(), "test")
+        assert_eq!(params.get(0).unwrap().as_str().unwrap(), "test")
     }
 }
