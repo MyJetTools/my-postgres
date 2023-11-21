@@ -24,7 +24,7 @@ impl<'s> SqlData {
         }
     }
 
-    pub fn add_string_value(&mut self, value: impl Into<StrOrString<'static>>) -> &mut Self {
+    pub fn add_string_value(mut self, value: impl Into<StrOrString<'static>>) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
@@ -34,7 +34,7 @@ impl<'s> SqlData {
         self
     }
 
-    pub fn add_small_int_value(&mut self, value: i16) -> &mut Self {
+    pub fn add_small_int_value(mut self, value: i16) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
@@ -46,7 +46,7 @@ impl<'s> SqlData {
         self
     }
 
-    pub fn add_int_value(&mut self, value: i32) -> &mut Self {
+    pub fn add_int_value(mut self, value: i32) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
@@ -58,7 +58,7 @@ impl<'s> SqlData {
         self
     }
 
-    pub fn add_big_int_value(&mut self, value: i64) -> &mut Self {
+    pub fn add_big_int_value(mut self, value: i64) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
@@ -70,7 +70,7 @@ impl<'s> SqlData {
         self
     }
 
-    pub fn add_float_value(&mut self, value: f32) -> &mut Self {
+    pub fn add_float_value(mut self, value: f32) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
@@ -82,7 +82,7 @@ impl<'s> SqlData {
         self
     }
 
-    pub fn add_double_value(&mut self, value: f64) -> &mut Self {
+    pub fn add_double_value(mut self, value: f64) -> Self {
         if self.values.is_empty() {
             self.values = SqlValues::Values(Vec::new());
         }
