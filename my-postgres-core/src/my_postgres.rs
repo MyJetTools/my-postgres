@@ -10,7 +10,7 @@ use crate::{
     count_result::CountResult,
     sql::SqlData,
     sql_insert::SqlInsertModel,
-    sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
+    sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
     MyPostgresBuilder, MyPostgresError, PostgresConnection, PostgresSettings,
@@ -116,7 +116,7 @@ impl MyPostgres {
             .await
     }
 
-    pub async fn execute_sql<ToSql: ToSqlString>(
+    pub async fn execute_sql(
         &self,
         sql: SqlData,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
@@ -132,10 +132,7 @@ impl MyPostgres {
             .await
     }
 
-    pub async fn execute_sql_as_vec<
-        ToSql: ToSqlString,
-        TEntity: SelectEntity + Send + Sync + 'static,
-    >(
+    pub async fn execute_sql_as_vec<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         sql: SqlData,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
