@@ -12,6 +12,13 @@ impl SqlValues {
         Self::Values(Vec::new())
     }
 
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Empty => true,
+            _ => false,
+        }
+    }
+
     fn get_index_from_cache(&self, value: &str) -> Option<usize> {
         match self {
             SqlValues::Values(values) => {
