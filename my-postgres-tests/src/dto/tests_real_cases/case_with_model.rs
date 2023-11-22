@@ -9,7 +9,7 @@ pub struct TraderAccountUpdateLogDto {
     #[generate_update_model(name:"UpdateBrokerDto", param_type:"where")]
     #[generate_where_model("ByAccountIdWhereModel")]
     pub account_id: String,
-    #[generate_where_model("ByAccountIdWhereModel")]
+    #[generate_where_model(name:"ByAccountIdWhereModel", limit:"limit_field")]
     pub client_id: String,
 
     #[order_by_desc]

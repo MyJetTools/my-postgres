@@ -85,10 +85,12 @@ pub fn generate_where_models<'s>(
                 push_field(&mut fields, &model, None);
             }
 
-            if model.generate_limit_field {
+            if let Some(field_name) = model.generate_limit_field {
+                let field_name = TokenStream::from_str(field_name.as_str()).unwrap();
+
                 fields.push(quote::quote! {
                     #[limit]
-                    pub limit: usize,
+                    pub #field_name: usize,
                 })
             }
         }

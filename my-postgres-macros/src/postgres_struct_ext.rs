@@ -42,7 +42,7 @@ pub struct GenerateAdditionalWhereStruct {
     pub generate_as_vec: bool,
     pub generate_as_opt: bool,
     pub ignore_if_none: bool,
-    pub generate_limit_field: bool,
+    pub generate_limit_field: Option<String>,
 }
 
 pub struct GenerateAdditionalSelectStruct {
@@ -504,6 +504,11 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
                 None => None,
             };
 
+            let limit_field_name = match param_list.try_get_named_param("limit") {
+                Some(name) => Some(name.unwrap_as_string_value()?.as_str().to_string()),
+                None => None,
+            };
+
             let itm = GenerateAdditionalWhereStruct {
                 struct_name,
                 field_name: self.name.to_string(),
@@ -515,7 +520,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
                 generate_as_vec: param_list.has_param("as_vec"),
                 generate_as_opt: param_list.has_param("as_option"),
                 ignore_if_none: param_list.has_param("ignore_if_none"),
-                generate_limit_field: param_list.has_param("limit"),
+                generate_limit_field: limit_field_name,
             };
 
             result.push(itm)
