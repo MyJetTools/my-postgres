@@ -84,6 +84,13 @@ pub fn generate_where_models<'s>(
 
                 push_field(&mut fields, &model, None);
             }
+
+            if model.generate_limit_field {
+                fields.push(quote::quote! {
+                    #[limit]
+                    pub limit: usize,
+                })
+            }
         }
 
         generate_struct(&mut result, struct_name.as_str(), has_reference, &fields);
