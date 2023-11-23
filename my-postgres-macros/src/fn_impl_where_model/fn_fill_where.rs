@@ -57,15 +57,31 @@ pub fn fn_fill_where<'s>(
             }
         }
 
-        lines.push(quote! {
-           #no => Some(WhereFieldData{
-                column_name: #db_column_name.into(),
-                op: #op,
-                value: #value,
-                ignore_if_none: #ignore_if_none,
-                meta_data: #metadata
-            }),
-        });
+        if struct_property.ty.is_vec() {
+            lines.push(quote! {
+                #no => if self.#prop_name_ident.len()>0{
+                    Some(WhereFieldData{
+                        column_name: #db_column_name.into(),
+                        op: #op,
+                        value: #value,
+                        ignore_if_none: #ignore_if_none,
+                        meta_data: #metadata
+                    })
+                }else{
+                    None
+                },
+            })
+        } else {
+            lines.push(quote! {
+               #no => Some(WhereFieldData{
+                    column_name: #db_column_name.into(),
+                    op: #op,
+                    value: #value,
+                    ignore_if_none: #ignore_if_none,
+                    meta_data: #metadata
+                }),
+            });
+        }
 
         no += 1;
     }
