@@ -32,7 +32,7 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("COUNT({field_name})::{}", sql_type).into(),
+            statement: format!("COUNT(*)::{}", sql_type).into(),
         });
     }
 }
