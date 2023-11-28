@@ -1,4 +1,7 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::de::DeserializeOwned;
@@ -153,6 +156,30 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
         name: &str,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<HashMap<TKey, TValue>> {
+        let value: Option<String> = row.get(name);
+        let value = value.as_ref()?;
+        let result = serde_json::from_str(value).unwrap();
+        Some(result)
+    }
+}
+
+impl<'s, TKey: DeserializeOwned + Eq + Hash + Ord, TValue: DeserializeOwned>
+    FromDbRow<'s, BTreeMap<TKey, TValue>> for HashMap<TKey, TValue>
+{
+    fn from_db_row(
+        row: &crate::DbRow,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> BTreeMap<TKey, TValue> {
+        let value: String = row.get(name);
+        serde_json::from_str(&value).unwrap()
+    }
+
+    fn from_db_row_opt(
+        row: &crate::DbRow,
+        name: &str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Option<BTreeMap<TKey, TValue>> {
         let value: Option<String> = row.get(name);
         let value = value.as_ref()?;
         let result = serde_json::from_str(value).unwrap();
