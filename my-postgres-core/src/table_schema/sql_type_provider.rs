@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, HashMap};
+
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::SqlValueMetadata;
@@ -107,6 +109,18 @@ impl SqlTypeProvider for Option<String> {
 impl<T> SqlTypeProvider for Vec<T> {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::Json
+    }
+}
+
+impl<TKey, TValue> SqlTypeProvider for HashMap<TKey, TValue> {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Jsonb
+    }
+}
+
+impl<TKey, TValue> SqlTypeProvider for BTreeMap<TKey, TValue> {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Jsonb
     }
 }
 
