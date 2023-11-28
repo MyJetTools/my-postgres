@@ -164,7 +164,7 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
 }
 
 impl<'s, TKey: DeserializeOwned + Eq + Hash + Ord, TValue: DeserializeOwned>
-    FromDbRow<'s, BTreeMap<TKey, TValue>> for HashMap<TKey, TValue>
+    FromDbRow<'s, BTreeMap<TKey, TValue>> for BTreeMap<TKey, TValue>
 {
     fn from_db_row(
         row: &crate::DbRow,
