@@ -8,6 +8,7 @@ mod fn_impl_insert;
 mod fn_impl_select;
 mod fn_impl_update;
 mod fn_impl_where_model;
+mod impl_where_raw_model;
 mod table_schema;
 
 mod db_enum;
@@ -19,6 +20,7 @@ mod postgres_struct_ext;
 
 mod struct_name;
 use syn;
+mod where_utils;
 
 #[proc_macro_derive(
     SelectDbEntity,
@@ -321,7 +323,16 @@ pub fn db_enum_as_string_with_model(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(MyPostgresJsonModel, attributes(enum_case, default_if_null,))]
 pub fn my_postgres_json_model(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    crate::my_postgres_json_model::generate(&ast)
+    let result = crate::my_postgres_json_model::generate(&ast);
+
+    match result {
+        Ok(result) => {
+            #[cfg(feature = "debug-table-schema")]
+            println!("{}", result);
+            result.into()
+        }
+        Err(e) => e.into_compile_error().into(),
+    }
 }
 
 #[proc_macro_derive(
@@ -350,6 +361,20 @@ pub fn table_schema(input: TokenStream) -> TokenStream {
             #[cfg(feature = "debug-table-schema")]
             println!("{}", result);
             result
+        }
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn where_raw_model(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let result = crate::impl_where_raw_model::generate_where_raw_model(attr, input);
+
+    match result {
+        Ok(result) => {
+            #[cfg(feature = "debug-table-schema")]
+            println!("{}", result);
+            result.into()
         }
         Err(e) => e.into_compile_error().into(),
     }

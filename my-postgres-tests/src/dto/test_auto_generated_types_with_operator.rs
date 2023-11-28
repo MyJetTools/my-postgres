@@ -20,8 +20,9 @@ fn test_where_auto_generator_with_operator() {
     };
 
     let mut params = SqlValues::new();
-    let where_builder: my_postgres::sql::WhereBuilder =
-        where_model.build_where_sql_part(&mut params);
+    let where_builder = where_model
+        .build_where_sql_part(&mut params)
+        .unwrap_as_fields();
 
     let result = where_builder.get(0).unwrap();
     assert_eq!(result.db_column_name.name.as_str(), "trader_id");

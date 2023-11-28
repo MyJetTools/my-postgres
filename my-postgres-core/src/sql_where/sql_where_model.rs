@@ -1,14 +1,22 @@
 use crate::{
-    sql::{SqlData, SqlValues, WhereBuilder},
+    sql::{SqlData, SqlValues, WhereBuilder, WhereBuilderFromFields},
     ColumnName, SqlValueMetadata, SqlWhereValueProvider,
 };
 
-pub struct WhereFieldData<'s> {
-    pub column_name: ColumnName,
-    pub op: Option<&'static str>,
-    pub ignore_if_none: bool,
-    pub value: Option<&'s dyn SqlWhereValueProvider>,
-    pub meta_data: Option<SqlValueMetadata>,
+pub enum WhereRawData<'s> {
+    Content(&'static str),
+    PlaceHolder(&'s dyn SqlWhereValueProvider),
+}
+
+pub enum WhereFieldData<'s> {
+    Data {
+        column_name: ColumnName,
+        op: Option<&'static str>,
+        ignore_if_none: bool,
+        value: Option<&'s dyn SqlWhereValueProvider>,
+        meta_data: Option<SqlValueMetadata>,
+    },
+    Raw(Vec<WhereRawData<'s>>),
 }
 
 const NULL_VALUE: &'static str = "NULL";
@@ -21,36 +29,62 @@ pub trait SqlWhereModel {
     fn build_where_sql_part(&self, params: &mut crate::sql::SqlValues) -> WhereBuilder {
         let mut no = 0;
 
-        let mut result: WhereBuilder = WhereBuilder::new();
+        let mut result = WhereBuilderFromFields::new();
 
         while let Some(field_data) = self.get_where_field_name_data(no) {
-            match field_data.value {
-                Some(value) => {
-                    let where_value = value.get_where_value(params, &field_data.meta_data);
+            match field_data {
+                WhereFieldData::Data {
+                    column_name,
+                    op,
+                    ignore_if_none,
+                    value,
+                    meta_data,
+                } => {
+                    match value {
+                        Some(value) => {
+                            let where_value = value.get_where_value(params, &meta_data);
 
-                    let op = if let Some(op) = field_data.op {
-                        op
-                    } else {
-                        value.get_default_operator()
-                    };
+                            let op = if let Some(op) = op {
+                                op
+                            } else {
+                                value.get_default_operator()
+                            };
 
-                    result.push_where_condition(field_data.column_name, op, where_value);
-                }
-                None => {
-                    if !field_data.ignore_if_none {
-                        result.push_where_condition(
-                            field_data.column_name,
-                            " IS ",
-                            crate::sql::SqlWhereValue::NonStringValue(NULL_VALUE.into()),
-                        );
+                            result.push_where_condition(column_name, op, where_value);
+                        }
+                        None => {
+                            if !ignore_if_none {
+                                result.push_where_condition(
+                                    column_name,
+                                    " IS ",
+                                    crate::sql::SqlWhereValue::NonStringValue(NULL_VALUE.into()),
+                                );
+                            }
+                        }
                     }
+
+                    no += 1;
+                }
+                WhereFieldData::Raw(data) => {
+                    let mut sql = String::new();
+                    for itm in &data {
+                        match itm {
+                            WhereRawData::Content(content) => {
+                                sql.push_str(content);
+                            }
+                            WhereRawData::PlaceHolder(value) => {
+                                let where_value = value.get_where_value(params, &None);
+                                where_value.push_value(&mut sql);
+                            }
+                        }
+                    }
+
+                    return WhereBuilder::Raw(sql);
                 }
             }
-
-            no += 1;
         }
 
-        result
+        WhereBuilder::Fields(result)
     }
 
     fn fill_limit_and_offset(&self, sql: &mut String) {
