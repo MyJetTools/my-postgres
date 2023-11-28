@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
@@ -166,6 +166,16 @@ impl<T> SelectValueProvider for Vec<T> {
 }
 
 impl<TKey, TValue> SelectValueProvider for HashMap<TKey, TValue> {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        field_name: &'static str,
+        _metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(SelectFieldValue::Json(field_name));
+    }
+}
+
+impl<TKey, TValue> SelectValueProvider for BTreeMap<TKey, TValue> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,

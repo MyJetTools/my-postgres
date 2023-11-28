@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::Serialize;
@@ -205,9 +205,18 @@ impl<TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider for HashMap<TKey,
         let index = params.push(as_string.into());
 
         SqlUpdateValue::Json(index)
+    }
+}
 
-        /*
+impl<TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider for BTreeMap<TKey, TVale> {
+    fn get_update_value(
+        &self,
+        params: &mut SqlValues,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> SqlUpdateValue {
+        let as_string = serde_json::to_string(self).unwrap();
+        let index = params.push(as_string.into());
 
-        */
+        SqlUpdateValue::Json(index)
     }
 }
