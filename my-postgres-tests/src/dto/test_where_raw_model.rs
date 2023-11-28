@@ -28,6 +28,9 @@ mod tests {
 
         where_builder.build(&mut sql);
 
-        println!("sql: {}", sql);
+        assert_eq!(
+            "Content=$1 AND Content2=true AND Content3 in (1,2,3)",
+            sql.as_str()
+        );
     }
 }
