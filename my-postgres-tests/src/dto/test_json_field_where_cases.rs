@@ -41,15 +41,11 @@ mod tests {
         };
 
         let mut params = SqlValues::new();
-        let where_builder: my_postgres::sql::WhereBuilder =
-            where_model.build_where_sql_part(&mut params);
-
         let mut sql = String::new();
-
-        where_builder.build(&mut sql);
+        where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!(
-            r#"field_before=$1 AND ("key"->>'key'=$2 AND "value"->>'value'=5) AND field_after=true"#,
+            r#"field_before=$1 AND ("my_json_field"->>'key'=$2 AND "my_json_field"->>'value'=5) AND field_after=true"#,
             sql.as_str()
         );
     }
@@ -72,12 +68,8 @@ mod tests {
         };
 
         let mut params = SqlValues::new();
-        let where_builder: my_postgres::sql::WhereBuilder =
-            where_model.build_where_sql_part(&mut params);
-
         let mut sql = String::new();
-
-        where_builder.build(&mut sql);
+        where_model.fill_where_component(&mut sql, &mut params);
 
         println!("{}", sql);
     }

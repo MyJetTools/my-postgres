@@ -20,7 +20,8 @@ mod postgres_struct_ext;
 
 mod struct_name;
 use syn;
-mod where_utils;
+mod where_fields;
+mod where_value_provider;
 
 #[proc_macro_derive(
     SelectDbEntity,

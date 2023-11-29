@@ -1,6 +1,9 @@
 use proc_macro2::TokenStream;
 
-use crate::{postgres_struct_ext::PostgresStructPropertyExt, struct_name::StructName};
+use crate::{
+    postgres_struct_ext::PostgresStructPropertyExt, struct_name::StructName,
+    where_fields::WhereFields,
+};
 
 use super::update_fields::UpdateFields;
 
@@ -15,12 +18,19 @@ pub fn generate_derive_model(
 
     let get_field_value_case = super::fn_get_field_value::fn_get_field_value(&update_fields)?;
 
-    let where_impl = crate::fn_impl_where_model::generate_implementation(
-        type_name,
-        update_fields.get_where_fields().iter().map(|x| *x),
-        None,
-        None,
-    )?;
+    let where_fields = update_fields
+        .get_where_fields()
+        .iter()
+        .map(|x| *x)
+        .collect();
+
+    let where_fields = WhereFields {
+        where_fields,
+        limit: None,
+        offset: None,
+    };
+
+    let where_impl = where_fields.generate_implementation(type_name)?;
 
     Ok(quote::quote! {
 

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
 use types_reader::{ParamsList, StructProperty, TypeName};
 
+use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
+
 pub fn generate_where_raw_model<'s>(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
@@ -20,15 +22,15 @@ pub fn generate_where_raw_model<'s>(
 
     let src_fields = StructProperty::read(&ast)?;
 
-    let (limit, offset, fields) = crate::where_utils::get_limit_and_offset_fields(src_fields);
+    let where_fields = WhereFields::new(src_fields.as_slice());
 
-    let limit = crate::where_utils::generate_limit_fn(limit);
+    let limit = where_fields.generate_limit_fn();
 
-    let offset = crate::where_utils::generate_offset_fn(offset);
+    let offset = where_fields.generate_offset_fn();
 
     let mut src_as_hashmap = HashMap::new();
 
-    for field in fields {
+    for field in where_fields.where_fields {
         src_as_hashmap.insert(field.name.to_string(), field);
     }
 
@@ -48,14 +50,16 @@ pub fn generate_where_raw_model<'s>(
                 let property = property.unwrap();
 
                 let name = property.get_field_name_ident();
+                let meta_data = property.get_field_metadata()?;
 
                 content_to_render.push(quote::quote!(
-                    my_postgres::sql_where::WhereRawData::PlaceHolder(&self.#name)
+                    self.#name.fill_where_value(None, sql, params, &#meta_data);
+
                 ));
             }
             SqlTransformToken::RawContent(content) => {
                 content_to_render.push(quote::quote!(
-                    my_postgres::sql_where::WhereRawData::Content(#content)
+                    sql.push_str(#content);
                 ));
             }
         }
@@ -64,15 +68,13 @@ pub fn generate_where_raw_model<'s>(
     Ok(quote::quote! {
         #ast
         impl my_postgres::sql_where::SqlWhereModel for #struct_name{
-            fn get_where_field_name_data(&self, no: usize) -> Option<my_postgres::sql_where::WhereFieldData>{
-                if no > 0 {
-                    return None;
-                }
+            fn fill_where_component(&self, sql: &mut String, params: &mut my_postgres::sql::SqlValues){
+                use my_postgres::SqlWhereValueProvider;
+                #(#content_to_render)*
+            }
 
-                let data = vec![#(#content_to_render),*];
-                let result = my_postgres::sql_where::WhereFieldData::Raw(data);
-
-                Some(result)
+            fn has_conditions(&self) -> bool{
+                true
             }
 
             #limit

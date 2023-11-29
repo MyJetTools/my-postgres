@@ -1,5 +1,6 @@
 use my_postgres::macros::TableSchema;
-use my_postgres::{sql::SqlValues, sql_where::SqlWhereModel};
+use my_postgres::sql::SqlValues;
+use my_postgres::sql_where::SqlWhereModel;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 #[derive(TableSchema)]
@@ -20,15 +21,13 @@ fn test_where_auto_generator_with_operator() {
     };
 
     let mut params = SqlValues::new();
-    let where_builder = where_model
-        .build_where_sql_part(&mut params)
-        .unwrap_as_fields();
+    let mut sql = String::new();
+    where_model.fill_where_component(&mut sql, &mut params);
 
-    let result = where_builder.get(0).unwrap();
-    assert_eq!(result.db_column_name.name.as_str(), "trader_id");
-    assert_eq!(result.op, "=");
+    assert_eq!(
+        "trader_id=$1 AND date>'2023-06-19T22:07:20.518741+00:00'",
+        sql
+    );
 
-    let result = where_builder.get(1).unwrap();
-    assert_eq!(result.db_column_name.name.as_str(), "date");
-    assert_eq!(result.op, ">");
+    assert_eq!("test", params.get(0).unwrap().as_str().unwrap());
 }

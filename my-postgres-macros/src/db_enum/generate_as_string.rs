@@ -1,6 +1,8 @@
 use quote::quote;
 use types_reader::EnumCase;
 
+//todo!("Check Has Conditions")
+
 use crate::postgres_enum_ext::PostgresEnumExt;
 pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
     let enum_name = &ast.ident;
@@ -11,9 +13,20 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
 
     let fn_from_str = generate_fn_from_str(&enum_cases)?;
 
-    let fn_is_none = super::utils::render_fn_is_none();
 
     let default_value_reading = super::utils::get_default_value( enum_cases.as_slice())?;
+
+    let impl_where_value_provider = crate::where_value_provider::render_where_value_provider(enum_name, ||{
+        let operator_check = crate::where_value_provider::render_standard_operator_check("=");
+        quote::quote!{
+
+            #operator_check
+
+            let index = params.push(self.to_str().into());
+            sql.push('$');
+            sql.push_str(index.to_string().as_str());
+        }
+    });
 
     let result = quote! {
 
@@ -52,24 +65,7 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
 
         }
 
-        impl my_postgres::SqlWhereValueProvider for #enum_name{
-            fn get_where_value(
-                &self,
-                params: &mut my_postgres::sql::SqlValues,
-                _metadata: &Option<my_postgres::SqlValueMetadata>,
-            )-> my_postgres::sql::SqlWhereValue{
-                let index = params.push_static_str(self.to_str());
-                my_postgres::sql::SqlWhereValue::Index(index)
-            }
-
-
-            fn get_default_operator(&self) -> &'static str{
-               "="
-            }
-
-            #fn_is_none
-        }
-
+        #impl_where_value_provider
 
         impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
             fn from_db_row(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{

@@ -1,7 +1,7 @@
 use crate::{
-    sql::{SqlUpdateValue, SqlValues, SqlWhereValue},
+    sql::{SqlUpdateValue, SqlValues},
     sql_update::SqlUpdateValueProvider,
-    SqlValueMetadata, SqlWhereValueProvider,
+    RenderFullWhereCondition, SqlValueMetadata, SqlWhereValueProvider,
 };
 
 pub struct RawField {
@@ -9,20 +9,14 @@ pub struct RawField {
 }
 
 impl SqlWhereValueProvider for RawField {
-    fn get_where_value(
+    fn fill_where_value(
         &self,
-        _params: &mut SqlValues,
+        _column_name: Option<RenderFullWhereCondition>,
+        sql: &mut String,
+        _params: &mut crate::sql::SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) -> SqlWhereValue {
-        SqlWhereValue::NonStringValue(self.value.as_str().into())
-    }
-
-    fn get_default_operator(&self) -> &'static str {
-        "="
-    }
-
-    fn is_none(&self) -> bool {
-        false
+    ) {
+        sql.push_str(&self.value);
     }
 }
 

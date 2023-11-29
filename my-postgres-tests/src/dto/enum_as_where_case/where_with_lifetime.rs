@@ -15,13 +15,10 @@ mod test {
     fn test() {
         let where_model = WhereByIdModel { id: "test" };
 
-        let mut params = SqlValues::new();
-        let where_builder: my_postgres::sql::WhereBuilder =
-            where_model.build_where_sql_part(&mut params);
-
         let mut sql = String::new();
+        let mut params = SqlValues::new();
 
-        where_builder.build(&mut sql);
+        where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!("id=$1", sql);
 

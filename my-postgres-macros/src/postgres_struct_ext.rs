@@ -93,6 +93,8 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_inside_json(&self) -> Result<Option<Vec<&str>>, syn::Error>;
 
+    fn get_where_operator(&self) -> Result<Option<&str>, syn::Error>;
+
     fn get_generate_additional_update_models(
         &self,
     ) -> Result<Option<Vec<GenerateAdditionalUpdateStruct>>, syn::Error>;
@@ -370,24 +372,31 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 
     fn get_field_metadata(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        let sql_type = self.get_sql_type();
-
-        if sql_type.is_err() {
+        let sql_type = self.try_get_sql_type();
+        let operator = self.get_where_operator()?;
+        if sql_type.is_none() && operator.is_none() {
             return Ok(quote::quote!(None));
         }
 
-        let sql_type = if let Ok(sql_type) = sql_type {
+        let sql_type = if let Some(sql_type) = sql_type {
             let sql_type = sql_type.unwrap_as_string_value()?.as_str();
             quote::quote!(Some(#sql_type))
         } else {
             quote::quote!(None)
         };
 
-        Ok(quote::quote!({
+        let operator = if let Some(operator) = operator {
+            quote::quote!(Some(#operator))
+        } else {
+            quote::quote!(None)
+        };
+
+        Ok(quote::quote! {
             Some(my_postgres::SqlValueMetadata{
                 sql_type: #sql_type,
+                operator: #operator
             })
-        }))
+        })
     }
 
     fn get_e_tag(&'s self) -> Result<Option<ETagData<'s>>, syn::Error> {
@@ -559,6 +568,36 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         }
 
         Ok(Some(result))
+    }
+
+    fn get_where_operator(&self) -> Result<Option<&str>, syn::Error> {
+        let op_value = self.attrs.try_get_single_or_named_param("operator", "op");
+        if op_value.is_none() {
+            return Ok(None);
+        }
+
+        let op_value = op_value.unwrap();
+
+        let value = op_value.unwrap_as_string_value()?.as_str();
+        if value == "="
+            || value == "!="
+            || value == "<"
+            || value == "<="
+            || value == ">"
+            || value == ">="
+            || value == "<>"
+        {
+            return Ok(Some(value));
+        }
+
+        if value == "like" || value == "LIKE" {
+            return Ok(Some(" like "));
+        }
+
+        return Err(syn::Error::new_spanned(
+            self.field,
+            format!("Invalid operator {}", value),
+        ));
     }
 }
 

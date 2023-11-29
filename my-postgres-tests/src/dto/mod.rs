@@ -14,4 +14,5 @@ mod test_auto_generated_types_with_operator;
 mod test_auto_generated_types_with_range;
 mod test_json_field_where_cases;
 mod test_where_raw_model;
+mod test_where_with_dynamic_json_values;
 mod tests_real_cases;

@@ -6,24 +6,22 @@ pub fn build_update_sql<TModel: SqlUpdateModel + SqlWhereModel>(
     model: &TModel,
     table_name: &str,
 ) -> SqlData {
-    let mut result = String::new();
+    let mut sql = String::new();
 
-    result.push_str("UPDATE ");
-    result.push_str(table_name);
-    result.push_str(" SET ");
+    sql.push_str("UPDATE ");
+    sql.push_str(table_name);
+    sql.push_str(" SET ");
 
     let mut params = SqlValues::new();
 
-    model.build_update_sql_part(&mut result, &mut params);
+    model.build_update_sql_part(&mut sql, &mut params);
 
-    let where_builder = model.build_where_sql_part(&mut params);
-
-    if where_builder.has_conditions() {
-        result.push_str(" WHERE ");
-        where_builder.build(&mut result);
+    if model.has_conditions() {
+        sql.push_str(" WHERE ");
+        model.fill_where_component(&mut sql, &mut params);
     }
 
-    model.fill_limit_and_offset(&mut result);
+    model.fill_limit_and_offset(&mut sql);
 
-    SqlData::new(result, params)
+    SqlData::new(sql, params)
 }

@@ -53,11 +53,9 @@ impl PostgresConnection {
         sql.push_str(table_name);
 
         if let Some(where_model) = where_model {
-            let where_condition = where_model.build_where_sql_part(&mut values);
-
-            if where_condition.has_conditions() {
+            if where_model.has_conditions() {
                 sql.push_str(" WHERE ");
-                where_condition.build(&mut sql);
+                where_model.fill_where_component(&mut sql, &mut values);
             }
 
             where_model.fill_limit_and_offset(&mut sql);

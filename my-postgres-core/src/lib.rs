@@ -6,6 +6,8 @@ mod error;
 mod my_postgres;
 mod my_postgres_builder;
 pub mod sql;
+mod sql_where_value_provider;
+pub use sql_where_value_provider::*;
 pub mod sync_table_schema;
 mod with_retries;
 

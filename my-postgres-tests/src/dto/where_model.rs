@@ -37,9 +37,9 @@ pub struct TestWhereModel {
 
 #[derive(DbEnumAsString)]
 pub enum MyWhereStringEnum {
-    #[enum_case("Test")]
+    #[enum_case("CaseTest1")]
     Case1,
-    #[enum_case("Test2")]
+    #[enum_case("CaseTest2")]
     Case2,
 }
 
@@ -70,72 +70,14 @@ mod tests {
         };
 
         let mut params = SqlValues::new();
-        let where_builder = where_model
-            .build_where_sql_part(&mut params)
-            .unwrap_as_fields();
-
-        let result = where_builder.get(0).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "id");
-        assert_eq!(result.op, "=");
-        assert_eq!(
-            params
-                .get(result.value.unwrap_as_index() - 1)
-                .unwrap()
-                .as_str()
-                .unwrap(),
-            "test"
-        );
-
-        let result = where_builder.get(1).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "date_time");
-        assert_eq!(result.op, "=");
-        assert_eq!(
-            result.value.unwrap_as_string_value(),
-            "2023-06-19T22:07:20.518741+00:00"
-        );
-
-        let result = where_builder.get(2).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "i32");
-        assert_eq!(result.op, ">");
-        assert_eq!(result.value.unwrap_as_non_string_value(), "1");
-
-        let result = where_builder.get(3).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "opt_i32");
-        assert_eq!(result.op, " IS ");
-        assert_eq!(result.value.unwrap_as_non_string_value(), "NULL");
-
-        let result = where_builder.get(4).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "str_enum");
-        assert_eq!(result.op, "=");
-        assert_eq!(
-            params
-                .get(result.value.unwrap_as_index() - 1)
-                .unwrap()
-                .as_str()
-                .unwrap(),
-            "Test"
-        );
-
-        let result = where_builder.get(5).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "str_enum_opt");
-        assert_eq!(result.op, " IS ");
-        assert_eq!(result.value.unwrap_as_non_string_value(), "NULL");
-
-        let result = where_builder.get(6).unwrap();
-        assert_eq!(result.db_column_name.name.as_str(), "str_enum_opt2");
-        assert_eq!(result.op, "=");
-        assert_eq!(
-            params
-                .get(result.value.unwrap_as_index() - 1)
-                .unwrap()
-                .as_str()
-                .unwrap(),
-            "Test2"
-        );
-
         let mut sql = String::new();
-        where_builder.build(&mut sql);
+        where_model.fill_where_component(&mut sql, &mut params);
 
-        println!("{}", sql);
+        assert_eq!("id=$1 AND date_time='2023-06-19T22:07:20.518741+00:00' AND i32>1 AND opt_i32 IS NULL AND str_enum=$2 AND str_enum_opt IS NULL AND str_enum_opt2=$3 AND like_value like $4 AND my_json_field=$1", sql);
+
+        assert_eq!(params.get(0).unwrap().as_str().unwrap(), "test");
+        assert_eq!(params.get(1).unwrap().as_str().unwrap(), "CaseTest1");
+        assert_eq!(params.get(2).unwrap().as_str().unwrap(), "CaseTest2");
+        assert_eq!(params.get(3).unwrap().as_str().unwrap(), "%test%");
     }
 }

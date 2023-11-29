@@ -94,9 +94,16 @@ pub fn generate(
         }
     };
 
-    let fn_is_none = super::utils::render_fn_is_none();
-
     let default_value_reading = super::utils::get_default_value( enum_cases.as_slice())?;
+
+    let impl_where_value_provider = crate::where_value_provider::render_where_value_provider(enum_name, ||{
+        let operator_check = crate::where_value_provider::render_standard_operator_check("=");
+        quote::quote!{
+            #operator_check
+            sql.push_str(self.as_numbered_str());
+        }
+    });
+    
 
     let result = quote! {
 
@@ -140,23 +147,7 @@ pub fn generate(
             }
         }
 
-        impl my_postgres::SqlWhereValueProvider for #enum_name{
-            fn get_where_value(
-                &self,
-                _params: &mut my_postgres::sql::SqlValues,
-                _metadata: &Option<my_postgres::SqlValueMetadata>,
-            )-> my_postgres::sql::SqlWhereValue {
-                my_postgres::sql::SqlWhereValue::NonStringValue(self.as_numbered_str().into())
-            }
-
-            fn get_default_operator(&self) -> &'static str{
-                "="
-            }
-
-            #fn_is_none
-        }
-
-
+        #impl_where_value_provider
 
         impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
             fn from_db_row(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{

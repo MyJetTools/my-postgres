@@ -22,11 +22,9 @@ mod tests {
         };
 
         let mut params = my_postgres::sql::SqlValues::new();
-        let where_builder = where_model.build_where_sql_part(&mut params);
-
         let mut sql = String::new();
 
-        where_builder.build(&mut sql);
+        where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!(
             "Content=$1 AND Content2=true AND Content3 in (1,2,3)",

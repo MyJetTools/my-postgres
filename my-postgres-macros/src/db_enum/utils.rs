@@ -16,14 +16,6 @@ pub fn render_select_part_as_json() -> proc_macro2::TokenStream {
     }
 }
 
-pub fn render_fn_is_none() -> proc_macro2::TokenStream {
-    quote::quote! {
-        fn is_none(&self) -> bool{
-            false
-        }
-    }
-}
-
 pub fn get_default_value(enum_cases: &[EnumCase]) -> Result<proc_macro2::TokenStream, syn::Error> {
     for enum_case in enum_cases {
         if enum_case.attrs.has_attr("default_value") {
