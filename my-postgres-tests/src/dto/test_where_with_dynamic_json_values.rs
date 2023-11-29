@@ -6,6 +6,7 @@ use my_postgres::macros::WhereDbModel;
 pub struct WhereWithDynamicJsonValues {
     pub value_before: i32,
 
+    #[db_column_name("my_dynamic_json")]
     pub dynamic_json: BTreeMap<String, String>,
 
     pub value_after: bool,
@@ -54,7 +55,7 @@ mod tests {
         where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!(
-            "value_before=1 AND \"dynamic_json\"->>'json_field'=$1 AND value_after=true",
+            "value_before=1 AND \"my_dynamic_json\"->>'json_field'=$1 AND value_after=true",
             sql
         );
         assert_eq!(params.len(), 1);
@@ -83,7 +84,7 @@ mod tests {
         where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!(
-            "value_before=1 AND (\"dynamic_json\"->>'json_field'=$1 AND \"dynamic_json\"->>'json_field2'=$2) AND value_after=true",
+            "value_before=1 AND (\"my_dynamic_json\"->>'json_field'=$1 AND \"my_dynamic_json\"->>'json_field2'=$2) AND value_after=true",
             sql
         );
         assert_eq!(params.len(), 2);
