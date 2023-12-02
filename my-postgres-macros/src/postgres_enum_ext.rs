@@ -14,7 +14,7 @@ impl<'s> PostgresEnumExt for EnumCase<'s> {
             .attrs
             .get_single_or_named_param(ENUM_CASE_ATTR, "value")
         {
-            Ok(result) => result.unwrap_as_string_value()?.as_str().to_string(),
+            Ok(result) => result.as_string()?.as_str().to_string(),
             Err(_) => self.get_name_ident().to_string(),
         };
 
@@ -38,7 +38,7 @@ impl<'s> PostgresEnumExt for EnumCase<'s> {
             .attrs
             .try_get_single_or_named_params(ENUM_CASE_ATTR, ["value", "id"].into_iter())
         {
-            Some(result) => Some(result.unwrap_as_number_value()?.as_i64()),
+            Some(result) => Some(result.as_number()?.as_i64()),
             None => None,
         };
 

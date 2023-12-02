@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
-use types_reader::{ParamsList, StructProperty, TypeName};
+use types_reader::{StructProperty, TokensObject, TypeName};
 
 use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
 
@@ -9,11 +9,10 @@ pub fn generate_where_raw_model<'s>(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
-    let params_list = ParamsList::new(attr.into(), || None)?;
+    let attr: proc_macro2::TokenStream = attr.into();
+    let params_list = TokensObject::new(attr.into(), &|| None)?;
 
-    let sql = params_list
-        .get_from_single_or_named("sql")?
-        .unwrap_as_string_value()?;
+    let sql = params_list.get_from_single_or_named("sql")?;
 
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let type_name = TypeName::new(&ast);
@@ -34,7 +33,7 @@ pub fn generate_where_raw_model<'s>(
         src_as_hashmap.insert(field.name.to_string(), field);
     }
 
-    let tokens = scan_sql_for_placeholders(sql.as_str());
+    let tokens = scan_sql_for_placeholders(sql.try_into()?);
 
     let mut content_to_render = Vec::new();
 

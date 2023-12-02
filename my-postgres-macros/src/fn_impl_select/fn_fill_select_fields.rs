@@ -14,7 +14,7 @@ pub fn fn_fill_select_fields(
         }
 
         if let Ok(sql) = prop.attrs.get_single_or_named_param("sql", "sql") {
-            let attr_value = sql.unwrap_as_string_value()?.as_str();
+            let attr_value = sql.as_string()?.as_str();
             result.push(quote! {
                 sql.push_str(#attr_value);
             });

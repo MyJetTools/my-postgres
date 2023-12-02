@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use types_reader::{ParamValue, PropertyType, StructProperty};
+use types_reader::{ObjectValue, PropertyType, StructProperty};
 
 use crate::e_tag::ETagData;
 
@@ -56,9 +56,9 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_primary_key_id(&self, last_id: u8) -> Result<Option<u8>, syn::Error>;
 
-    fn get_sql_type(&self) -> Result<&ParamValue, syn::Error>;
+    fn get_sql_type(&self) -> Result<&ObjectValue, syn::Error>;
 
-    fn try_get_sql_type(&self) -> Option<&ParamValue>;
+    fn try_get_sql_type(&self) -> Option<&ObjectValue>;
 
     fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
@@ -221,7 +221,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         if let Some(value) = self.attrs.try_get_attr(ATTR_PRIMARY_KEY) {
             match value.try_get_single_param() {
                 Some(value) => {
-                    return Ok(Some(value.get_value("must be value from 0..255".into())?));
+                    return Ok(Some(value.parse("must be value from 0..255".into())?));
                 }
                 None => {
                     return Ok(Some(last_id + 1));
@@ -236,11 +236,11 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         self.attrs.has_attr("ignore")
     }
 
-    fn get_sql_type(&self) -> Result<&ParamValue, syn::Error> {
+    fn get_sql_type(&self) -> Result<&ObjectValue, syn::Error> {
         self.attrs.get_single_or_named_param(ATTR_SQL_TYPE, "name")
     }
 
-    fn try_get_sql_type(&self) -> Option<&ParamValue> {
+    fn try_get_sql_type(&self) -> Option<&ObjectValue> {
         self.attrs
             .try_get_single_or_named_param(ATTR_SQL_TYPE, "name")
     }
@@ -274,7 +274,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
     fn get_default_value(&self) -> Result<Option<DefaultValue>, syn::Error> {
         if let Some(attr) = self.attrs.try_get_attr("default_value") {
-            let result = attr.try_get_from_single_or_named("value");
+            let result = attr.try_get_value_from_single_or_named("value");
 
             match result {
                 Some(value) => {
@@ -306,7 +306,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             .attrs
             .get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
         {
-            return Ok(attr.unwrap_as_string_value()?);
+            return Ok(attr.as_string()?);
         }
 
         Ok(self.name.as_str())
@@ -317,7 +317,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             .attrs
             .try_get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
         {
-            return Ok(Some(attr.unwrap_as_string_value()?));
+            return Ok(Some(attr.as_string()?));
         }
 
         Ok(None)
@@ -337,26 +337,15 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         for attr in attrs {
             let id = attr
                 .get_named_param("id")?
-                .get_value("id must be a number 0..255".into())?;
+                .get_value()?
+                .parse("id must be a number 0..255".into())?;
 
-            let index_name = attr
-                .get_named_param("index_name")?
-                .unwrap_as_string_value()?
-                .to_string();
-            let is_unique = attr
-                .get_named_param("is_unique")?
-                .unwrap_as_bool_value()?
-                .get_value();
+            let index_name = attr.get_named_param("index_name")?.try_into()?;
+            let is_unique = attr.get_named_param("is_unique")?.try_into()?;
 
-            let order = attr
-                .get_named_param("order")?
-                .unwrap_as_string_value()?
-                .as_str();
+            let order: &str = attr.get_named_param("order")?.try_into()?;
             if order != "DESC" && order != "ASC" {
-                return Err(syn::Error::new_spanned(
-                    attr.get_token_stream(),
-                    "order must be DESC or ASC",
-                ));
+                return Err(attr.throw_error("order must be DESC or ASC"));
             }
 
             result.push(IndexAttr {
@@ -379,7 +368,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         }
 
         let sql_type = if let Some(sql_type) = sql_type {
-            let sql_type = sql_type.unwrap_as_string_value()?.as_str();
+            let sql_type = sql_type.as_string()?;
             quote::quote!(Some(#sql_type))
         } else {
             quote::quote!(None)
@@ -416,7 +405,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         if let Some(attr) = self.attrs.try_get_attr("inside_json") {
             let value = attr.get_from_single_or_named("field")?;
 
-            let value = value.unwrap_as_string_value()?.as_str();
+            let value = value.as_string()?.as_str();
             return Ok(Some(value.split('.').collect()));
         }
 
@@ -439,23 +428,21 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         for param in params {
             let struct_name = param
                 .get_named_param("name")?
-                .unwrap_as_string_value()?
-                .as_str()
-                .to_string();
+                .get_value()?
+                .as_string()?
+                .into();
 
             let is_where = param
                 .get_named_param("param_type")?
-                .unwrap_as_string_value()?
+                .get_value()?
+                .as_string()?
                 .as_str();
 
             let is_where = match is_where {
                 "where" => true,
                 "update" => false,
                 _ => {
-                    return Err(syn::Error::new_spanned(
-                        param.get_token_stream(),
-                        "param_type must have 'where' or 'update' value",
-                    ));
+                    return Err(param.throw_error("param_type must have 'where' or 'update' value"));
                 }
             };
 
@@ -486,35 +473,31 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         let mut result = Vec::new();
 
         for param_list in params {
-            let struct_name = param_list
-                .get_from_single_or_named("name")?
-                .unwrap_as_string_value()?
-                .as_str()
-                .to_string();
+            let struct_name = param_list.get_from_single_or_named("name")?.try_into()?;
 
             let operator = param_list.try_get_named_param("operator");
 
             let operator = match operator {
-                Some(value) => Some(value.unwrap_as_string_value()?.as_str().to_string()),
+                Some(value) => Some(value.try_into()?),
                 None => None,
             };
 
             let operator_from = param_list.try_get_named_param("operator_from");
 
             let operator_from = match operator_from {
-                Some(value) => Some(value.unwrap_as_string_value()?.as_str().to_string()),
+                Some(value) => Some(value.try_into()?),
                 None => None,
             };
 
             let operator_to = param_list.try_get_named_param("operator_to");
 
             let operator_to = match operator_to {
-                Some(value) => Some(value.unwrap_as_string_value()?.as_str().to_string()),
+                Some(value) => Some(value.try_into()?),
                 None => None,
             };
 
             let limit_field_name = match param_list.try_get_named_param("limit") {
-                Some(name) => Some(name.unwrap_as_string_value()?.as_str().to_string()),
+                Some(name) => Some(name.try_into()?),
                 None => None,
             };
 
@@ -552,11 +535,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         let mut result = Vec::new();
 
         for param_list in params {
-            let struct_name = param_list
-                .get_from_single_or_named("name")?
-                .unwrap_as_string_value()?
-                .as_str()
-                .to_string();
+            let struct_name = param_list.get_from_single_or_named("name")?.try_into()?;
 
             let itm = GenerateAdditionalSelectStruct {
                 struct_name,
@@ -578,7 +557,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
         let op_value = op_value.unwrap();
 
-        let value = op_value.unwrap_as_string_value()?.as_str();
+        let value = op_value.try_into()?;
         if value == "="
             || value == "!="
             || value == "<"
@@ -618,7 +597,7 @@ pub fn filter_fields(src: Vec<StructProperty>) -> Result<Vec<StructProperty>, sy
         if is_date_time {
             let attr = itm.get_sql_type()?;
 
-            let attr = attr.unwrap_as_string_value()?.as_str();
+            let attr: &str = attr.try_into()?;
             if attr != "timestamp" && attr != "bigint" {
                 let result = syn::Error::new_spanned(
                     itm.field,

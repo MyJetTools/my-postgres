@@ -46,9 +46,7 @@ pub fn generate_select_models<'s>(
             }
 
             if let Some(sql_type) = field.try_get_sql_type() {
-                let sql_type = sql_type.unwrap_as_string_value()?;
-                let sql_type = sql_type.as_str();
-                super::attr_generators::generate_sql_type(&mut fields, sql_type);
+                super::attr_generators::generate_sql_type(&mut fields, sql_type.try_into()?);
             }
 
             fields.push(quote::quote! {

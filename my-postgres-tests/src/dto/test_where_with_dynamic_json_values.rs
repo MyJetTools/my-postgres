@@ -5,10 +5,8 @@ use my_postgres::macros::WhereDbModel;
 #[derive(WhereDbModel)]
 pub struct WhereWithDynamicJsonValues {
     pub value_before: i32,
-
     #[db_column_name("my_dynamic_json")]
     pub dynamic_json: BTreeMap<String, String>,
-
     pub value_after: bool,
 }
 
