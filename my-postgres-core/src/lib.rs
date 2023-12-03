@@ -36,3 +36,5 @@ pub use column_name::*;
 mod group_by_fields;
 pub use group_by_fields::*;
 pub mod utils;
+
+pub extern crate tokio_postgres;

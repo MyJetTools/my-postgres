@@ -265,15 +265,15 @@ impl SqlWhereValueProvider for tokio_postgres::types::IsNull {
         metadata: &Option<SqlValueMetadata>,
     ) {
         if let Some(full_where_condition) = full_where_condition {
-            full_where_condition.render_param_name(sql, "=", metadata);
+            full_where_condition.render_param_name(sql, " IS ", metadata);
         }
 
         match self {
             tokio_postgres::types::IsNull::Yes => {
-                sql.push_str("IS NULL");
+                sql.push_str("NULL");
             }
             tokio_postgres::types::IsNull::No => {
-                sql.push_str("IS NOT NULL");
+                sql.push_str("NOT NULL");
             }
         }
     }
