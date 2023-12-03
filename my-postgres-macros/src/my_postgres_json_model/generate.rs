@@ -1,7 +1,6 @@
 use quote::quote;
-use types_reader::{TypeName, StructProperty};
+use types_reader::TypeName;
 
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
 
