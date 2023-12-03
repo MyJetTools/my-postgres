@@ -1,7 +1,7 @@
 use my_postgres::macros::*;
 use serde::*;
 
-#[derive(Serialize, Deserialize, MyPostgresJsonModel)]
+#[derive(Serialize, Deserialize, MyPostgresJsonModel, MyPostgresJsonWhereModel)]
 pub struct JsonTestField {
     pub key: String,
     pub value: i32,

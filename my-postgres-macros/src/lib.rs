@@ -20,6 +20,7 @@ mod postgres_struct_ext;
 
 mod struct_name;
 use syn;
+mod my_postgres_json_where_model;
 mod where_fields;
 mod where_value_provider;
 
@@ -325,6 +326,21 @@ pub fn db_enum_as_string_with_model(input: TokenStream) -> TokenStream {
 pub fn my_postgres_json_model(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     let result = crate::my_postgres_json_model::generate(&ast);
+
+    match result {
+        Ok(result) => {
+            #[cfg(feature = "debug-table-schema")]
+            println!("{}", result);
+            result.into()
+        }
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(MyPostgresJsonWhereModel, attributes(enum_case, default_if_null,))]
+pub fn my_postgres_json_where_model(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    let result = crate::my_postgres_json_where_model::generate(&ast);
 
     match result {
         Ok(result) => {
