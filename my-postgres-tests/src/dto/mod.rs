@@ -16,3 +16,4 @@ mod test_json_field_where_cases;
 mod test_where_raw_model;
 mod test_where_with_dynamic_json_values;
 mod tests_real_cases;
+mod where_model_with_str;

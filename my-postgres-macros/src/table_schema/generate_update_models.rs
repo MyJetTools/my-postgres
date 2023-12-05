@@ -1,14 +1,12 @@
 use std::str::FromStr;
 
 use proc_macro2::TokenStream;
-use types_reader::StructProperty;
+use types_reader::{StructProperty, TypeName};
 
-use crate::{
-    fn_impl_update::{generate_derive_model, UpdateFields},
-    struct_name::StructName,
-};
+use crate::fn_impl_update::{generate_derive_model, UpdateFields};
 
 pub fn generate_update_models<'s>(
+    type_name: &TypeName,
     fields: &'s [&'s StructProperty],
 ) -> Result<TokenStream, syn::Error> {
     let update_fields = UpdateFields::new_from_table_schema(fields)?;
@@ -40,11 +38,9 @@ pub fn generate_update_models<'s>(
             }
         });
 
-        let model = generate_derive_model(
-            &struct_name,
-            StructName::TokenStream(&struct_name),
-            update_fields,
-        )?;
+        let type_name: TypeName = struct_name.try_into()?;
+
+        let model = generate_derive_model(&type_name, update_fields)?;
 
         result.push(model);
     }

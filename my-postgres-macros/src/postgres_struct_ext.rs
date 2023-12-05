@@ -1,8 +1,10 @@
 use proc_macro2::TokenStream;
-use quote::ToTokens;
 use types_reader::{ObjectValue, PropertyType, StructProperty};
 
-use crate::e_tag::ETagData;
+use crate::{
+    e_tag::ETagData,
+    table_schema::{GenerateAdditionalUpdateModelAttributeParams, GenerateType},
+};
 
 pub const ATTR_PRIMARY_KEY: &str = "primary_key";
 pub const ATTR_DB_COLUMN_NAME: &str = "db_column_name";
@@ -265,7 +267,8 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         if let Some(attr) = self.attrs.try_get_attr("default_if_null") {
             let result = attr
                 .get_from_single_or_named("value")?
-                .get_any_value_as_str()?;
+                .any_value_as_str()
+                .as_str();
             return Ok(Some(result));
         }
 
@@ -278,7 +281,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
             match result {
                 Some(value) => {
-                    let result = value.get_any_value_as_str()?;
+                    let result = value.any_value_as_str().as_str();
                     return Ok(Some(DefaultValue::Value(result.to_string())));
                 }
                 None => return Ok(Some(DefaultValue::Inherit)),
@@ -291,8 +294,8 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
         if let Ok(attr) = self.attrs.get_attr(ATTR_DB_COLUMN_NAME) {
             if let Ok(result) = attr.get_from_single_or_named("name") {
-                let name = result.get_any_value_as_str()?.to_token_stream();
-                return Ok(name);
+                let name = result.any_value_as_str().as_str();
+                return Ok(quote::quote!(#name));
             }
         }
 
@@ -423,37 +426,23 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
         let params = params.unwrap();
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(params.len());
 
         for param in params {
-            let struct_name = param
-                .get_named_param("name")?
-                .get_value()?
-                .as_string()?
-                .into();
+            let params: GenerateAdditionalUpdateModelAttributeParams =
+                params.get(0).unwrap().try_into()?;
 
-            let is_where = param
-                .get_named_param("param_type")?
-                .get_value()?
-                .as_string()?
-                .as_str();
-
-            let is_where = match is_where {
-                "where" => true,
-                "update" => false,
-                _ => {
-                    return Err(param.throw_error("param_type must have 'where' or 'update' value"));
-                }
+            let is_where = match params.param_type {
+                GenerateType::Update => true,
+                GenerateType::Where => false,
             };
 
             let itm = GenerateAdditionalUpdateStruct {
-                struct_name,
+                struct_name: params.name,
                 field_name: self.name.to_string(),
                 field_ty: self.ty.get_token_stream(),
                 is_where,
             };
-
-            result.push(itm)
         }
 
         Ok(Some(result))

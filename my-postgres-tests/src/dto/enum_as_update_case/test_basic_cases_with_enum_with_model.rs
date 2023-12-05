@@ -25,6 +25,7 @@ pub struct MyStructure {
     pub a: i32,
     pub b: bool,
 }
+
 #[derive(Serialize, Deserialize, MyPostgresJsonModel)]
 pub struct MyStructure2 {
     pub c: i32,

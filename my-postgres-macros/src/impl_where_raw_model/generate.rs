@@ -10,22 +10,19 @@ pub fn generate_where_raw_model<'s>(
     input: proc_macro::TokenStream,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let attr: proc_macro2::TokenStream = attr.into();
-    let params_list = TokensObject::new(attr.into(), &|| None)?;
+    let params_list = TokensObject::new(attr.into())?;
 
     let sql = params_list.get_from_single_or_named("sql")?;
 
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
-    let type_name = TypeName::new(&ast);
-
-    let struct_name = type_name.get_type_name();
+    let type_name: TypeName = (&ast).try_into()?;
 
     let src_fields = StructProperty::read(&ast)?;
 
     let where_fields = WhereFields::new(src_fields.as_slice());
 
-    let limit = where_fields.generate_limit_fn();
-
-    let offset = where_fields.generate_offset_fn();
+    let generate_limit_fn = where_fields.generate_limit_fn();
+    let generate_offset_fn = where_fields.generate_offset_fn();
 
     let mut src_as_hashmap = HashMap::new();
 
@@ -64,21 +61,22 @@ pub fn generate_where_raw_model<'s>(
         }
     }
 
-    Ok(quote::quote! {
-        #ast
-        impl my_postgres::sql_where::SqlWhereModel for #struct_name{
-            fn fill_where_component(&self, sql: &mut String, params: &mut my_postgres::sql::SqlValues){
+    let impl_where_model = crate::render_impl::impl_sql_where_model(
+        &type_name,
+        {
+            quote::quote! {
                 use my_postgres::SqlWhereValueProvider;
                 #(#content_to_render)*
             }
+        },
+        quote::quote!(true),
+        generate_limit_fn,
+        generate_offset_fn,
+    );
 
-            fn has_conditions(&self) -> bool{
-                true
-            }
-
-            #limit
-            #offset
-           }
+    Ok(quote::quote! {
+        #ast
+        #impl_where_model
     })
 }
 

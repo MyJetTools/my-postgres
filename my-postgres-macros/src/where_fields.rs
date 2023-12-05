@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use types_reader::StructProperty;
+use types_reader::{StructProperty, TypeName};
 
-use crate::{postgres_struct_ext::PostgresStructPropertyExt, struct_name::StructName};
+use crate::postgres_struct_ext::PostgresStructPropertyExt;
 
 pub struct WhereFields<'s> {
     pub limit: Option<&'s StructProperty<'s>>,
@@ -34,31 +34,22 @@ impl<'s> WhereFields<'s> {
 
     pub fn generate_implementation(
         &self,
-        type_name: StructName,
+        type_name: &TypeName,
     ) -> Result<proc_macro2::TokenStream, syn::Error> {
-        let struct_name = type_name.get_struct_name();
-
-        let limit = self.generate_limit_fn();
-
-        let offset = self.generate_offset_fn();
-
-        let has_conditions_fn = self.generate_has_conditions_fn();
-
         let where_data = self.fn_fill_where_content()?;
 
-        let generics = type_name.get_generic();
-
-        let result = quote::quote! {
-           impl #generics my_postgres::sql_where::SqlWhereModel for #struct_name{
-            fn fill_where_component(&self, sql: &mut String, params: &mut my_postgres::sql::SqlValues){
-                use my_postgres::SqlWhereValueProvider;
-                #where_data
-            }
-            #limit
-            #offset
-            #has_conditions_fn
-           }
-        };
+        let result = crate::render_impl::impl_sql_where_model(
+            &type_name,
+            {
+                quote::quote! {
+                    use my_postgres::SqlWhereValueProvider;
+                    #where_data
+                }
+            },
+            self.generate_has_conditions_fn(),
+            self.generate_limit_fn(),
+            self.generate_offset_fn(),
+        );
 
         Ok(result.into())
     }
@@ -66,48 +57,23 @@ impl<'s> WhereFields<'s> {
     pub fn generate_limit_fn(&self) -> proc_macro2::TokenStream {
         if let Some(limit) = &self.limit {
             let name = limit.get_field_name_ident();
-            quote::quote! {
-                fn get_limit(&self) -> Option<usize> {
-                    self.#name.into()
-                }
-            }
-            .into()
+            quote::quote! {self.#name.into()}
         } else {
-            quote::quote! {
-                fn get_limit(&self) -> Option<usize> {
-                    None
-                }
-            }
-            .into()
+            quote::quote! {None}
         }
     }
 
     pub fn generate_offset_fn(&self) -> proc_macro2::TokenStream {
         if let Some(offset) = &self.offset {
             let name = offset.get_field_name_ident();
-            quote::quote! {
-                fn get_offset(&self) -> Option<usize> {
-                    self.#name.into()
-                }
-            }
-            .into()
+            quote::quote! {self.#name.into()}
         } else {
-            quote::quote! {
-                fn get_offset(&self) -> Option<usize> {
-                    None
-                }
-            }
-            .into()
+            quote::quote! {None}
         }
     }
     pub fn generate_has_conditions_fn(&self) -> proc_macro2::TokenStream {
         let has_fields = self.where_fields.len() > 0;
-
-        quote::quote! {
-            fn has_conditions(&self) -> bool{
-                #has_fields
-            }
-        }
+        quote::quote! {#has_fields}
     }
 
     pub fn fn_fill_where_content(&self) -> Result<proc_macro2::TokenStream, syn::Error> {

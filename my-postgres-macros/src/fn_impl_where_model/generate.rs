@@ -1,10 +1,10 @@
 use quote::quote;
 use types_reader::{StructProperty, TypeName};
 
-use crate::{struct_name::StructName, where_fields::WhereFields};
+use crate::where_fields::WhereFields;
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
-    let type_name = TypeName::new(ast);
+    let type_name: TypeName = ast.try_into()?;
 
     let src_fields = StructProperty::read(ast)?;
 
@@ -12,7 +12,7 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
 
     let where_fields = WhereFields::new(src_fields.as_slice());
 
-    let result = where_fields.generate_implementation(StructName::TypeName(&type_name))?;
+    let result = where_fields.generate_implementation(&type_name)?;
 
     Ok(quote! {
         #result

@@ -18,7 +18,7 @@ mod my_postgres_json_model;
 mod postgres_enum_ext;
 mod postgres_struct_ext;
 
-mod struct_name;
+mod render_impl;
 use syn;
 mod my_postgres_json_where_model;
 mod where_fields;

@@ -1,19 +1,13 @@
-use proc_macro2::TokenStream;
+use types_reader::TypeName;
 
-use crate::{
-    postgres_struct_ext::PostgresStructPropertyExt, struct_name::StructName,
-    where_fields::WhereFields,
-};
+use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
 
 use super::update_fields::UpdateFields;
 
 pub fn generate_derive_model(
-    struct_name: &TokenStream,
-    type_name: StructName,
+    type_name: &TypeName,
     update_fields: UpdateFields,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
-    let fields_amount = update_fields.get_update_fields().len();
-
     let fn_get_column_name = get_columns(&update_fields)?;
 
     let get_field_value_case = super::fn_get_field_value::fn_get_field_value(&update_fields)?;
@@ -32,31 +26,25 @@ pub fn generate_derive_model(
 
     let where_impl = where_fields.generate_implementation(type_name)?;
 
-    Ok(quote::quote! {
-
-        impl my_postgres::sql_update::SqlUpdateModel for #struct_name{
-            fn get_fields_amount() -> usize{
-                #fields_amount
-            }
-
-            fn get_column_name(no: usize) -> my_postgres::ColumnName{
-                #fn_get_column_name
-            }
-
-            fn get_field_value(&self, no: usize) -> my_postgres::sql_update::SqlUpdateModelValue{
+    let sql_update_model_impl = crate::render_impl::impl_sql_update_model(
+        type_name,
+        {
+            let fields_amount = update_fields.get_update_fields().len();
+            quote::quote!(#fields_amount)
+        },
+        fn_get_column_name,
+        quote::quote! {
                 match no{
                     #(#get_field_value_case)*
                     _=>panic!("no such field with number {}", no)
                 }
 
-            }
+        },
+    );
 
-        }
-
+    Ok(quote::quote! {
+        #sql_update_model_impl
         #where_impl
-
-
-
     }
     .into())
 }
