@@ -49,7 +49,7 @@ pub fn generate_where_raw_model<'s>(
                 let meta_data = property.get_field_metadata()?;
 
                 content_to_render.push(quote::quote!(
-                    self.#name.fill_where_value(None, sql, params, &#meta_data);
+                   self.#name.fill_where_value(None, sql, params, &#meta_data);
 
                 ));
             }

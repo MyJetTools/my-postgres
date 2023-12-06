@@ -15,8 +15,9 @@ impl SqlWhereValueProvider for RawField {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         sql.push_str(&self.value);
+        true
     }
 }
 

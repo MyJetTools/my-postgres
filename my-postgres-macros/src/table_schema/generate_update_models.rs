@@ -6,7 +6,6 @@ use types_reader::{StructProperty, TypeName};
 use crate::fn_impl_update::{generate_derive_model, UpdateFields};
 
 pub fn generate_update_models<'s>(
-    type_name: &TypeName,
     fields: &'s [&'s StructProperty],
 ) -> Result<TokenStream, syn::Error> {
     let update_fields = UpdateFields::new_from_table_schema(fields)?;

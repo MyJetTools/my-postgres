@@ -101,6 +101,7 @@ pub fn generate(
         quote::quote!{
             #operator_check
             sql.push_str(self.as_numbered_str());
+            true
         }
     });
     

@@ -25,6 +25,7 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
             let index = params.push(self.to_str().into());
             sql.push('$');
             sql.push_str(index.to_string().as_str());
+            true
         }
     });
 

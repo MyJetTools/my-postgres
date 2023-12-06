@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use proc_macro2::{Ident, TokenStream};
 
-use types_reader::{PropertyType, StructProperty, TypeName, macros::{MacrosParameters, MacrosEnum}};
+use types_reader::{PropertyType, StructProperty, macros::{MacrosParameters, MacrosEnum}};
 
 use crate::postgres_struct_ext::PostgresStructPropertyExt;
 #[derive(MacrosEnum)]
@@ -24,7 +24,6 @@ pub struct GenerateAdditionalUpdateModelAttributeParams {
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
     let struct_name = &ast.ident;
 
-    let type_name: TypeName = ast.try_into()?;
 
     let fields = StructProperty::read(ast)?;
 
@@ -34,7 +33,7 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
 
     let select_models = super::generate_select_models(&fields)?;
 
-    let update_models = super::generate_update_models(&type_name, &fields)?;
+    let update_models = super::generate_update_models(&fields)?;
     let where_models = super::generate_where_models(&fields)?;
 
     let result =quote::quote!{

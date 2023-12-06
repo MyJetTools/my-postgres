@@ -10,6 +10,7 @@ mod fn_impl_update;
 mod fn_impl_where_model;
 mod impl_where_raw_model;
 mod table_schema;
+mod where_value_provider;
 
 mod db_enum;
 
@@ -22,7 +23,6 @@ mod render_impl;
 use syn;
 mod my_postgres_json_where_model;
 mod where_fields;
-mod where_value_provider;
 
 #[proc_macro_derive(
     SelectDbEntity,

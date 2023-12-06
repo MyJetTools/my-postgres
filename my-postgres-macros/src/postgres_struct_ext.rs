@@ -429,20 +429,21 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         let mut result = Vec::with_capacity(params.len());
 
         for param in params {
-            let params: GenerateAdditionalUpdateModelAttributeParams =
-                params.get(0).unwrap().try_into()?;
+            let param: GenerateAdditionalUpdateModelAttributeParams = param.try_into()?;
 
-            let is_where = match params.param_type {
+            let is_where = match param.param_type {
                 GenerateType::Update => true,
                 GenerateType::Where => false,
             };
 
             let itm = GenerateAdditionalUpdateStruct {
-                struct_name: params.name,
+                struct_name: param.name,
                 field_name: self.name.to_string(),
                 field_ty: self.ty.get_token_stream(),
                 is_where,
             };
+
+            result.push(itm);
         }
 
         Ok(Some(result))

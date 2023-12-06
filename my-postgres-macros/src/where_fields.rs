@@ -96,14 +96,18 @@ impl<'s> WhereFields<'s> {
                 if ignore_if_none {
                     lines.push(quote::quote! {
                         if let Some(value) = &self.#prop_name_ident{
-                            value.fill_where_value(#where_condition, sql, params, &#metadata);
-                            condition_no+=1;
+                            if value.fill_where_value(#where_condition, sql, params, &#metadata){
+                                condition_no+=1;
+                            }
+
                         }
                     });
                 } else {
                     lines.push(quote::quote! {
                         if let Some(value) = &self.#prop_name_ident{
-                            value.fill_where_value(#where_condition, sql, params, &#metadata);
+                            if value.fill_where_value(#where_condition, sql, params, &#metadata){
+                                condition_no+=1;
+                            }
                         }
                         else{
                             if condition_no>0{
@@ -117,8 +121,10 @@ impl<'s> WhereFields<'s> {
                 }
             } else {
                 lines.push(quote::quote! {
-                    self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata);
-                    condition_no+=1;
+                    if self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata){
+                        condition_no+=1;
+                    }
+                    
                 });
             }
         }

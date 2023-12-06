@@ -21,6 +21,8 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
                     json_column_name = full_condition.column_name;
                 }
                 #where_fields
+
+                true
             }
         });
 
@@ -56,13 +58,18 @@ fn generate_json_where_fields(
 
         if src_field.ty.is_option() {
             lines.push(quote::quote! {
-                self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata);
-                condition_no+=1;
+                if self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata)
+                {
+                    condition_no+=1;
+                }
+
             });
         } else {
             lines.push(quote::quote! {
-                self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata);
-                condition_no+=1;
+                if self.#prop_name_ident.fill_where_value(#where_condition, sql, params, &#metadata){
+                    condition_no+=1;
+                }
+                
             });
         }
     }

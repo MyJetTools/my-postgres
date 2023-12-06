@@ -11,7 +11,7 @@ pub fn render_where_value_provider(
                 sql: &mut String,
                 params: &mut my_postgres::sql::SqlValues,
                 metadata: &Option<my_postgres::SqlValueMetadata>,
-            ){
+            )->bool{
                 #body
             }
 

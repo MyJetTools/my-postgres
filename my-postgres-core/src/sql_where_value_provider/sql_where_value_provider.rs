@@ -13,7 +13,7 @@ pub trait SqlWhereValueProvider {
         sql: &mut String,
         params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    );
+    ) -> bool;
 }
 
 impl SqlWhereValueProvider for String {
@@ -23,7 +23,7 @@ impl SqlWhereValueProvider for String {
         sql: &mut String,
         params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
@@ -31,6 +31,7 @@ impl SqlWhereValueProvider for String {
         let index = params.push(self.into());
         sql.push('$');
         sql.push_str(index.to_string().as_str());
+        true
     }
 }
 
@@ -41,7 +42,7 @@ impl<'s> SqlWhereValueProvider for &'s str {
         sql: &mut String,
         params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
@@ -49,6 +50,8 @@ impl<'s> SqlWhereValueProvider for &'s str {
         let index = params.push((*self).into());
         sql.push('$');
         sql.push_str(index.to_string().as_str());
+
+        true
     }
 }
 
@@ -59,7 +62,7 @@ impl SqlWhereValueProvider for DateTimeAsMicroseconds {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
@@ -69,14 +72,14 @@ impl SqlWhereValueProvider for DateTimeAsMicroseconds {
                 if sql_type == "bigint" {
                     sql.push_str(self.unix_microseconds.to_string().as_str());
 
-                    return;
+                    return true;
                 }
 
                 if sql_type == "timestamp" {
                     sql.push('\'');
                     sql.push_str(self.to_rfc3339().as_str());
                     sql.push('\'');
-                    return;
+                    return true;
                 }
 
                 panic!("Unknown sql type: {}", sql_type);
@@ -94,7 +97,7 @@ impl SqlWhereValueProvider for bool {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
@@ -103,6 +106,8 @@ impl SqlWhereValueProvider for bool {
             true => sql.push_str("true"),
             false => sql.push_str("false"),
         }
+
+        true
     }
 }
 
@@ -113,11 +118,13 @@ impl SqlWhereValueProvider for u8 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -128,11 +135,13 @@ impl SqlWhereValueProvider for i8 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -143,11 +152,13 @@ impl SqlWhereValueProvider for u16 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -158,11 +169,13 @@ impl SqlWhereValueProvider for f32 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -173,11 +186,13 @@ impl SqlWhereValueProvider for f64 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -188,11 +203,13 @@ impl SqlWhereValueProvider for i16 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -203,11 +220,13 @@ impl SqlWhereValueProvider for u32 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -218,11 +237,13 @@ impl SqlWhereValueProvider for i32 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -233,11 +254,13 @@ impl SqlWhereValueProvider for u64 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -248,11 +271,13 @@ impl SqlWhereValueProvider for i64 {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, "=", metadata);
         }
         sql.push_str(self.to_string().as_str());
+
+        true
     }
 }
 
@@ -263,7 +288,7 @@ impl SqlWhereValueProvider for tokio_postgres::types::IsNull {
         sql: &mut String,
         _params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if let Some(full_where_condition) = full_where_condition {
             full_where_condition.render_param_name(sql, " IS ", metadata);
         }
@@ -276,6 +301,7 @@ impl SqlWhereValueProvider for tokio_postgres::types::IsNull {
                 sql.push_str("NOT NULL");
             }
         }
+        true
     }
 }
 
@@ -286,16 +312,16 @@ impl<T: SqlWhereValueProvider> SqlWhereValueProvider for Vec<T> {
         sql: &mut String,
         params: &mut crate::sql::SqlValues,
         metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if self.len() == 0 {
-            return;
+            return false;
         }
 
         if self.len() == 1 {
             self.get(0)
                 .unwrap()
                 .fill_where_value(full_where_condition, sql, params, metadata);
-            return;
+            return true;
         }
 
         if let Some(full_where_condition) = full_where_condition {
@@ -311,6 +337,8 @@ impl<T: SqlWhereValueProvider> SqlWhereValueProvider for Vec<T> {
             itm.fill_where_value(None, sql, params, metadata);
         }
         sql.push(')');
+
+        true
     }
 }
 
@@ -321,9 +349,9 @@ impl SqlWhereValueProvider for BTreeMap<String, String> {
         sql: &mut String,
         params: &mut crate::sql::SqlValues,
         _metadata: &Option<SqlValueMetadata>,
-    ) {
+    ) -> bool {
         if self.len() == 0 {
-            return;
+            return false;
         }
 
         if let Some(full_condition) = &full_where_condition {
@@ -355,5 +383,7 @@ impl SqlWhereValueProvider for BTreeMap<String, String> {
                 sql.push(')');
             }
         }
+
+        true
     }
 }
