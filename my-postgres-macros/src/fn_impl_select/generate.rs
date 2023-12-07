@@ -1,30 +1,29 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use types_reader::StructProperty;
+use types_reader::StructureSchema;
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
-    let struct_name = &ast.ident;
+    let structure_schema = StructureSchema::new(ast)?;
 
-    let fields = StructProperty::read(ast)?;
+    let fn_select_fields = super::fn_fill_select_fields::fn_fill_select_fields(&structure_schema)?;
 
-    let fields = crate::postgres_struct_ext::filter_fields(fields)?;
-
-    let fn_select_fields = super::fn_fill_select_fields::fn_fill_select_fields(&fields)?;
-
-    let orders_by_fields = match super::fn_fill_order_by::fn_get_order_by_fields(&fields) {
+    let orders_by_fields = match super::fn_fill_order_by::fn_get_order_by_fields(&structure_schema)
+    {
         Ok(result) => result,
         Err(err) => err.to_compile_error(),
     };
 
-    let group_by_fields = match super::fn_fill_group_by::get_group_by_fields(&fields) {
+    let group_by_fields = match super::fn_fill_group_by::get_group_by_fields(&structure_schema) {
         Ok(result) => result,
         Err(err) => err.to_compile_error(),
     };
 
-    let from_fields = match super::fn_from::fn_from(&fields) {
+    let from_fields = match super::fn_from::fn_from(&structure_schema) {
         Ok(result) => result,
         Err(err) => vec![err.to_compile_error()],
     };
+
+    let struct_name = structure_schema.name.get_name_ident();
 
     let result = quote! {
         impl my_postgres::sql_select::SelectEntity for #struct_name{

@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use types_reader::StructProperty;
 
-use crate::{e_tag::GetETag, postgres_struct_ext::PostgresStructPropertyExt};
+use crate::{
+    e_tag::GetETag, postgres_struct_ext::PostgresStructPropertyExt,
+    postgres_struct_schema::PostgresStructSchema,
+};
 
 pub struct UpdateFields<'s> {
     update_fields: Vec<&'s StructProperty<'s>>,
@@ -10,11 +13,12 @@ pub struct UpdateFields<'s> {
 }
 
 impl<'s> UpdateFields<'s> {
-    pub fn new_from_update_model(items: &'s [StructProperty<'s>]) -> Self {
-        let mut update_fields = Vec::with_capacity(items.len());
-        let mut where_fields = Vec::with_capacity(items.len());
+    pub fn new_from_update_model(items: &'s impl PostgresStructSchema<'s>) -> Self {
+        let fields = items.get_fields();
+        let mut update_fields = Vec::with_capacity(fields.len());
+        let mut where_fields = Vec::with_capacity(fields.len());
 
-        for field in items {
+        for field in fields {
             if field.is_primary_key() {
                 where_fields.push(field)
             } else {
@@ -29,11 +33,11 @@ impl<'s> UpdateFields<'s> {
     }
 
     pub fn new_from_table_schema(
-        fields: &'s [&'s StructProperty<'s>],
+        struct_schema: &'s impl PostgresStructSchema<'s>,
     ) -> Result<HashMap<String, Self>, syn::Error> {
         let mut hash_map = HashMap::new();
 
-        for prop in fields {
+        for prop in struct_schema.get_fields() {
             if let Some(generate_update_models) = prop.get_generate_additional_update_models()? {
                 for generate_update_model in generate_update_models {
                     if !hash_map.contains_key(generate_update_model.struct_name.as_str()) {
@@ -56,9 +60,9 @@ impl<'s> UpdateFields<'s> {
 
             for model_field in model_fields {
                 if model_field.0.is_where {
-                    where_fields.push(*model_field.1);
+                    where_fields.push(model_field.1);
                 } else {
-                    update_fields.push(*model_field.1);
+                    update_fields.push(model_field.1);
                 }
             }
 

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use types_reader::{StructProperty, TypeName};
 
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{postgres_struct_ext::{PostgresStructPropertyExt, DbColumnName}, postgres_struct_schema::PostgresStructSchema};
 
 pub struct WhereFields<'s> {
     pub limit: Option<&'s StructProperty<'s>>,
@@ -11,11 +11,11 @@ pub struct WhereFields<'s> {
 }
 
 impl<'s> WhereFields<'s> {
-    pub fn new(src_fields: &'s [StructProperty<'s>]) -> Self {
+    pub fn new(src_fields: &'s impl PostgresStructSchema<'s>) -> Self {
         let mut limit = None;
         let mut offset = None;
         let mut other_fields = Vec::new();
-        for struct_prop in src_fields {
+        for struct_prop in src_fields.get_fields() {
             if struct_prop.attrs.has_attr("limit") {
                 limit = Some(struct_prop);
             } else if struct_prop.attrs.has_attr("offset") {
@@ -85,12 +85,12 @@ impl<'s> WhereFields<'s> {
 
         for prop in &self.where_fields {
             let prop_name_ident = prop.get_field_name_ident();
-            let db_column_name = prop.get_db_column_name_as_string()?;
+            let db_column_name = prop.get_db_column_name()?;
             let metadata = prop.get_field_metadata()?;
 
             let ignore_if_none = prop.has_ignore_if_none_attr();
 
-            let where_condition = render_full_where_condition(db_column_name, None);
+            let where_condition = render_full_where_condition(&db_column_name, None);
 
             if prop.ty.is_option() {
                 if ignore_if_none {
@@ -103,6 +103,7 @@ impl<'s> WhereFields<'s> {
                         }
                     });
                 } else {
+                    let db_column_name = db_column_name.as_str();
                     lines.push(quote::quote! {
                         if let Some(value) = &self.#prop_name_ident{
                             if value.fill_where_value(#where_condition, sql, params, &#metadata){
@@ -138,7 +139,7 @@ impl<'s> WhereFields<'s> {
 }
 
 pub fn render_full_where_condition(
-    db_column_name: &str,
+    db_column_name: &DbColumnName,
     json_column_name: Option<&str>,
 ) -> proc_macro2::TokenStream {
     let json_column_name = if let Some(json_column_name) = json_column_name {
@@ -147,7 +148,8 @@ pub fn render_full_where_condition(
     } else {
         quote::quote!(None)
     };
-
+    
+    let db_column_name = db_column_name.as_str();
     quote::quote! {
         Some(my_postgres::RenderFullWhereCondition{
             column_name: #db_column_name,

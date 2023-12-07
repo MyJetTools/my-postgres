@@ -1,14 +1,21 @@
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{
+    postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
+};
 use quote::quote;
-use types_reader::{PropertyType, StructProperty};
+use types_reader::PropertyType;
 
-pub fn fn_from(fields: &[StructProperty]) -> Result<Vec<proc_macro2::TokenStream>, syn::Error> {
+pub fn fn_from<'s>(
+    fields: &'s impl PostgresStructSchema<'s>,
+) -> Result<Vec<proc_macro2::TokenStream>, syn::Error> {
+    let fields = fields.get_fields();
     let mut result = Vec::with_capacity(fields.len());
 
     for field in fields {
         let name_ident = field.get_field_name_ident();
 
-        let db_column_name = field.get_db_column_name_as_string()?;
+        let db_column_name = field.get_db_column_name()?;
+
+        let db_column_name = db_column_name.as_str();
 
         let metadata = field.get_field_metadata()?;
 

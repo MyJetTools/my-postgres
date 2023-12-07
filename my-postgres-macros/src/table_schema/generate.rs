@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 
-use types_reader::{PropertyType, StructProperty, macros::{MacrosParameters, MacrosEnum}};
+use types_reader::{PropertyType, StructProperty, macros::{MacrosParameters, MacrosEnum}, StructureSchema};
 
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{postgres_struct_ext::PostgresStructPropertyExt, attributes::primary_key::PrimaryKeyAttribute, postgres_struct_schema::PostgresStructSchema};
 #[derive(MacrosEnum)]
 pub enum GenerateType{
     #[value("where")]
@@ -22,19 +22,14 @@ pub struct GenerateAdditionalUpdateModelAttributeParams {
 
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
-    let struct_name = &ast.ident;
+    let struct_schema = StructureSchema::new(ast)?;
 
+    let db_columns = impl_db_columns(&struct_schema)?;
 
-    let fields = StructProperty::read(ast)?;
+    let select_models = super::generate_select_models(&struct_schema)?;
 
-    let fields = super::utils::filter_table_schema_fields(&fields);
-
-    let db_columns = impl_db_columns(struct_name, &fields)?;
-
-    let select_models = super::generate_select_models(&fields)?;
-
-    let update_models = super::generate_update_models(&fields)?;
-    let where_models = super::generate_where_models(&fields)?;
+    let update_models = super::generate_update_models(&struct_schema)?;
+    let where_models = super::generate_where_models(&struct_schema)?;
 
     let result =quote::quote!{
         #db_columns
@@ -49,9 +44,8 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
     Ok(result)
 }
 
-fn impl_db_columns(
-    struct_name: &Ident,
-    fields: &Vec<&StructProperty>,
+fn impl_db_columns<'s>(
+    struct_schema: &'s impl PostgresStructSchema<'s>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let mut result = Vec::new();
 
@@ -61,19 +55,23 @@ fn impl_db_columns(
 
     let mut last_primary_key_id = 0;
 
-    for field in fields {
-        let field_name = field.get_db_column_name_as_string()?;
+    for field in struct_schema.get_fields() {
+        let db_column_name = field.get_db_column_name()?;
         let sql_type = get_sql_type(field, &field.ty)?;
         let is_option: bool = field.ty.is_option();
 
-        if let Some(value) = field.get_primary_key_id(last_primary_key_id)? {
+
+        let primary_key_attr:Option<PrimaryKeyAttribute> = field.try_get_attribute()?;
+
+        if let Some(attr) = primary_key_attr {
+            let value = attr.get_id(last_primary_key_id);
             if primary_keys.contains_key(&value) {
                 return Err(syn::Error::new_spanned(
                     field.field,
                     format!("Primary key order id {} is already used", value),
                 ));
             }
-            primary_keys.insert(value, field_name);
+            primary_keys.insert(value, db_column_name.to_string());
             last_primary_key_id += 1;
         };
 
@@ -108,9 +106,12 @@ fn impl_db_columns(
             quote::quote!(None)
         };
 
+
+        let db_column_name = db_column_name.as_str();
+
         result.push(quote::quote! {
             TableColumn{
-                name: #field_name.into(),
+                name: #db_column_name.into(),
                 sql_type: #sql_type,
                 is_nullable: #is_option,
                 default: #default_value
@@ -161,6 +162,8 @@ fn impl_db_columns(
             Some(result)
         }
     };
+
+    let struct_name = struct_schema.get_name().get_name_ident();
 
     let result = quote::quote! {
 

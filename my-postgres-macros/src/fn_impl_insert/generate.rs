@@ -1,19 +1,15 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use types_reader::StructProperty;
+use types_reader::{StructProperty, StructureSchema};
 
 use crate::{e_tag::GetETag, postgres_struct_ext::PostgresStructPropertyExt};
 
 use super::insert_fields::InsertFields;
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
-    let name = &ast.ident;
+    let structure_schema = StructureSchema::new(ast)?;
 
-    let fields = StructProperty::read(ast)?;
-
-    let fields = crate::postgres_struct_ext::filter_fields(fields)?;
-
-    let fields = InsertFields::new(fields);
+    let fields = InsertFields::new(&structure_schema);
 
     let fields_amount = fields.get_fields_amount();
 
@@ -24,6 +20,8 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
     let e_tag = fields.get_e_tag();
 
     let e_tag_methods = crate::e_tag::generate_e_tag_methods(e_tag);
+
+    let name = structure_schema.name.get_name_ident();
 
     let result = quote! {
         impl my_postgres::sql_insert::SqlInsertModel for #name{
@@ -57,11 +55,12 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
 }
 
 pub fn fn_get_column_name(
-    fields: &[StructProperty],
+    fields: &[&StructProperty],
 ) -> Result<Vec<proc_macro2::TokenStream>, syn::Error> {
     let mut result = Vec::new();
     for (i, prop) in fields.iter().enumerate() {
-        let field_name = prop.get_db_column_name_as_string()?;
+        let field_name = prop.get_db_column_name()?;
+        let field_name = field_name.as_str();
 
         result.push(quote! (#i=>#field_name.into(),).into());
     }
@@ -69,7 +68,7 @@ pub fn fn_get_column_name(
 }
 
 pub fn fn_get_field_value(
-    fields: &[StructProperty],
+    fields: &[&StructProperty],
 ) -> Result<Vec<proc_macro2::TokenStream>, syn::Error> {
     let mut result = Vec::new();
     for (i, field) in fields.iter().enumerate() {

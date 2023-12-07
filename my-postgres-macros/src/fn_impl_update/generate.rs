@@ -1,14 +1,12 @@
 use proc_macro::TokenStream;
-use types_reader::{StructProperty, TypeName};
+use types_reader::{StructureSchema, TypeName};
 
 use super::update_fields::UpdateFields;
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
     let type_name: TypeName = ast.try_into()?;
 
-    let fields = StructProperty::read(ast)?;
-
-    let fields = crate::postgres_struct_ext::filter_fields(fields)?;
+    let fields = StructureSchema::new(ast)?;
 
     let update_fields = UpdateFields::new_from_update_model(&fields);
 

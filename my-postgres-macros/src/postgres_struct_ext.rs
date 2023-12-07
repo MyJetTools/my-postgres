@@ -1,17 +1,40 @@
 use proc_macro2::TokenStream;
-use types_reader::{PropertyType, StructProperty};
+use types_reader::{MacrosAttribute, PropertyType, StructProperty};
 
 use crate::{
-    attributes::sql_type::SqlTypeAttribute,
+    attributes::{
+        db_column_name::DbColumnNameAttribute, primary_key::PrimaryKeyAttribute,
+        sql_type::SqlTypeAttribute,
+    },
     e_tag::ETagData,
     table_schema::{GenerateAdditionalUpdateModelAttributeParams, GenerateType},
 };
 
-pub const ATTR_PRIMARY_KEY: &str = "primary_key";
-pub const ATTR_DB_COLUMN_NAME: &str = "db_column_name";
+//pub const ATTR_PRIMARY_KEY: &str = "primary_key";
+//pub const ATTR_DB_COLUMN_NAME: &str = "db_column_name";
 //pub const ATTR_IGNORE_IF_NULL: &str = "ignore_if_null";
 
 //pub const ATTR_SQL_TYPE: &str = "sql_type";
+
+pub struct DbColumnName<'s> {
+    pub attr: Option<DbColumnNameAttribute<'s>>,
+    pub property_name: &'s str,
+}
+
+impl DbColumnName<'_> {
+    pub fn as_str(&self) -> &str {
+        if let Some(attr) = &self.attr {
+            return attr.name;
+        }
+
+        self.property_name
+    }
+
+    pub fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
 pub const ATTR_JSON: &str = "json";
 
 pub enum DefaultValue {
@@ -57,17 +80,17 @@ pub struct GenerateAdditionalSelectStruct {
 pub trait PostgresStructPropertyExt<'s> {
     fn is_primary_key(&self) -> bool;
 
-    fn get_primary_key_id(&self, last_id: u8) -> Result<Option<u8>, syn::Error>;
+    //fn get_primary_key_attribute(&self) -> Result<Option<PrimaryKeyAttribute>, syn::Error>;
 
-    fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error>;
+    // fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error>;
 
-    fn try_get_sql_type(&self) -> Result<Option<SqlTypeAttribute>, syn::Error>;
+    //fn try_get_sql_type(&self) -> Result<Option<SqlTypeAttribute>, syn::Error>;
 
-    fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
+    //fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
-    fn get_db_column_name_as_string(&self) -> Result<&str, syn::Error>;
+    fn get_db_column_name(&self) -> Result<DbColumnName, syn::Error>;
 
-    fn try_get_db_column_name_as_string(&self) -> Result<Option<&str>, syn::Error>;
+    // fn try_get_db_column_name_as_string(&self) -> Result<Option<&str>, syn::Error>;
 
     fn has_json_attr(&self) -> bool;
 
@@ -219,32 +242,43 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 
     fn is_primary_key(&self) -> bool {
-        self.attrs.has_attr(ATTR_PRIMARY_KEY)
+        self.attrs.has_attr(PrimaryKeyAttribute::NAME)
     }
 
-    fn get_primary_key_id(&self, last_id: u8) -> Result<Option<u8>, syn::Error> {
-        if let Some(value) = self.attrs.try_get_attr(ATTR_PRIMARY_KEY) {
-            match value.try_get_single_param() {
-                Some(value) => {
-                    return Ok(Some(value.parse("must be value from 0..255".into())?));
-                }
-                None => {
-                    return Ok(Some(last_id + 1));
-                }
-            }
+    fn get_db_column_name(&self) -> Result<DbColumnName, syn::Error> {
+        let attr: Option<DbColumnNameAttribute> = self.try_get_attribute()?;
+
+        let result = DbColumnName {
+            attr,
+            property_name: &self.name,
+        };
+
+        Ok(result)
+    }
+    /*
+    fn get_primary_key_attribute(&self) -> Result<Option<PrimaryKeyAttribute>, syn::Error> {
+        let attr = self
+            .attrs
+            .try_get_attr(PrimaryKeyAttribute::get_attr_name());
+
+        if attr.is_none() {
+            return Ok(None);
         }
 
-        Ok(None)
-    }
+        let attr = attr.unwrap();
 
+        Ok(Some(attr.try_into()?))
+    }
+    */
     fn has_ignore_attr(&self) -> bool {
         self.attrs.has_attr("ignore")
     }
 
-    fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error> {
-        let attr = self.attrs.get_attr(SqlTypeAttribute::get_attr_name())?;
-        attr.try_into()
-    }
+    /*
+       fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error> {
+           let attr = self.attrs.get_attr(SqlTypeAttribute::get_attr_name())?;
+           attr.try_into()
+       }
 
     fn try_get_sql_type(&self) -> Result<Option<SqlTypeAttribute>, syn::Error> {
         let attr = self.attrs.try_get_attr(SqlTypeAttribute::get_attr_name());
@@ -258,7 +292,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         let result = attr.try_into()?;
         Ok(Some(result))
     }
-
+    */
     fn has_ignore_if_none_attr(&self) -> bool {
         self.attrs.has_attr("ignore_if_none")
     }
@@ -303,40 +337,43 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         return Ok(None);
     }
 
-    fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        if let Ok(attr) = self.attrs.get_attr(ATTR_DB_COLUMN_NAME) {
-            if let Ok(result) = attr.get_from_single_or_named("name") {
-                let name = result.any_value_as_str().as_str();
-                return Ok(quote::quote!(#name));
+    /*
+        fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
+            if let Ok(attr) = self.attrs.get_attr(ATTR_DB_COLUMN_NAME) {
+                if let Ok(result) = attr.get_from_single_or_named("name") {
+                    let name = result.any_value_as_str().as_str();
+                    return Ok(quote::quote!(#name));
+                }
             }
+
+            let name = self.name.as_str();
+
+            Ok(quote::quote!(#name))
         }
 
-        let name = self.name.as_str();
 
-        Ok(quote::quote!(#name))
-    }
+        fn get_db_column_name_as_string(&self) -> Result<&str, syn::Error> {
+            if let Ok(attr) = self
+                .attrs
+                .get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
+            {
+                return Ok(attr.as_string()?);
+            }
 
-    fn get_db_column_name_as_string(&self) -> Result<&str, syn::Error> {
-        if let Ok(attr) = self
-            .attrs
-            .get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
-        {
-            return Ok(attr.as_string()?);
+            Ok(self.name.as_str())
         }
 
-        Ok(self.name.as_str())
-    }
+        fn try_get_db_column_name_as_string(&self) -> Result<Option<&str>, syn::Error> {
+            if let Some(attr) = self
+                .attrs
+                .try_get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
+            {
+                return Ok(Some(attr.as_string()?));
+            }
 
-    fn try_get_db_column_name_as_string(&self) -> Result<Option<&str>, syn::Error> {
-        if let Some(attr) = self
-            .attrs
-            .try_get_single_or_named_param(ATTR_DB_COLUMN_NAME, "name")
-        {
-            return Ok(Some(attr.as_string()?));
+            Ok(None)
         }
-
-        Ok(None)
-    }
+    */
 
     fn get_index_attrs(&self) -> Result<Option<Vec<IndexAttr>>, syn::Error> {
         let attrs = self.attrs.try_get_attrs("db_index");
@@ -360,7 +397,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
             let order: &str = attr.get_named_param("order")?.try_into()?;
             if order != "DESC" && order != "ASC" {
-                return Err(attr.throw_error("order must be DESC or ASC"));
+                return Err(attr.throw_error_at_value_token("order must be DESC or ASC"));
             }
 
             result.push(IndexAttr {
@@ -368,7 +405,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
                 index_name,
                 is_unique,
                 order: order.to_string(),
-                name: self.get_db_column_name_as_string()?.to_string(),
+                name: self.get_db_column_name()?.as_str().to_string(),
             })
         }
 
@@ -376,7 +413,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 
     fn get_field_metadata(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        let sql_type = self.try_get_sql_type()?;
+        let sql_type: Option<SqlTypeAttribute> = self.try_get_attribute()?;
         let operator = self.get_where_operator()?;
         if sql_type.is_none() && operator.is_none() {
             return Ok(quote::quote!(None));
@@ -410,7 +447,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
         let result = ETagData {
             field_name: self.get_field_name_ident(),
-            column_name: self.get_db_column_name_as_string()?,
+            column_name: self.get_db_column_name()?.to_string(),
         };
 
         Ok(Some(result))
@@ -582,31 +619,16 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 
     fn fill_attributes(&self, fields: &mut Vec<TokenStream>) -> Result<(), syn::Error> {
-        if let Some(db_column_name) = self.try_get_db_column_name_as_string()? {
-            crate::table_schema::attr_generators::generate_db_column_name_attribute(
-                fields,
-                db_column_name,
-            );
+        if let Some(db_column_name) = self.get_db_column_name()?.attr {
+            fields.push(db_column_name.generate_attribute());
         }
 
-        if let Some(sql_type) = self.try_get_sql_type()? {
+        let sql_type_attribute: Option<SqlTypeAttribute> = self.try_get_attribute()?;
+
+        if let Some(sql_type) = sql_type_attribute {
             fields.push(sql_type.generate_attribute());
         }
 
         Ok(())
     }
-}
-
-pub fn filter_fields(src: Vec<StructProperty>) -> Result<Vec<StructProperty>, syn::Error> {
-    let mut result = Vec::with_capacity(src.len());
-
-    for itm in src {
-        if itm.has_ignore_attr() {
-            continue;
-        }
-
-        result.push(itm);
-    }
-
-    return Ok(result);
 }

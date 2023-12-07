@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use types_reader::macros::*;
 
 #[derive(MacrosEnum)]
@@ -27,6 +25,7 @@ impl SqlTypeAttribute {
         }
     }
 
+    /*
     pub fn generate_table_column_type(&self) -> proc_macro2::TokenStream {
         let result = match self.name {
             SqlType::Bigint => "my_postgres::table_schema::TableColumnType::BigInt",
@@ -36,4 +35,5 @@ impl SqlTypeAttribute {
 
         proc_macro2::TokenStream::from_str(result).unwrap()
     }
+     */
 }

@@ -1,16 +1,18 @@
 use std::{collections::HashMap, str::FromStr};
 
 use proc_macro2::TokenStream;
-use types_reader::StructProperty;
 
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{
+    attributes::sql_type::SqlTypeAttribute, postgres_struct_ext::PostgresStructPropertyExt,
+    postgres_struct_schema::PostgresStructSchema,
+};
 
 pub fn generate_select_models<'s>(
-    fields: &'s [&'s StructProperty],
+    struct_schema: &'s impl PostgresStructSchema<'s>,
 ) -> Result<TokenStream, syn::Error> {
     let mut found_fields = HashMap::new();
 
-    for field in fields {
+    for field in struct_schema.get_fields() {
         let where_models = field.get_generate_additional_select_models()?;
 
         if let Some(where_models) = where_models {
@@ -40,14 +42,13 @@ pub fn generate_select_models<'s>(
 
             field.fill_attributes(&mut fields)?;
 
-            if let Some(db_column_name) = field.try_get_db_column_name_as_string()? {
-                super::attr_generators::generate_db_column_name_attribute(
-                    &mut fields,
-                    db_column_name,
-                );
+            if let Some(db_column_name) = field.get_db_column_name()?.attr {
+                fields.push(db_column_name.generate_attribute());
             }
 
-            if let Some(sql_type) = field.try_get_sql_type()? {
+            let sql_type_attr: Option<SqlTypeAttribute> = field.try_get_attribute()?;
+
+            if let Some(sql_type) = sql_type_attr {
                 fields.push(sql_type.generate_attribute());
             }
 

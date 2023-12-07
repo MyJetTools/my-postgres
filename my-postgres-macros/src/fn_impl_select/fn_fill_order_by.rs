@@ -1,10 +1,12 @@
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{
+    postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
+};
 use quote::quote;
-use types_reader::StructProperty;
 
-pub fn fn_get_order_by_fields(
-    fields: &[StructProperty],
+pub fn fn_get_order_by_fields<'s>(
+    fields: &'s impl PostgresStructSchema<'s>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let fields = fields.get_fields();
     let mut order_by_desc = Vec::with_capacity(fields.len());
     let mut order_by = Vec::with_capacity(fields.len());
 
@@ -37,14 +39,14 @@ pub fn fn_get_order_by_fields(
     if !order_by_desc.is_empty() {
         for field in order_by_desc {
             result.push(' ');
-            let value = field.get_db_column_name_as_string()?;
-            result.push_str(value);
+            let db_column_name = field.get_db_column_name()?;
+            result.push_str(db_column_name.as_str());
         }
         result.push_str(" DESC");
     } else if !order_by.is_empty() {
         for field in order_by {
             result.push(' ');
-            result.push_str(field.get_db_column_name_as_string()?);
+            result.push_str(field.get_db_column_name()?.as_str());
         }
     }
 

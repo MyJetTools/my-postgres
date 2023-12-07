@@ -1,11 +1,14 @@
-use types_reader::{PropertyType, StructProperty};
+use types_reader::PropertyType;
 
-use crate::postgres_struct_ext::PostgresStructPropertyExt;
+use crate::{
+    postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
+};
 use quote::quote;
 
-pub fn fn_fill_select_fields(
-    fields: &[StructProperty],
+pub fn fn_fill_select_fields<'s>(
+    fields: &'s impl PostgresStructSchema<'s>,
 ) -> Result<Vec<proc_macro2::TokenStream>, syn::Error> {
+    let fields = fields.get_fields();
     let mut result = Vec::with_capacity(fields.len() * 2);
 
     for prop in fields {
@@ -19,7 +22,8 @@ pub fn fn_fill_select_fields(
                 sql.push_str(#attr_value);
             });
         } else {
-            let db_column_name = prop.get_db_column_name_as_token()?;
+            let db_column_name = prop.get_db_column_name()?;
+            let db_column_name = db_column_name.as_str();
 
             let metadata = prop.get_field_metadata()?;
 

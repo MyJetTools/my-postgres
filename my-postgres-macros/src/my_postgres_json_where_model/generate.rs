@@ -48,11 +48,11 @@ fn generate_json_where_fields(
 
     for src_field in src_fields {
         let prop_name_ident = src_field.get_field_name_ident();
-        let db_column_name = src_field.get_db_column_name_as_string()?;
+        let db_column_name = src_field.get_db_column_name()?;
         let metadata = src_field.get_field_metadata()?;
 
         let where_condition = crate::where_fields::render_full_where_condition(
-            db_column_name,
+            &db_column_name,
             Some("json_column_name"),
         );
 

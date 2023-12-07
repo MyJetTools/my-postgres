@@ -23,6 +23,7 @@ mod render_impl;
 use syn;
 mod attributes;
 mod my_postgres_json_where_model;
+mod postgres_struct_schema;
 mod where_fields;
 
 #[proc_macro_derive(

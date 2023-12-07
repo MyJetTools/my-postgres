@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
-use types_reader::{StructProperty, TokensObject, TypeName};
+use types_reader::{StructureSchema, TokensObject, TypeName};
 
 use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
 
@@ -17,9 +17,9 @@ pub fn generate_where_raw_model<'s>(
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let type_name: TypeName = (&ast).try_into()?;
 
-    let src_fields = StructProperty::read(&ast)?;
+    let src_fields = StructureSchema::new(&ast)?;
 
-    let where_fields = WhereFields::new(src_fields.as_slice());
+    let where_fields = WhereFields::new(&src_fields);
 
     let generate_limit_fn = where_fields.generate_limit_fn();
     let generate_offset_fn = where_fields.generate_offset_fn();

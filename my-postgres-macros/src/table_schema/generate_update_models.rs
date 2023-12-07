@@ -1,14 +1,17 @@
 use std::str::FromStr;
 
 use proc_macro2::TokenStream;
-use types_reader::{StructProperty, TypeName};
+use types_reader::TypeName;
 
-use crate::fn_impl_update::{generate_derive_model, UpdateFields};
+use crate::{
+    fn_impl_update::{generate_derive_model, UpdateFields},
+    postgres_struct_schema::PostgresStructSchema,
+};
 
 pub fn generate_update_models<'s>(
-    fields: &'s [&'s StructProperty],
+    struct_schema: &'s impl PostgresStructSchema<'s>,
 ) -> Result<TokenStream, syn::Error> {
-    let update_fields = UpdateFields::new_from_table_schema(fields)?;
+    let update_fields = UpdateFields::new_from_table_schema(struct_schema)?;
 
     let mut result = Vec::new();
     for (struct_name, update_fields) in update_fields {

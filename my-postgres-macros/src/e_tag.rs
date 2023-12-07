@@ -2,7 +2,7 @@ use types_reader::StructProperty;
 
 use crate::postgres_struct_ext::PostgresStructPropertyExt;
 pub struct ETagData<'s> {
-    pub column_name: &'s str,
+    pub column_name: String,
     pub field_name: &'s proc_macro2::Ident,
 }
 

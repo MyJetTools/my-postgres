@@ -2,16 +2,17 @@ use std::{collections::HashMap, str::FromStr};
 
 use proc_macro2::TokenStream;
 
-use types_reader::StructProperty;
-
-use crate::postgres_struct_ext::{GenerateAdditionalWhereStruct, PostgresStructPropertyExt};
+use crate::{
+    postgres_struct_ext::{GenerateAdditionalWhereStruct, PostgresStructPropertyExt},
+    postgres_struct_schema::PostgresStructSchema,
+};
 
 pub fn generate_where_models<'s>(
-    fields: &'s [&'s StructProperty],
+    struct_schema: &'s impl PostgresStructSchema<'s>,
 ) -> Result<TokenStream, syn::Error> {
     let mut found_fields = HashMap::new();
 
-    for field in fields {
+    for field in struct_schema.get_fields() {
         let where_models = field.get_generate_additional_where_models()?;
 
         if let Some(where_models) = where_models {
@@ -43,13 +44,6 @@ pub fn generate_where_models<'s>(
 
                 field.fill_attributes(&mut fields)?;
 
-                let db_column_name = field.get_db_column_name_as_string()?;
-
-                super::attr_generators::generate_db_column_name_attribute(
-                    &mut fields,
-                    db_column_name,
-                );
-
                 push_field(&mut fields, &model, Some("_from"));
 
                 if let Some(operator_to) = model.operator_to.as_ref() {
@@ -58,11 +52,6 @@ pub fn generate_where_models<'s>(
                     });
 
                     field.fill_attributes(&mut fields)?;
-
-                    super::attr_generators::generate_db_column_name_attribute(
-                        &mut fields,
-                        db_column_name,
-                    );
 
                     push_field(&mut fields, &model, Some("_to"));
                 }
@@ -73,11 +62,8 @@ pub fn generate_where_models<'s>(
                     })
                 }
 
-                if let Some(db_column_name) = field.try_get_db_column_name_as_string()? {
-                    super::attr_generators::generate_db_column_name_attribute(
-                        &mut fields,
-                        db_column_name,
-                    );
+                if let Some(db_column_attr) = field.get_db_column_name()?.attr {
+                    fields.push(db_column_attr.generate_attribute());
                 }
 
                 field.fill_attributes(&mut fields)?;
