@@ -3,8 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use proc_macro2::TokenStream;
 
 use crate::{
-    attributes::sql_type::SqlTypeAttribute, postgres_struct_ext::PostgresStructPropertyExt,
-    postgres_struct_schema::PostgresStructSchema,
+    postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
 };
 
 pub fn generate_select_models<'s>(
@@ -40,17 +39,7 @@ pub fn generate_select_models<'s>(
             let field_name = TokenStream::from_str(model.field_name.as_str()).unwrap();
             let ty = &model.field_ty;
 
-            field.fill_attributes(&mut fields)?;
-
-            if let Some(db_column_name) = field.get_db_column_name()?.attr {
-                fields.push(db_column_name.generate_attribute());
-            }
-
-            let sql_type_attr: Option<SqlTypeAttribute> = field.try_get_attribute()?;
-
-            if let Some(sql_type) = sql_type_attr {
-                fields.push(sql_type.generate_attribute());
-            }
+            field.fill_attributes(&mut fields, None)?;
 
             fields.push(quote::quote! {
                 pub #field_name: #ty,

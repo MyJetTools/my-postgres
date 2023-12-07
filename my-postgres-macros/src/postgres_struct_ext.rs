@@ -33,6 +33,16 @@ impl DbColumnName<'_> {
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
+
+    pub fn get_overridden_column_name(&self) -> DbColumnNameAttribute {
+        if let Some(attr) = &self.attr {
+            return DbColumnNameAttribute { name: attr.name };
+        }
+
+        DbColumnNameAttribute {
+            name: self.property_name,
+        }
+    }
 }
 
 pub const ATTR_JSON: &str = "json";
@@ -133,7 +143,11 @@ pub trait PostgresStructPropertyExt<'s> {
         &self,
     ) -> Result<Option<Vec<GenerateAdditionalSelectStruct>>, syn::Error>;
 
-    fn fill_attributes(&self, fields: &mut Vec<TokenStream>) -> Result<(), syn::Error>;
+    fn fill_attributes(
+        &self,
+        fields: &mut Vec<TokenStream>,
+        override_db_column_name: Option<DbColumnNameAttribute>,
+    ) -> Result<(), syn::Error>;
 
     fn render_field_value(&self, is_update: bool) -> Result<proc_macro2::TokenStream, syn::Error> {
         match &self.get_ty() {
@@ -618,9 +632,17 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         ));
     }
 
-    fn fill_attributes(&self, fields: &mut Vec<TokenStream>) -> Result<(), syn::Error> {
-        if let Some(db_column_name) = self.get_db_column_name()?.attr {
-            fields.push(db_column_name.generate_attribute());
+    fn fill_attributes(
+        &self,
+        fields: &mut Vec<TokenStream>,
+        override_db_column_name: Option<DbColumnNameAttribute>,
+    ) -> Result<(), syn::Error> {
+        if let Some(override_db_column_name) = override_db_column_name {
+            fields.push(override_db_column_name.generate_attribute());
+        } else {
+            if let Some(db_column_name) = self.get_db_column_name()?.attr {
+                fields.push(db_column_name.generate_attribute());
+            }
         }
 
         let sql_type_attribute: Option<SqlTypeAttribute> = self.try_get_attribute()?;

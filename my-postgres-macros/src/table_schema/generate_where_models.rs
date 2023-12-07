@@ -42,7 +42,10 @@ pub fn generate_where_models<'s>(
                     #[operator(#operator_from)]
                 });
 
-                field.fill_attributes(&mut fields)?;
+                let overridden_column_name = field.get_db_column_name()?;
+                let overridden_column_name = overridden_column_name.get_overridden_column_name();
+
+                field.fill_attributes(&mut fields, Some(overridden_column_name))?;
 
                 push_field(&mut fields, &model, Some("_from"));
 
@@ -51,7 +54,11 @@ pub fn generate_where_models<'s>(
                         #[operator(#operator_to)]
                     });
 
-                    field.fill_attributes(&mut fields)?;
+                    let overridden_column_name = field.get_db_column_name()?;
+                    let overridden_column_name =
+                        overridden_column_name.get_overridden_column_name();
+
+                    field.fill_attributes(&mut fields, Some(overridden_column_name))?;
 
                     push_field(&mut fields, &model, Some("_to"));
                 }
@@ -62,11 +69,7 @@ pub fn generate_where_models<'s>(
                     })
                 }
 
-                if let Some(db_column_attr) = field.get_db_column_name()?.attr {
-                    fields.push(db_column_attr.generate_attribute());
-                }
-
-                field.fill_attributes(&mut fields)?;
+                field.fill_attributes(&mut fields, None)?;
 
                 push_field(&mut fields, &model, None);
             }
@@ -91,18 +94,6 @@ pub fn generate_where_models<'s>(
     Ok(result)
 }
 
-/*
-fn generate_additional_attributes(
-    fields: &mut Vec<TokenStream>,
-    field: &StructProperty,
-) -> Result<(), syn::Error> {
-    if let Some(sql_type) = field.try_get_sql_type()? {
-        super::attr_generators::generate_sql_type(fields, sql_type);
-    }
-
-    Ok(())
-}
- */
 fn generate_struct(
     result: &mut Vec<TokenStream>,
     struct_name: &str,
