@@ -1,7 +1,8 @@
 use proc_macro2::TokenStream;
-use types_reader::{ObjectValue, PropertyType, StructProperty};
+use types_reader::{PropertyType, StructProperty};
 
 use crate::{
+    attributes::sql_type::SqlTypeAttribute,
     e_tag::ETagData,
     table_schema::{GenerateAdditionalUpdateModelAttributeParams, GenerateType},
 };
@@ -10,7 +11,7 @@ pub const ATTR_PRIMARY_KEY: &str = "primary_key";
 pub const ATTR_DB_COLUMN_NAME: &str = "db_column_name";
 //pub const ATTR_IGNORE_IF_NULL: &str = "ignore_if_null";
 
-pub const ATTR_SQL_TYPE: &str = "sql_type";
+//pub const ATTR_SQL_TYPE: &str = "sql_type";
 pub const ATTR_JSON: &str = "json";
 
 pub enum DefaultValue {
@@ -58,9 +59,9 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_primary_key_id(&self, last_id: u8) -> Result<Option<u8>, syn::Error>;
 
-    fn get_sql_type(&self) -> Result<&ObjectValue, syn::Error>;
+    fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error>;
 
-    fn try_get_sql_type(&self) -> Option<&ObjectValue>;
+    fn try_get_sql_type(&self) -> Result<Option<SqlTypeAttribute>, syn::Error>;
 
     fn get_db_column_name_as_token(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
@@ -108,6 +109,8 @@ pub trait PostgresStructPropertyExt<'s> {
     fn get_generate_additional_select_models(
         &self,
     ) -> Result<Option<Vec<GenerateAdditionalSelectStruct>>, syn::Error>;
+
+    fn fill_attributes(&self, fields: &mut Vec<TokenStream>) -> Result<(), syn::Error>;
 
     fn render_field_value(&self, is_update: bool) -> Result<proc_macro2::TokenStream, syn::Error> {
         match &self.get_ty() {
@@ -238,13 +241,22 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         self.attrs.has_attr("ignore")
     }
 
-    fn get_sql_type(&self) -> Result<&ObjectValue, syn::Error> {
-        self.attrs.get_single_or_named_param(ATTR_SQL_TYPE, "name")
+    fn get_sql_type(&self) -> Result<SqlTypeAttribute, syn::Error> {
+        let attr = self.attrs.get_attr(SqlTypeAttribute::get_attr_name())?;
+        attr.try_into()
     }
 
-    fn try_get_sql_type(&self) -> Option<&ObjectValue> {
-        self.attrs
-            .try_get_single_or_named_param(ATTR_SQL_TYPE, "name")
+    fn try_get_sql_type(&self) -> Result<Option<SqlTypeAttribute>, syn::Error> {
+        let attr = self.attrs.try_get_attr(SqlTypeAttribute::get_attr_name());
+
+        if attr.is_none() {
+            return Ok(None);
+        }
+
+        let attr = attr.unwrap();
+
+        let result = attr.try_into()?;
+        Ok(Some(result))
     }
 
     fn has_ignore_if_none_attr(&self) -> bool {
@@ -364,14 +376,14 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 
     fn get_field_metadata(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
-        let sql_type = self.try_get_sql_type();
+        let sql_type = self.try_get_sql_type()?;
         let operator = self.get_where_operator()?;
         if sql_type.is_none() && operator.is_none() {
             return Ok(quote::quote!(None));
         }
 
         let sql_type = if let Some(sql_type) = sql_type {
-            let sql_type = sql_type.as_string()?;
+            let sql_type = sql_type.name.as_str();
             quote::quote!(Some(#sql_type))
         } else {
             quote::quote!(None)
@@ -568,6 +580,21 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             format!("Invalid operator {}", value),
         ));
     }
+
+    fn fill_attributes(&self, fields: &mut Vec<TokenStream>) -> Result<(), syn::Error> {
+        if let Some(db_column_name) = self.try_get_db_column_name_as_string()? {
+            crate::table_schema::attr_generators::generate_db_column_name_attribute(
+                fields,
+                db_column_name,
+            );
+        }
+
+        if let Some(sql_type) = self.try_get_sql_type()? {
+            fields.push(sql_type.generate_attribute());
+        }
+
+        Ok(())
+    }
 }
 
 pub fn filter_fields(src: Vec<StructProperty>) -> Result<Vec<StructProperty>, syn::Error> {
@@ -576,26 +603,6 @@ pub fn filter_fields(src: Vec<StructProperty>) -> Result<Vec<StructProperty>, sy
     for itm in src {
         if itm.has_ignore_attr() {
             continue;
-        }
-
-        let is_date_time = match &itm.ty {
-            PropertyType::DateTime => true,
-            PropertyType::OptionOf(sub_ty) => sub_ty.is_date_time(),
-            _ => false,
-        };
-
-        if is_date_time {
-            let attr = itm.get_sql_type()?;
-
-            let attr: &str = attr.try_into()?;
-            if attr != "timestamp" && attr != "bigint" {
-                let result = syn::Error::new_spanned(
-                    itm.field,
-                    format!("Sql type must be 'timestamp' or 'bigint'"),
-                );
-
-                return Err(result);
-            }
         }
 
         result.push(itm);

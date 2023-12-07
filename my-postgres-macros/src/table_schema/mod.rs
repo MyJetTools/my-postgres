@@ -7,4 +7,4 @@ mod generate_where_models;
 use generate_where_models::*;
 mod generate_select_models;
 pub use generate_select_models::*;
-mod attr_generators;
+pub mod attr_generators;

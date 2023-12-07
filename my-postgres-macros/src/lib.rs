@@ -21,6 +21,7 @@ mod postgres_struct_ext;
 
 mod render_impl;
 use syn;
+mod attributes;
 mod my_postgres_json_where_model;
 mod where_fields;
 

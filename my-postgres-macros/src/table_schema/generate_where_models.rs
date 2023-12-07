@@ -41,7 +41,7 @@ pub fn generate_where_models<'s>(
                     #[operator(#operator_from)]
                 });
 
-                generate_additional_attributes(&mut fields, field)?;
+                field.fill_attributes(&mut fields)?;
 
                 let db_column_name = field.get_db_column_name_as_string()?;
 
@@ -57,7 +57,7 @@ pub fn generate_where_models<'s>(
                         #[operator(#operator_to)]
                     });
 
-                    generate_additional_attributes(&mut fields, field)?;
+                    field.fill_attributes(&mut fields)?;
 
                     super::attr_generators::generate_db_column_name_attribute(
                         &mut fields,
@@ -80,7 +80,7 @@ pub fn generate_where_models<'s>(
                     );
                 }
 
-                generate_additional_attributes(&mut fields, field)?;
+                field.fill_attributes(&mut fields)?;
 
                 push_field(&mut fields, &model, None);
             }
@@ -105,17 +105,18 @@ pub fn generate_where_models<'s>(
     Ok(result)
 }
 
+/*
 fn generate_additional_attributes(
     fields: &mut Vec<TokenStream>,
     field: &StructProperty,
 ) -> Result<(), syn::Error> {
-    if let Some(sql_type) = field.try_get_sql_type() {
-        super::attr_generators::generate_sql_type(fields, sql_type.try_into()?);
+    if let Some(sql_type) = field.try_get_sql_type()? {
+        super::attr_generators::generate_sql_type(fields, sql_type);
     }
 
     Ok(())
 }
-
+ */
 fn generate_struct(
     result: &mut Vec<TokenStream>,
     struct_name: &str,

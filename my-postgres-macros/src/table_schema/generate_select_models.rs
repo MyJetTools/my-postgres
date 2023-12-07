@@ -38,6 +38,8 @@ pub fn generate_select_models<'s>(
             let field_name = TokenStream::from_str(model.field_name.as_str()).unwrap();
             let ty = &model.field_ty;
 
+            field.fill_attributes(&mut fields)?;
+
             if let Some(db_column_name) = field.try_get_db_column_name_as_string()? {
                 super::attr_generators::generate_db_column_name_attribute(
                     &mut fields,
@@ -45,8 +47,8 @@ pub fn generate_select_models<'s>(
                 );
             }
 
-            if let Some(sql_type) = field.try_get_sql_type() {
-                super::attr_generators::generate_sql_type(&mut fields, sql_type.try_into()?);
+            if let Some(sql_type) = field.try_get_sql_type()? {
+                fields.push(sql_type.generate_attribute());
             }
 
             fields.push(quote::quote! {
