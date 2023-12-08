@@ -16,7 +16,6 @@ mod db_enum;
 
 mod my_postgres_json_model;
 
-mod postgres_enum_ext;
 mod postgres_struct_ext;
 
 mod render_impl;

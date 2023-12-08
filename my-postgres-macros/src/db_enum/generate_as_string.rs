@@ -1,9 +1,8 @@
 use quote::quote;
 use types_reader::EnumCase;
 
-//todo!("Check Has Conditions")
+use super::enum_case_ext::EnumCaseExt;
 
-use crate::postgres_enum_ext::PostgresEnumExt;
 pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
     let enum_name = &ast.ident;
 
@@ -12,7 +11,6 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
     let fn_to_str = generate_fn_to_str(&enum_cases)?;
 
     let fn_from_str = generate_fn_from_str(&enum_cases)?;
-
 
     let default_value_reading = super::utils::get_default_value( enum_cases.as_slice())?;
 
@@ -40,7 +38,6 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
                     #fn_to_str
                 }
             }
-
 
             pub fn from_str(src: &str)->Self{
                 match src{
@@ -98,9 +95,12 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
 fn generate_fn_from_str(enum_cases: &[EnumCase]) -> Result<proc_macro2::TokenStream, syn::Error> {
     let mut result = proc_macro2::TokenStream::new();
     for case in enum_cases {
-        let case_ident = &case.get_name_ident();
 
-        let case_value = case.get_case_string_value()?;
+        let case_value = case.get_value()?;
+        let case_value = case_value.get_value_as_str();
+        let case_value = case_value.as_str();
+
+        let case_ident = case.get_name_ident();
 
         result.extend(quote! {
             #case_value => Self::#case_ident,
@@ -114,7 +114,8 @@ fn generate_fn_to_str(enum_cases: &[EnumCase]) -> Result<proc_macro2::TokenStrea
     for case in enum_cases {
         let case_ident = &case.get_name_ident();
 
-        let case_value = case.get_case_string_value()?;
+        let case_value = case.get_value()?.get_value_as_str();
+        let case_value = case_value.as_str();
 
         result.extend(quote! {
             Self::#case_ident => #case_value,

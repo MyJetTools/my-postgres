@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use types_reader::StructProperty;
 
 use crate::{
@@ -7,9 +5,10 @@ use crate::{
     postgres_struct_schema::PostgresStructSchema,
 };
 
+#[derive(Default)]
 pub struct UpdateFields<'s> {
-    update_fields: Vec<&'s StructProperty<'s>>,
-    where_fields: Vec<&'s StructProperty<'s>>,
+    pub update_fields: Vec<&'s StructProperty<'s>>,
+    pub where_fields: Vec<&'s StructProperty<'s>>,
 }
 
 impl<'s> UpdateFields<'s> {
@@ -26,56 +25,6 @@ impl<'s> UpdateFields<'s> {
             }
         }
 
-        Self {
-            update_fields,
-            where_fields,
-        }
-    }
-
-    pub fn new_from_table_schema(
-        struct_schema: &'s impl PostgresStructSchema<'s>,
-    ) -> Result<HashMap<String, Self>, syn::Error> {
-        let mut hash_map = HashMap::new();
-
-        for prop in struct_schema.get_fields() {
-            if let Some(generate_update_models) = prop.get_generate_additional_update_models()? {
-                for generate_update_model in generate_update_models {
-                    if !hash_map.contains_key(generate_update_model.struct_name.as_str()) {
-                        hash_map.insert(generate_update_model.struct_name.to_string(), Vec::new());
-                    }
-
-                    hash_map
-                        .get_mut(generate_update_model.struct_name.as_str())
-                        .unwrap()
-                        .push((generate_update_model, prop));
-                }
-            }
-        }
-
-        let mut result = HashMap::new();
-
-        for (struct_name, model_fields) in hash_map {
-            let mut update_fields = Vec::new();
-            let mut where_fields = Vec::new();
-
-            for model_field in model_fields {
-                if model_field.0.is_where {
-                    where_fields.push(model_field.1);
-                } else {
-                    update_fields.push(model_field.1);
-                }
-            }
-
-            result.insert(struct_name, Self::new(update_fields, where_fields));
-        }
-
-        Ok(result)
-    }
-
-    pub fn new(
-        update_fields: Vec<&'s StructProperty<'s>>,
-        where_fields: Vec<&'s StructProperty<'s>>,
-    ) -> Self {
         Self {
             update_fields,
             where_fields,

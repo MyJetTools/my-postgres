@@ -2,8 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use types_reader::EnumCase;
 
-use crate::postgres_enum_ext::PostgresEnumExt;
-
+use super::enum_case_ext::EnumCaseExt;
 
 pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
     let enum_name = &ast.ident;
@@ -82,7 +81,7 @@ pub fn fn_to_str(enum_cases: &[EnumCase]) -> Result<Vec<TokenStream>, syn::Error
     for enum_case in enum_cases {
         let enum_case_name = enum_case.get_name_ident();
 
-        no = match enum_case.get_case_number_value()?{
+        no = match enum_case.get_value()?.as_number()?{
             Some(value) => value,
             None => no+1,
         };
@@ -112,7 +111,7 @@ fn fn_from_db_value(enum_cases: &[EnumCase]) -> Result<Vec<TokenStream>, syn::Er
 
         let model = enum_case.model.as_ref().unwrap().get_name_ident();
 
-        no = match enum_case.get_case_number_value()?{
+        no = match enum_case.get_value()?.as_number()?{
             Some(value) => value,
             None => no+1,
         };

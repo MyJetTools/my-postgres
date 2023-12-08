@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
 
 use proc_macro2::TokenStream;
 
-use types_reader::{PropertyType, StructProperty, macros::{MacrosParameters, MacrosEnum}, StructureSchema};
+use types_reader::{ macros::{MacrosParameters, MacrosEnum}, StructureSchema};
 
-use crate::{postgres_struct_ext::PostgresStructPropertyExt, attributes::primary_key::PrimaryKeyAttribute, postgres_struct_schema::PostgresStructSchema};
+use crate::{postgres_struct_ext::PostgresStructPropertyExt,  postgres_struct_schema::PostgresStructSchema};
 #[derive(MacrosEnum)]
 pub enum GenerateType{
     #[value("where")]
@@ -47,54 +46,20 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
 fn impl_db_columns<'s>(
     struct_schema: &'s impl PostgresStructSchema<'s>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
-    let mut result = Vec::new();
 
-    let mut primary_keys = BTreeMap::new();
-
-    let mut indexes_list = BTreeMap::new();
-
-    let mut last_primary_key_id = 0;
-
-    for field in struct_schema.get_fields() {
-        let db_column_name = field.get_db_column_name()?;
-        let sql_type = get_sql_type(field, &field.ty)?;
-        let is_option: bool = field.ty.is_option();
+    let mut columns = Vec::new();
 
 
-        let primary_key_attr:Option<PrimaryKeyAttribute> = field.try_get_attribute()?;
+    for prop in struct_schema.get_fields(){
+        let db_column_name = prop.get_db_column_name()?;
+        let db_column_name = db_column_name.as_str();
+        let sql_type = prop.get_sql_type_as_token_stream()?;
+        let is_option: bool = prop.ty.is_option();
 
-        if let Some(attr) = primary_key_attr {
-            let value = attr.get_id(last_primary_key_id);
-            if primary_keys.contains_key(&value) {
-                return Err(syn::Error::new_spanned(
-                    field.field,
-                    format!("Primary key order id {} is already used", value),
-                ));
-            }
-            primary_keys.insert(value, db_column_name.to_string());
-            last_primary_key_id += 1;
-        };
-
-        if let Some(indexes) = field.get_index_attrs()? {
-            for index in indexes {
-                if !indexes_list.contains_key(&index.index_name) {
-                    indexes_list.insert(index.index_name.clone(), BTreeMap::new());
-                }
-
-                let index_by_name = indexes_list.get_mut(&index.index_name).unwrap();
-
-                if index_by_name.contains_key(&index.id) {
-                    panic!("Duplicate index id {} for index {}", index.id, index.name);
-                }
-
-                index_by_name.insert(index.id, index);
-            }
-        }
-
-        let default_value = if let Some(default_value) = field.get_default_value()? {
+        let default_value = if let Some(default_value) = prop.get_default_value()? {
             match default_value{
                 crate::postgres_struct_ext::DefaultValue::Inherit => {
-                    let type_name = field.ty.get_token_stream();
+                    let type_name = prop.ty.get_token_stream();
                     quote::quote!(Some(#type_name::get_default_value().into()))
                 },
                 crate::postgres_struct_ext::DefaultValue::Value(default_value) => {
@@ -105,11 +70,9 @@ fn impl_db_columns<'s>(
         } else {
             quote::quote!(None)
         };
+     
 
-
-        let db_column_name = db_column_name.as_str();
-
-        result.push(quote::quote! {
+        columns.push(quote::quote! {
             TableColumn{
                 name: #db_column_name.into(),
                 sql_type: #sql_type,
@@ -119,38 +82,44 @@ fn impl_db_columns<'s>(
         });
     }
 
-    let primary_keys = if primary_keys.is_empty() {
+
+
+    let idx_fields = struct_schema.get_db_index_fields()?;
+
+
+
+    let primary_keys = if idx_fields.primary_keys.is_empty() {
         quote::quote!(None)
     } else {
         let mut result = Vec::new();
-        for (_, value) in primary_keys {
+        for (_, value) in idx_fields.primary_keys {
             result.push(value);
         }
         quote::quote!(Some(vec![#(#result.into()),*]))
     };
 
-    let indexes = if indexes_list.is_empty() {
+
+
+
+    let indexes = if idx_fields.indexes.is_empty() {
         quote::quote!(None)
     } else {
         let mut quotes: Vec<TokenStream> = Vec::new();
 
-        for (index_name, index_data) in indexes_list {
+        for (index_name, index_data) in idx_fields.indexes {
             let mut fields = Vec::new();
 
             let mut is_unique = false;
 
             for index_data in index_data.values() {
-                is_unique = index_data.is_unique;
-                let name = &index_data.name;
+                is_unique = index_data.attr.is_unique;
+                let name = &index_data.prop.get_db_column_name()?;
+                let name = name.as_str();
 
-                let order = match index_data.order.as_str() {
-                    "ASC" => quote::quote!(IndexOrder::Asc),
-                    "DESC" => quote::quote!(IndexOrder::Desc),
-                    _ => panic!("Unknown index order {}", index_data.order),
-                };
-
+                let order = index_data.attr.order.to_index_order_token_stream();
                 fields.push(quote::quote!(IndexField { name: #name.into(), order: #order }));
             }
+
 
             quotes.push(quote::quote!(result.insert(#index_name.to_string(), IndexSchema::new(#is_unique, vec![#(#fields,)*]));));
         }
@@ -175,7 +144,7 @@ fn impl_db_columns<'s>(
         }
             fn get_columns() -> Vec<my_postgres::table_schema::TableColumn>{
                 use my_postgres::table_schema::*;
-                vec![#(#result),*]
+                vec![#(#columns),*]
             }
             fn get_indexes() -> Option<std::collections::HashMap<String, my_postgres::table_schema::IndexSchema>>{
                 use my_postgres::table_schema::*;
@@ -188,17 +157,3 @@ fn impl_db_columns<'s>(
     Ok(result)
 }
 
-fn get_sql_type(
-    field: &StructProperty,
-    ty: &PropertyType,
-) -> Result<proc_macro2::TokenStream, syn::Error> {
-    if let PropertyType::OptionOf(ty) = ty {
-        return get_sql_type(field, ty);
-    }
-
-    let ty_token = ty.get_token_stream_with_generics();
-
-    let meta_data = field.get_field_metadata()?;
-
-    Ok(quote::quote! {#ty_token:: get_sql_type(#meta_data)})
-}
