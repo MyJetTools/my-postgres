@@ -12,7 +12,7 @@ pub fn generate_where_raw_model<'s>(
     let attr: proc_macro2::TokenStream = attr.into();
     let params_list = TokensObject::new(attr.into())?;
 
-    let sql = params_list.get_from_single_or_named("sql")?;
+    let sql = params_list.get_value_from_single_or_named("sql")?;
 
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let type_name: TypeName = (&ast).try_into()?;
