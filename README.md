@@ -165,3 +165,6 @@ async fn main() {
 
 ### My Postgres Macros
 https://github.com/MyJetTools/my-postgres-macros/wiki
+
+### Attribute models
+https://github.com/MyJetTools/my-postgres/tree/main/my-postgres-macros/src/attributes
