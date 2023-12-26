@@ -34,5 +34,7 @@ mod tests {
         where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!("", sql);
+
+        assert_eq!(false, where_model.has_conditions());
     }
 }
