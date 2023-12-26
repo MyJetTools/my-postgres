@@ -71,9 +71,70 @@ impl<'s> WhereFields<'s> {
             quote::quote! {None}
         }
     }
+
+
+    pub fn all_fields_are_optional_and_has_ignore_if_none(&self)->bool{
+        for itm in &self.where_fields{
+            if !itm.ty.is_option(){
+                return false;
+            }
+
+            if !itm.has_ignore_if_none_attr(){
+                return false; 
+            }
+        }
+
+        true
+    }
+
+
     pub fn generate_has_conditions_fn(&self) -> proc_macro2::TokenStream {
-        let has_fields = self.where_fields.len() > 0;
-        quote::quote! {#has_fields}
+
+        if self.where_fields.len() == 0{
+            return quote::quote!(false)    ;
+        }
+
+
+        if !self.all_fields_are_optional_and_has_ignore_if_none(){
+            let has_fields = self.where_fields.len() > 0;
+            return quote::quote! {#has_fields};
+        }
+
+        let mut result = Vec::new();
+
+
+        for itm in &self.where_fields{
+            let prop_name_ident = itm.get_field_name_ident();
+            let ignore_if_none = itm.has_ignore_if_none_attr();
+
+            if itm.ty.is_option(){
+                if ignore_if_none{
+                    result.push(quote::quote! {
+                        if self.#prop_name_ident.is_some(){
+                            return true;
+                        }
+                    });
+                }
+                else{
+                    result.push(quote::quote! {
+                        if self.#prop_name_ident.is_some(){
+                            return true;
+                        }
+                    });
+                }
+            }
+            else{
+                result.push(quote::quote! {
+                    return true;
+                });
+            }
+        }
+
+        
+        quote::quote! {
+            #(#result)*
+            false
+        }
     }
 
     pub fn fn_fill_where_content(&self) -> Result<proc_macro2::TokenStream, syn::Error> {

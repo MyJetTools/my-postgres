@@ -84,35 +84,4 @@ pub trait SqlUpdateModel {
             }
         }
     }
-
-    /*
-    fn build_update_sql(
-        &self,
-        table_name: &str,
-        where_model: Option<&'s impl SqlWhereModel<'s>>,
-    ) -> (String, SqlValues<'s>) {
-        let mut result = String::new();
-
-        result.push_str("UPDATE ");
-        result.push_str(table_name);
-        result.push_str(" SET ");
-
-        let mut params = SqlValues::new();
-
-        self.build_update_sql_part(&mut result, &mut params);
-
-        if let Some(where_model) = where_model {
-            let where_builder = where_model.build_where_sql_part(&mut params);
-
-            if where_builder.has_conditions() {
-                result.push_str(" WHERE ");
-                where_builder.build(&mut result);
-            }
-
-            where_model.fill_limit_and_offset(&mut result);
-        }
-
-        (result, params)
-    }
-     */
 }
