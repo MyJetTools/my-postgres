@@ -38,6 +38,7 @@ pub async fn check_if_db_exists(
 
     if let Some(count) = result {
         if count > 0 {
+            println!("Database {db_name} is found. Checked...");
             return Ok(());
         }
     }
