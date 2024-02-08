@@ -4,7 +4,7 @@ use rust_extensions::{date_time::DateTimeAsMicroseconds, lazy::LazyVec, StrOrStr
 
 use crate::{
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
-    MyPostgres, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
+    ConnectionString, MyPostgres, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
 };
 
 pub enum MyPostgresBuilder {
@@ -130,14 +130,18 @@ impl MyPostgresBuilder {
                 postgres_settings,
                 app_name,
                 table_schema_data,
-
                 sql_request_timeout,
                 sql_db_sync_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger,
             } => {
+                let conn_string = postgres_settings.get_connection_string().await;
+
+                let conn_string = ConnectionString::from_str(&conn_string);
+
                 let connection = PostgresConnectionInstance::new(
                     app_name,
+                    conn_string.get_db_name().to_string(),
                     postgres_settings,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,

@@ -10,6 +10,7 @@ use crate::{PostgresConnectionInstance, PostgresSettings};
 
 struct MyPostgresFactory {
     app_name: StrOrString<'static>,
+    db_name: String,
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     #[cfg(feature = "with-logs-and-telemetry")]
     logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -18,12 +19,14 @@ struct MyPostgresFactory {
 impl MyPostgresFactory {
     pub fn new(
         app_name: StrOrString<'static>,
+        db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             postgres_settings,
             app_name,
+            db_name,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -37,6 +40,7 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
     async fn create_new(&self) -> PostgresConnectionInstance {
         PostgresConnectionInstance::new(
             self.app_name.as_str().to_string(),
+            self.db_name.clone(),
             self.postgres_settings.clone(),
             #[cfg(feature = "with-logs-and-telemetry")]
             self.logger.clone(),
@@ -54,6 +58,7 @@ pub struct ConnectionsPool {
 impl ConnectionsPool {
     pub fn new(
         app_name: StrOrString<'static>,
+        db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
@@ -65,6 +70,7 @@ impl ConnectionsPool {
                 max_pool_size,
                 Arc::new(MyPostgresFactory::new(
                     app_name.clone(),
+                    db_name,
                     postgres_settings.clone(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,

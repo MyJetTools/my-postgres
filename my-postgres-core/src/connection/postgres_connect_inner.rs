@@ -16,13 +16,15 @@ use crate::{sql::SqlData, MyPostgresError, PostgresSettings};
 pub struct PostgresConnectionSingleThreaded {
     postgres_client: Option<tokio_postgres::Client>,
     to_start: Option<Arc<PostgresConnectionInner>>,
+    db_name: String,
 }
 
 impl PostgresConnectionSingleThreaded {
-    pub fn new() -> Self {
+    pub fn new(db_name: String) -> Self {
         Self {
             postgres_client: None,
             to_start: None,
+            db_name,
         }
     }
 
@@ -48,7 +50,10 @@ impl PostgresConnectionSingleThreaded {
 
     pub fn start_connection(&mut self) -> bool {
         if let Some(to_start) = self.to_start.take() {
-            tokio::spawn(super::connection_loop::start_connection_loop(to_start));
+            tokio::spawn(super::connection_loop::start_connection_loop(
+                to_start,
+                self.db_name.clone(),
+            ));
             return true;
         }
         false
@@ -77,6 +82,7 @@ impl PostgresConnectionInner {
     pub fn new(
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+        db_name: String,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
@@ -84,7 +90,7 @@ impl PostgresConnectionInner {
         Self {
             app_name,
             postgres_settings,
-            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new())),
+            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new(db_name))),
             connected: Arc::new(AtomicBool::new(false)),
 
             to_be_disposable: AtomicBool::new(false),

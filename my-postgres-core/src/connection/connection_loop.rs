@@ -12,7 +12,7 @@ use crate::ConnectionString;
 
 use super::postgres_connect_inner::PostgresConnectionInner;
 
-pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
+pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>, db_name: String) {
     loop {
         if inner.is_to_be_disposable() {
             break;
@@ -28,13 +28,13 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
         if my_conn_string.get_ssl_require() {
             #[cfg(feature = "with-tls")]
             {
-                println!("Starting Postgres connection with SSLMODE=require. 'with-tls' feature is enabled");
+                println!("Starting Postgres connection for db {db_name} with SSLMODE=require. 'with-tls' feature is enabled");
                 create_and_start_with_tls(conn_string, &inner).await;
             }
 
             #[cfg(not(feature = "with-tls"))]
             {
-                println!("Starting Postgres connection with SSLMODE=require. 'with-tls' feature is disabled");
+                println!("Starting Postgres connection for db {db_name}  with SSLMODE=require. 'with-tls' feature is disabled");
                 #[cfg(feature = "with-logs-and-telemetry")]
                 inner.logger.write_error(
                     "PostgresConnection".to_string(),
@@ -46,7 +46,7 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>) {
                 tokio::time::sleep(Duration::from_secs(3)).await;
             }
         } else {
-            println!("Starting Postgres connection without sslmode=require");
+            println!("Starting Postgres connection  for db {db_name} without sslmode=require");
             create_and_start_no_tls_connection(conn_string, &inner).await;
         }
 

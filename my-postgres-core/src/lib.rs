@@ -27,7 +27,6 @@ pub mod sql_where;
 pub mod table_schema;
 
 mod update_conflict_type;
-pub use connection_sql_operations::*;
 pub use my_postgres_builder::*;
 pub use update_conflict_type::*;
 pub use with_retries::*;

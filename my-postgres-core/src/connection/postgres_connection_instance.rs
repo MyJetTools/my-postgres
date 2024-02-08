@@ -24,12 +24,14 @@ pub struct PostgresConnectionInstance {
 impl PostgresConnectionInstance {
     pub async fn new(
         app_name: String,
+        db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
             app_name,
             postgres_settings,
+            db_name,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.clone(),
         ));

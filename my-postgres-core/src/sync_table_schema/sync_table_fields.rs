@@ -173,10 +173,12 @@ async fn get_db_fields(
         return Ok(None);
     }
 
-    Ok(Some(rust_extensions::linq::to_hash_map(
-        result.into_iter(),
-        |itm| (itm.name.to_string(), itm),
-    )))
+    let result = result
+        .into_iter()
+        .map(|itm| (itm.name.to_string(), itm))
+        .collect();
+
+    Ok(Some(result))
 }
 
 async fn add_column_to_table(

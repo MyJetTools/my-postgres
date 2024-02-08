@@ -24,8 +24,13 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
+
+        let conn_string = postgres_settings.get_connection_string().await;
+        let conn_string = ConnectionString::from_str(conn_string.as_str());
+
         let connection = PostgresConnectionInstance::new(
             app_name.to_string(),
+            conn_string.get_db_name().to_string(),
             postgres_settings,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
@@ -35,15 +40,19 @@ impl PostgresConnection {
         Self::Single(connection)
     }
 
-    pub fn new_as_multiple_connections(
+    pub async fn new_as_multiple_connections(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
+        let conn_string = postgres_settings.get_connection_string().await;
+        let conn_string = ConnectionString::from_str(conn_string.as_str());
+
         Self::Pool(ConnectionsPool::new(
             app_name,
+            conn_string.get_db_name().to_string(),
             postgres_settings,
             max_pool_size,
             #[cfg(feature = "with-logs-and-telemetry")]

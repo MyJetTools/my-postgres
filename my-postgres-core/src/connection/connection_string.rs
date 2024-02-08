@@ -16,6 +16,10 @@ pub struct ConnectionString {
 }
 
 impl ConnectionString {
+    pub fn from_str(src: &str) -> Self {
+        let conn_string = ConnectionStringFormat::parse_and_detect(src);
+        Self::parse(conn_string)
+    }
     pub fn parse(conn_string: ConnectionStringFormat) -> Self {
         match conn_string {
             ConnectionStringFormat::ReadyToUse(conn_string) => {

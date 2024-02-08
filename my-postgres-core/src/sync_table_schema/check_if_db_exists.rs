@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
 
+const TECH_DB_NAME: &str = "postgres";
 pub async fn check_if_db_exists(
     connection: &PostgresConnection,
     sql_timeout: Duration,
@@ -9,12 +10,13 @@ pub async fn check_if_db_exists(
     let (app_name, connection_string) = connection.get_connection_string().await;
 
     let tech_conn_string =
-        connection_string.to_string_with_new_db_name(app_name.as_str(), "postgres");
+        connection_string.to_string_with_new_db_name(app_name.as_str(), TECH_DB_NAME);
 
     let tech_conn_string = TechConnectionStringProvider::new(tech_conn_string.as_str());
 
     let tech_connection = PostgresConnectionInstance::new(
         app_name.into(),
+        TECH_DB_NAME.to_string(),
         std::sync::Arc::new(tech_conn_string),
         #[cfg(feature = "with-logs-and-telemetry")]
         connection.get_logger().clone(),
