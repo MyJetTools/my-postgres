@@ -21,9 +21,9 @@ pub async fn check_if_db_exists(
     )
     .await;
 
-    println!("Checking that DB exists");
-
     let db_name = connection.get_db_name().await;
+
+    println!("Checking that DB {} exists", db_name.as_str());
     let sql: String = format!("SELECT count(*) FROM pg_database WHERE datname='{db_name}'");
 
     let result: Option<usize> = tech_connection
