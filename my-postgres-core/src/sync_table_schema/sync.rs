@@ -9,26 +9,6 @@ pub async fn sync_schema(
     table_schema: &TableSchema,
     sql_timeout: Duration,
 ) -> Result<(), MyPostgresError> {
-    if let Err(error) = super::check_if_db_exists(conn_string, sql_timeout).await {
-        println!(
-            "Can not execute script which checks DataBase existence. Error: {:?}",
-            error
-        );
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        {
-            let mut ctx = std::collections::HashMap::new();
-
-            ctx.insert("Err".to_string(), format!("{:?}", error));
-
-            conn_string.get_logger().write_info(
-                "Table Existence verification".into(),
-                format!("Can not execute script which checks DataBase existence",),
-                Some(ctx),
-            );
-        }
-    }
-
     loop {
         println!("--------------------------------------------------");
         println!("Syncing table schema: {}", table_schema.table_name);

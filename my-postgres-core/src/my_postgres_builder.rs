@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rust_extensions::{date_time::DateTimeAsMicroseconds, lazy::LazyVec, StrOrString};
+use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
 use crate::{
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
@@ -11,7 +11,7 @@ pub enum MyPostgresBuilder {
     AsSettings {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         app_name: String,
-        table_schema_data: LazyVec<TableSchema>,
+        table_schema_data: Vec<TableSchema>,
         sql_request_timeout: Duration,
         sql_db_sync_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")]
@@ -19,7 +19,7 @@ pub enum MyPostgresBuilder {
     },
     AsSharedConnection {
         connection: Arc<PostgresConnection>,
-        table_schema_data: LazyVec<TableSchema>,
+        table_schema_data: Vec<TableSchema>,
         sql_request_timeout: Duration,
         sql_db_sync_timeout: Duration,
     },
@@ -38,7 +38,7 @@ impl MyPostgresBuilder {
         Self::AsSettings {
             app_name: app_name.to_string(),
             postgres_settings,
-            table_schema_data: LazyVec::new(),
+            table_schema_data: Vec::new(),
             sql_request_timeout: Duration::from_secs(5),
             sql_db_sync_timeout: Duration::from_secs(60),
             #[cfg(feature = "with-logs-and-telemetry")]
@@ -48,7 +48,7 @@ impl MyPostgresBuilder {
     pub fn from_connection(connection: Arc<PostgresConnection>) -> Self {
         Self::AsSharedConnection {
             connection,
-            table_schema_data: LazyVec::new(),
+            table_schema_data: Vec::new(),
             sql_request_timeout: Duration::from_secs(5),
             sql_db_sync_timeout: Duration::from_secs(60),
         }
@@ -115,10 +115,10 @@ impl MyPostgresBuilder {
         match &mut self {
             MyPostgresBuilder::AsSettings {
                 table_schema_data, ..
-            } => table_schema_data.add(table_schema),
+            } => table_schema_data.push(table_schema),
             MyPostgresBuilder::AsSharedConnection {
                 table_schema_data, ..
-            } => table_schema_data.add(table_schema),
+            } => table_schema_data.push(table_schema),
         }
 
         self
@@ -150,7 +150,10 @@ impl MyPostgresBuilder {
 
                 let connection = Arc::new(PostgresConnection::Single(connection));
 
-                if let Some(table_schema_data) = table_schema_data.get_result() {
+                if table_schema_data.len() > 0 {
+                    super::sync_table_schema::check_if_db_exists(&connection, sql_db_sync_timeout)
+                        .await;
+
                     for table_schema in table_schema_data {
                         check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
                     }
@@ -164,11 +167,15 @@ impl MyPostgresBuilder {
                 sql_request_timeout,
                 sql_db_sync_timeout,
             } => {
-                if let Some(table_schema_data) = table_schema_data.get_result() {
+                if table_schema_data.len() > 0 {
+                    super::sync_table_schema::check_if_db_exists(&connection, sql_db_sync_timeout)
+                        .await;
+
                     for table_schema in table_schema_data {
                         check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
                     }
                 }
+
                 MyPostgres::create(connection, sql_request_timeout)
             }
         }

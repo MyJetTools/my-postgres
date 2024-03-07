@@ -3,7 +3,30 @@ use std::time::Duration;
 use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
 
 const TECH_DB_NAME: &str = "postgres";
-pub async fn check_if_db_exists(
+
+pub async fn check_if_db_exists(connection: &PostgresConnection, sql_timeout: Duration) {
+    if let Err(error) = check_if_db_exists_int(connection, sql_timeout).await {
+        println!(
+            "Can not execute script which checks DataBase existence. Error: {:?}",
+            error
+        );
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        {
+            let mut ctx = std::collections::HashMap::new();
+
+            ctx.insert("Err".to_string(), format!("{:?}", error));
+
+            conn_string.get_logger().write_info(
+                "Table Existence verification".into(),
+                format!("Can not execute script which checks DataBase existence",),
+                Some(ctx),
+            );
+        }
+    }
+}
+
+async fn check_if_db_exists_int(
     connection: &PostgresConnection,
     sql_timeout: Duration,
 ) -> Result<(), MyPostgresError> {
