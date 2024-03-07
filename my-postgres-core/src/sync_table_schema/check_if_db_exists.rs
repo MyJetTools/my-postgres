@@ -17,7 +17,7 @@ pub async fn check_if_db_exists(connection: &PostgresConnection, sql_timeout: Du
 
             ctx.insert("Err".to_string(), format!("{:?}", error));
 
-            conn_string.get_logger().write_info(
+            connection.get_logger().write_info(
                 "Table Existence verification".into(),
                 format!("Can not execute script which checks DataBase existence",),
                 Some(ctx),
