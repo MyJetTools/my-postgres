@@ -24,8 +24,14 @@ pub fn get_group_by_fields<'s>(
     let mut group_by_str = String::new();
 
     group_by_str.push_str(" GROUP BY");
-    for group_by_column in group_by_columns {
-        group_by_str.push(' ');
+
+    for (i, group_by_column) in group_by_columns.iter().enumerate() {
+        if i == 0 {
+            group_by_str.push(' ');
+        } else {
+            group_by_str.push(',');
+        }
+
         group_by_str.push_str(group_by_column.as_str());
     }
 

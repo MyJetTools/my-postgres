@@ -37,15 +37,25 @@ pub fn fn_get_order_by_fields<'s>(
     result.push_str(" ORDER BY");
 
     if !order_by_desc.is_empty() {
-        for field in order_by_desc {
-            result.push(' ');
+        for (i, field) in order_by_desc.iter().enumerate() {
+            if i == 0 {
+                result.push(' ');
+            } else {
+                result.push(',');
+            }
+
             let db_column_name = field.get_db_column_name()?;
             result.push_str(db_column_name.as_str());
         }
         result.push_str(" DESC");
     } else if !order_by.is_empty() {
-        for field in order_by {
-            result.push(' ');
+        for (i, field) in order_by.iter().enumerate() {
+            if i == 0 {
+                result.push(' ');
+            } else {
+                result.push(',');
+            }
+
             result.push_str(field.get_db_column_name()?.as_str());
         }
     }
