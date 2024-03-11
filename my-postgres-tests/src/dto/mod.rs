@@ -16,5 +16,4 @@ mod test_where_with_dynamic_json_values;
 mod tests_real_cases;
 mod where_model;
 mod where_model_with_ignore_if_none;
-mod where_model_with_opt_vec;
 mod where_model_with_str;
