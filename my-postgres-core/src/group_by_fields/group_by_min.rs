@@ -5,7 +5,7 @@ use crate::{
     sql_select::{FromDbRow, SelectValueProvider},
     GroupByFieldType, SqlValueMetadata,
 };
-
+#[derive(Debug)]
 pub struct GroupByMin<T: Send + Sync + 'static>(T);
 
 impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupByMin<T> {

@@ -6,6 +6,7 @@ use crate::{
     GroupByFieldType, SqlValueMetadata,
 };
 
+#[derive(Debug)]
 pub struct GroupByCount<T: Send + Sync + 'static>(T);
 
 impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupByCount<T> {
