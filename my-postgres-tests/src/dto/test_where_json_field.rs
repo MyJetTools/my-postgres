@@ -24,6 +24,6 @@ mod tests {
 
         where_model.fill_where_component(&mut sql, &mut params);
 
-        assert_eq!("db_column_name->>sub_field->>json_prop=$1", sql);
+        assert_eq!("\"db_column_name\"->>'sub_field'->>'json_prop'=$1", sql);
     }
 }

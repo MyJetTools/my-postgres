@@ -218,13 +218,28 @@ pub fn render_full_where_condition(
     let db_column_name = if let Some(inside_json) = inside_json{
         let mut  result = String::new();
 
-        for part in inside_json.split('.'){
+        for (n, part) in inside_json.split('.').enumerate(){
+
+            if n ==0{
+                result.push('"');
+            }else{
+                result.push('\'');
+            }
+
             result.push_str(part);
+            if n ==0{
+                result.push('"');
+            }
+            else{
+                result.push('\'');
+            }
+
             result.push_str("->>");
         }
 
+        result.push('\'');
         result.push_str(db_column_name.as_str());
-
+        result.push('\'');
         result
     }else{
         db_column_name.as_str().to_string()
