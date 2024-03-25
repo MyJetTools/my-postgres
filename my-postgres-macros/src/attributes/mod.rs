@@ -28,3 +28,5 @@ mod ignore;
 pub use ignore::*;
 mod ignore_table_column;
 pub use ignore_table_column::*;
+mod inside_json;
+pub use inside_json::*;

@@ -369,7 +369,7 @@ impl SqlWhereValueProvider for BTreeMap<String, String> {
                     Some(RenderFullWhereCondition {
                         condition_no,
                         column_name: key,
-                        json_prefix: Some(full_condition.column_name),
+                        json_prefix: vec![full_condition.column_name],
                     }),
                     sql,
                     params,

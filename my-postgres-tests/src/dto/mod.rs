@@ -11,6 +11,7 @@ mod test_json_field;
 mod test_json_field_where_cases;
 mod test_json_hashmap_dto;
 mod test_primary_key;
+mod test_where_json_field;
 mod test_where_raw_model;
 mod test_where_with_dynamic_json_values;
 mod tests_real_cases;

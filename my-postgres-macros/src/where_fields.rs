@@ -107,6 +107,7 @@ impl<'s> WhereFields<'s> {
             let prop_name_ident = itm.get_field_name_ident();
             let ignore_if_none = itm.has_ignore_if_none_attr();
 
+     
             if itm.ty.is_option(){
                 if ignore_if_none{
                     result.push(quote::quote! {
@@ -151,7 +152,10 @@ impl<'s> WhereFields<'s> {
 
             let ignore_if_none = prop.has_ignore_if_none_attr();
 
-            let where_condition = render_full_where_condition(&db_column_name, None);
+
+            let inside_json =  prop.inside_json()?;
+
+            let where_condition = render_full_where_condition(&db_column_name, None, inside_json);
 
             if prop.ty.is_option() {
                 if ignore_if_none {
@@ -202,15 +206,30 @@ impl<'s> WhereFields<'s> {
 pub fn render_full_where_condition(
     db_column_name: &DbColumnName,
     json_column_name: Option<&str>,
+    inside_json: Option<&str>,
 ) -> proc_macro2::TokenStream {
     let json_column_name = if let Some(json_column_name) = json_column_name {
         let json_column_name = proc_macro2::TokenStream::from_str(json_column_name).unwrap();
-        quote::quote!(Some(#json_column_name))
+        quote::quote!(#json_column_name.clone())
     } else {
-        quote::quote!(None)
+        quote::quote!(vec![])
     };
     
-    let db_column_name = db_column_name.as_str();
+    let db_column_name = if let Some(inside_json) = inside_json{
+        let mut  result = String::new();
+
+        for part in inside_json.split('.'){
+            result.push_str(part);
+            result.push_str("->>");
+        }
+
+        result.push_str(db_column_name.as_str());
+
+        result
+    }else{
+        db_column_name.as_str().to_string()
+    };
+    
     quote::quote! {
         Some(my_postgres::RenderFullWhereCondition{
             column_name: #db_column_name,

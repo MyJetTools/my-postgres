@@ -12,14 +12,18 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
     let impl_where_value_provider =
         crate::where_value_provider::render_where_value_provider(&ident, || {
             quote::quote! {
-                let mut json_column_name = "";
-                if let Some(full_condition) = &full_where_condition {
+         
+                 let mut json_prefix = if let Some(full_condition) = &full_where_condition {
                     if full_condition.condition_no>0{
                         sql.push_str(" AND ");
                     }
 
-                    json_column_name = full_condition.column_name;
-                }
+                    let mut json_prefix = full_condition.json_prefix.clone();
+                    json_prefix.push(full_condition.column_name);
+                    json_prefix
+                }else{
+                    vec![]
+                };
                 #where_fields
 
                 true
@@ -51,9 +55,12 @@ fn generate_json_where_fields(
         let db_column_name = src_field.get_db_column_name()?;
         let metadata = src_field.get_field_metadata()?;
 
+        let inside_json = src_field.inside_json()?;
+
         let where_condition = crate::where_fields::render_full_where_condition(
             &db_column_name,
-            Some("json_column_name"),
+            Some("json_prefix"),
+            inside_json,
         );
 
         if src_field.ty.is_option() {

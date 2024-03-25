@@ -3,7 +3,7 @@ use crate::SqlValueMetadata;
 pub struct RenderFullWhereCondition<'s> {
     pub condition_no: usize,
     pub column_name: &'s str,
-    pub json_prefix: Option<&'s str>,
+    pub json_prefix: Vec<&'s str>,
 }
 
 impl<'s> RenderFullWhereCondition<'s> {
@@ -17,10 +17,22 @@ impl<'s> RenderFullWhereCondition<'s> {
             sql.push_str(" AND ");
         }
 
-        if let Some(json_prefix) = self.json_prefix {
-            sql.push('"');
-            sql.push_str(json_prefix);
-            sql.push_str("\"->>");
+        if self.json_prefix.len() > 0 {
+            for (no, prefix) in self.json_prefix.iter().enumerate() {
+                if no == 0 {
+                    sql.push('"');
+                } else {
+                    sql.push('\'');
+                }
+
+                sql.push_str(prefix);
+                if no == 0 {
+                    sql.push('"');
+                } else {
+                    sql.push('\'');
+                }
+                sql.push_str("->>")
+            }
             sql.push('\'');
             sql.push_str(self.column_name);
             sql.push('\'');

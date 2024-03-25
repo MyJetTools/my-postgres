@@ -65,6 +65,8 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
+    fn inside_json(&self) -> Result<Option<&str>, syn::Error>;
+
     fn fill_attributes(
         &self,
         fields: &mut Vec<TokenStream>,
@@ -175,6 +177,15 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         }
 
         false
+    }
+
+    fn inside_json(&self) -> Result<Option<&str>, syn::Error> {
+        let json_attr: Option<InsideJsonAttribute> = self.try_get_attribute()?;
+        if let Some(json_attr) = json_attr {
+            return Ok(Some(json_attr.name));
+        }
+
+        Ok(None)
     }
 
     fn is_primary_key(&self) -> bool {
