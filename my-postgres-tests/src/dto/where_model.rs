@@ -73,7 +73,7 @@ mod tests {
         let mut sql = String::new();
         where_model.fill_where_component(&mut sql, &mut params);
 
-        assert_eq!("id=$1 AND date_time='2023-06-19T22:07:20.518741+00:00' AND i32>1 AND opt_i32 IS NULL AND str_enum=$2 AND str_enum_opt IS NULL AND str_enum_opt2=$3 AND like_value like $4 AND field_name->>field_name2->>my_json_field=$1", sql);
+        assert_eq!("id=$1 AND date_time='2023-06-19T22:07:20.518741+00:00' AND i32>1 AND opt_i32 IS NULL AND str_enum=$2 AND str_enum_opt IS NULL AND str_enum_opt2=$3 AND like_value like $4 AND \"field_name\"->>'field_name2'->>'my_json_field'=$1", sql);
 
         assert_eq!(params.get(0).unwrap().as_str().unwrap(), "test");
         assert_eq!(params.get(1).unwrap().as_str().unwrap(), "CaseTest1");
