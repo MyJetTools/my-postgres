@@ -157,6 +157,22 @@ impl<'s> WhereFields<'s> {
 
             let where_condition = render_full_where_condition(&db_column_name, None, inside_json);
 
+
+            if prop.has_inline_where_model_attr(){
+
+                lines.push(quote::quote!{
+                    if condition_no > 0 {
+                        sql.push_str(" AND ");
+                    }
+
+                    sql.push('(');
+                    self.field_2.fill_where_component(sql, params);
+                    sql.push(')');
+                });
+                continue;
+            }
+
+
             if prop.ty.is_option() {
                 if ignore_if_none {
                     lines.push(quote::quote! {
@@ -247,7 +263,7 @@ pub fn render_full_where_condition(
     
     quote::quote! {
         Some(my_postgres::RenderFullWhereCondition{
-            column_name: #db_column_name,
+            column_name: #db_column_name.into(),
             condition_no,
             json_prefix: #json_column_name
         })

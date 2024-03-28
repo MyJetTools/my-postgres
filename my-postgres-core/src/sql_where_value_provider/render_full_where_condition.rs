@@ -33,6 +33,7 @@ impl<'s> RenderFullWhereCondition<'s> {
                 }
                 sql.push_str("->>")
             }
+
             sql.push('\'');
             sql.push_str(self.column_name);
             sql.push('\'');

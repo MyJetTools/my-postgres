@@ -55,6 +55,8 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn has_ignore_table_column(&self) -> bool;
 
+    fn has_inline_where_model_attr(&self) -> bool;
+
     fn get_e_tag(&'s self) -> Result<Option<ETagData<'s>>, syn::Error>;
 
     fn get_ty(&self) -> &PropertyType;
@@ -186,6 +188,10 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         }
 
         Ok(None)
+    }
+
+    fn has_inline_where_model_attr(&self) -> bool {
+        self.attrs.has_attr("inline_where_model")
     }
 
     fn is_primary_key(&self) -> bool {
