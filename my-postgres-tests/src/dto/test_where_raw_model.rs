@@ -31,4 +31,20 @@ mod tests {
             sql.as_str()
         );
     }
+
+    #[test]
+    fn test_raw_model_with_empty_vec() {
+        let where_model = WhereRawModel {
+            field_1: "test".to_string(),
+            field_2: true,
+            field_3: vec![],
+        };
+
+        let mut params = my_postgres::sql::SqlValues::new();
+        let mut sql = String::new();
+
+        where_model.fill_where_component(&mut sql, &mut params);
+
+        assert_eq!("Content=$1 AND Content2=true", sql.as_str());
+    }
 }

@@ -34,6 +34,8 @@ pub fn generate_where_raw_model<'s>(
 
     let mut content_to_render = Vec::new();
 
+    let mut prev_raw_content = None;
+
     for token in tokens {
         match token {
             SqlTransformToken::PlaceHolder(property_name) => {
@@ -49,12 +51,18 @@ pub fn generate_where_raw_model<'s>(
                 let meta_data = property.get_field_metadata()?;
 
                 content_to_render.push(quote::quote!(
-                   self.#name.fill_where_value(None, sql, params, &#meta_data);
+
+                    if self.#name.render_value(){
+                        #prev_raw_content
+                        self.#name.fill_where_value(None, sql, params, &#meta_data);
+                    }
 
                 ));
+
+                prev_raw_content = None;
             }
             SqlTransformToken::RawContent(content) => {
-                content_to_render.push(quote::quote!(
+                prev_raw_content = Some(quote::quote!(
                     sql.push_str(#content);
                 ));
             }

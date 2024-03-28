@@ -142,6 +142,7 @@ pub fn impl_sql_where_model(
                 fn get_offset(&self) -> Option<usize> {
                     #fn_get_offset
                 }
+
             }
         },
     )

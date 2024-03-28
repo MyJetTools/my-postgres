@@ -19,6 +19,10 @@ impl SqlWhereValueProvider for RawField {
         sql.push_str(&self.value);
         true
     }
+
+    fn render_value(&self) -> bool {
+        true
+    }
 }
 
 impl SqlUpdateValueProvider for RawField {
