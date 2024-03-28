@@ -21,7 +21,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_we_have_value() {
+    fn test_we_have_no_value_inside_raw_model() {
         let where_model = WhereModel {
             field_1: "test".to_string(),
             inline_filed: WhereRawModel { field_3: vec![] },
@@ -34,5 +34,24 @@ mod test {
         where_model.fill_where_component(&mut sql, &mut params);
 
         assert_eq!("field_1=$1 AND field_3=3", sql.as_str());
+    }
+
+    #[test]
+    fn test_we_have_single_value_inside_raw_model() {
+        let where_model = WhereModel {
+            field_1: "test".to_string(),
+            inline_filed: WhereRawModel { field_3: vec![15] },
+            field_3: 3,
+        };
+
+        let mut params = my_postgres::sql::SqlValues::new();
+        let mut sql = String::new();
+
+        where_model.fill_where_component(&mut sql, &mut params);
+
+        assert_eq!(
+            "field_1=$1 AND (Content3 in (15)) AND field_3=3",
+            sql.as_str()
+        );
     }
 }
