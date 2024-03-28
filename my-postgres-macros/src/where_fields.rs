@@ -166,7 +166,7 @@ impl<'s> WhereFields<'s> {
                     }
 
                     sql.push('(');
-                    self.field_2.fill_where_component(sql, params);
+                    self.#prop_name_ident.fill_where_component(sql, params);
                     sql.push(')');
                 });
                 continue;

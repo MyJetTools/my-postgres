@@ -11,7 +11,7 @@ pub struct WhereRawModel {
 pub struct WhereModel {
     pub field_1: String,
     #[inline_where_model]
-    pub field_2: WhereRawModel,
+    pub inline_filed: WhereRawModel,
     pub field_3: i32,
 }
 
@@ -26,7 +26,7 @@ mod test {
     fn test_generation() {
         let where_model = WhereModel {
             field_1: "test".to_string(),
-            field_2: WhereRawModel {
+            inline_filed: WhereRawModel {
                 field_1: "test2".to_string(),
                 field_2: true,
                 field_3: vec![1, 2, 3],
