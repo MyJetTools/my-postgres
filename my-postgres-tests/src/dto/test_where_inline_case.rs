@@ -39,14 +39,9 @@ mod test {
 
         where_model.fill_where_component(&mut sql, &mut params);
 
-        println!("{}", sql.as_str());
-
-        /*
         assert_eq!(
-            "field_1=$1 OR Content=test2 OR Content2=true OR Content3 in (1,2,3) OR field_3=3",
+            "field_1=$1 AND (Content=$2 OR Content2=true OR Content3 in (1,2,3)) AND field_3=3",
             sql.as_str()
         );
-
-         */
     }
 }
