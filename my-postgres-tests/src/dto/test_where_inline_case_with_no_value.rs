@@ -1,7 +1,9 @@
 use my_postgres::macros::{where_raw_model, WhereDbModel};
 
-#[where_raw_model("Content3 in ${field_3}")]
+#[where_raw_model("Content=${field_1} OR Content2=${field_2} OR Content3 in ${field_3}")]
 pub struct WhereRawModel {
+    pub field_1: String,
+    pub field_2: bool,
     pub field_3: Vec<i32>,
 }
 
@@ -21,10 +23,14 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_we_have_value() {
+    fn test_generation() {
         let where_model = WhereModel {
             field_1: "test".to_string(),
-            inline_filed: WhereRawModel { field_3: vec![] },
+            inline_filed: WhereRawModel {
+                field_1: "test2".to_string(),
+                field_2: true,
+                field_3: vec![1, 2, 3],
+            },
             field_3: 3,
         };
 
@@ -33,6 +39,9 @@ mod test {
 
         where_model.fill_where_component(&mut sql, &mut params);
 
-        assert_eq!("field_1=$1 AND field_3=3", sql.as_str());
+        assert_eq!(
+            "field_1=$1 AND (Content=$2 OR Content2=true OR Content3 in (1,2,3)) AND field_3=3",
+            sql.as_str()
+        );
     }
 }

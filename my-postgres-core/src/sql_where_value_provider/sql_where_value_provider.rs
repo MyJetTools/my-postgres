@@ -378,14 +378,16 @@ impl<T: SqlWhereValueProvider> SqlWhereValueProvider for Vec<T> {
             return false;
         }
 
-        if self.len() == 1 {
-            self.get(0)
-                .unwrap()
-                .fill_where_value(full_where_condition, sql, params, metadata);
-            return true;
-        }
-
         if let Some(full_where_condition) = full_where_condition {
+            if self.len() == 1 {
+                self.get(0).unwrap().fill_where_value(
+                    Some(full_where_condition),
+                    sql,
+                    params,
+                    metadata,
+                );
+                return true;
+            }
             full_where_condition.render_param_name(sql, " IN ", metadata);
         }
 

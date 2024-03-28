@@ -161,13 +161,16 @@ impl<'s> WhereFields<'s> {
             if prop.has_inline_where_model_attr(){
 
                 lines.push(quote::quote!{
-                    if condition_no > 0 {
-                        sql.push_str(" AND ");
-                    }
 
-                    sql.push('(');
-                    self.#prop_name_ident.fill_where_component(sql, params);
-                    sql.push(')');
+                    if self.#prop_name_ident.has_conditions(){
+                        if condition_no > 0 {
+                            sql.push_str(" AND ");
+                        }
+    
+                        sql.push('(');
+                        self.#prop_name_ident.fill_where_component(sql, params);
+                        sql.push(')');
+                    }
                 });
                 continue;
             }

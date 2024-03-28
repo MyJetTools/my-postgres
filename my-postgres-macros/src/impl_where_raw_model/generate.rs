@@ -36,6 +36,8 @@ pub fn generate_where_raw_model<'s>(
 
     let mut prev_raw_content = None;
 
+    let mut has_conditions = Vec::new();
+
     for token in tokens {
         match token {
             SqlTransformToken::PlaceHolder(property_name) => {
@@ -59,6 +61,15 @@ pub fn generate_where_raw_model<'s>(
 
                 ));
 
+                if has_conditions.len() > 0 {
+                    has_conditions.push(quote::quote! { && });
+                } else {
+                    has_conditions.push(quote::quote! { use my_postgres::SqlWhereValueProvider; });
+                }
+                has_conditions.push(quote::quote! {
+                    self.#name.render_value()
+                });
+
                 prev_raw_content = None;
             }
             SqlTransformToken::RawContent(content) => {
@@ -77,7 +88,7 @@ pub fn generate_where_raw_model<'s>(
                 #(#content_to_render)*
             }
         },
-        quote::quote!(true),
+        quote::quote!(#(#has_conditions)*),
         generate_limit_fn,
         generate_offset_fn,
     );
