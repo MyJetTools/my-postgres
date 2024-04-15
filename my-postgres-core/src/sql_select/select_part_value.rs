@@ -204,10 +204,13 @@ impl SelectValueProvider for DateTimeAsMicroseconds {
                     return;
                 }
 
-                panic!("Unknown sql_type: {}", sql_type);
+                panic!("Field: {}. Unknown sql_type: {}", field_name, sql_type);
             }
         }
 
-        panic!("sql_type is required for DateTimeAsMicroseconds");
+        panic!(
+            "Field: {}.  sql_type is required for DateTimeAsMicroseconds",
+            field_name
+        );
     }
 }
