@@ -2,7 +2,9 @@ use std::str::FromStr;
 
 use proc_macro2::TokenStream;
 
-use crate::postgres_struct_schema::PostgresStructSchema;
+use crate::{
+    postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
+};
 
 pub fn generate_select_models<'s>(
     struct_schema: &'s impl PostgresStructSchema<'s>,
@@ -20,7 +22,7 @@ pub fn generate_select_models<'s>(
             let field_name = proc_macro2::TokenStream::from_str(&struct_property.name).unwrap();
             let ty = &struct_property.ty.get_token_stream();
 
-            //struct_property.fill_attributes(&mut result_fields, None)?;
+            struct_property.fill_attributes(&mut result_fields, None)?;
 
             result_fields.push(quote::quote! {
                 pub #field_name: #ty,

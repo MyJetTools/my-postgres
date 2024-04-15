@@ -7,6 +7,7 @@ mod table_schema_tests;
 mod test_auto_generated_types_with_operator;
 mod test_auto_generated_types_with_range;
 mod test_basic_cases;
+mod test_generated_models;
 mod test_json_field;
 mod test_json_field_where_cases;
 mod test_json_hashmap_dto;
