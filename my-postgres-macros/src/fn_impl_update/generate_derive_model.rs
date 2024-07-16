@@ -40,6 +40,7 @@ pub fn generate_derive_model(
                 }
 
         },
+        where_fields.where_fields.as_slice(),
     );
 
     Ok(quote::quote! {

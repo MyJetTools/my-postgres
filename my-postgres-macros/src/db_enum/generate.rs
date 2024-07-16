@@ -126,6 +126,11 @@ pub fn generate(
                 }
             }
 
+
+            pub fn to_str(&self)->&'static str {
+                self.as_numbered_str()
+            }
+
             pub fn from_db_value(src: #type_name)->Self{
                 match src{
                   #(#from_db_value)*

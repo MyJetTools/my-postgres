@@ -1,5 +1,5 @@
 use quote::quote;
-use types_reader::{GenericsArrayToken, TypeName};
+use types_reader::{GenericsArrayToken, StructProperty, TypeName};
 
 pub fn implement_select_value_provider(
     type_name: &TypeName,
@@ -88,12 +88,45 @@ pub fn impl_sql_type_provider(
     )
 }
 
-pub fn impl_sql_update_model(
+pub fn impl_sql_update_model<'s>(
     type_name: &TypeName,
     fn_get_fields_amount: proc_macro2::TokenStream,
     fn_get_column_name: proc_macro2::TokenStream,
     fn_get_field_value: proc_macro2::TokenStream,
+    primary_key_fields: &'s [&'s StructProperty<'s>],
 ) -> proc_macro2::TokenStream {
+    let mut primary_key_rendering = Vec::new();
+
+    let mut i = 0;
+    for prop in primary_key_fields {
+        let name = prop.get_field_name_ident();
+
+        if i > 0 {
+            primary_key_rendering.push(quote::quote! {
+                result.push('|');
+            });
+        }
+
+        if prop.ty.is_string() {
+            primary_key_rendering.push(quote::quote! {
+                result.push_str(&self.#name);
+            });
+        } else if prop.ty.is_date_time() {
+            primary_key_rendering.push(quote::quote! {
+                result.push_str(&self.#name.to_rfc3339().as_str());
+            });
+        } else if prop.ty.is_simple_type() {
+            primary_key_rendering.push(quote::quote! {
+                result.push_str(&self.#name.to_string().as_str());
+            });
+        } else {
+            primary_key_rendering.push(quote::quote! {
+                result.push_str(&self.#name.to_str());
+            });
+        }
+        i += 1;
+    }
+
     render_implement_trait(
         type_name,
         quote::quote!(my_postgres::sql_update::SqlUpdateModel),
@@ -109,6 +142,12 @@ pub fn impl_sql_update_model(
 
                 fn get_field_value(&self, no: usize) -> my_postgres::sql_update::SqlUpdateModelValue{
                     #fn_get_field_value
+                }
+
+                fn get_primary_key_as_single_string(&self) -> String{
+                    let mut result = String::new();
+                    #( #primary_key_rendering )*
+                    result
                 }
             }
         },

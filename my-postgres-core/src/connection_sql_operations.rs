@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{
+    collections::{BTreeMap, HashSet},
+    time::Duration,
+};
 
 use crate::{
     count_result::CountResult,
@@ -314,6 +317,20 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
+        {
+            let mut has_entities = HashSet::new();
+
+            for entity in entities {
+                let key = entity.get_primary_key_as_single_string();
+
+                if has_entities.contains(&key) {
+                    panic!("Duplicated entity in bulk_insert_or_update_db_entity for table: {}. PrimaryKey: {}", table_name, key);
+                }
+
+                has_entities.insert(key);
+            }
+        }
+
         let process_name = format!(
             "bulk_insert_or_update_db_entity into table {} {} entities",
             table_name,

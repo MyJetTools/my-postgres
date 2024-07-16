@@ -10,6 +10,8 @@ pub trait SqlUpdateModel {
     fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
     fn get_fields_amount() -> usize;
 
+    fn get_primary_key_as_single_string(&self) -> String;
+
     fn fill_update_columns(sql: &mut String) {
         let amount = Self::get_fields_amount();
 
