@@ -8,8 +8,8 @@ use rust_extensions::StrOrString;
 use tokio_postgres::Row;
 
 use crate::{
-    sql::SqlData, ConnectionString, ConnectionsPool, MyPostgresError, PostgresConnectionInstance,
-    PostgresSettings,
+    sql::SqlData, ConnectionsPool, MyPostgresError, PostgresConnectionInstance,
+    PostgresConnectionString, PostgresSettings,
 };
 
 pub enum PostgresConnection {
@@ -21,17 +21,20 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
         let conn_string = postgres_settings.get_connection_string().await;
-        let conn_string = ConnectionString::from_str(conn_string.as_str());
+        let conn_string = PostgresConnectionString::from_str(conn_string.as_str());
 
         let connection = PostgresConnectionInstance::new(
             app_name.to_string(),
             conn_string.get_db_name().to_string(),
             postgres_settings,
+            #[cfg(feature = "with-ssh")]
+            ssh_target,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         )
@@ -40,21 +43,32 @@ impl PostgresConnection {
         Self::Single(connection)
     }
 
+    #[cfg(feature = "with-ssh")]
+    pub fn clone_ssh_target(&self) -> Arc<crate::ssh::SshTarget> {
+        match self {
+            PostgresConnection::Single(connection) => connection.ssh_target.clone(),
+            PostgresConnection::Pool(pool) => pool.ssh_target.clone(),
+        }
+    }
+
     pub async fn new_as_multiple_connections(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
+        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
         let conn_string = postgres_settings.get_connection_string().await;
-        let conn_string = ConnectionString::from_str(conn_string.as_str());
+        let conn_string = PostgresConnectionString::from_str(conn_string.as_str());
 
         Self::Pool(ConnectionsPool::new(
             app_name,
             conn_string.get_db_name().to_string(),
             postgres_settings,
             max_pool_size,
+            #[cfg(feature = "with-ssh")]
+            ssh_target,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         ))
@@ -130,7 +144,7 @@ impl PostgresConnection {
         }
     }
 
-    pub async fn get_connection_string(&self) -> (String, ConnectionString) {
+    pub async fn get_connection_string(&self) -> (String, PostgresConnectionString) {
         match self {
             PostgresConnection::Single(connection) => {
                 let conn_string = connection
@@ -143,7 +157,7 @@ impl PostgresConnection {
 
                 (
                     connection.get_app_name().to_string(),
-                    ConnectionString::parse(conn_string_format),
+                    PostgresConnectionString::parse(conn_string_format),
                 )
             }
             PostgresConnection::Pool(pool) => {
@@ -159,7 +173,7 @@ impl PostgresConnection {
 
                 (
                     connection.as_ref().get_app_name().to_string(),
-                    ConnectionString::parse(conn_string_format),
+                    PostgresConnectionString::parse(conn_string_format),
                 )
             }
         }

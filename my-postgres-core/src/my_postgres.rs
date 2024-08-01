@@ -6,6 +6,9 @@ use rust_extensions::Logger;
 use rust_extensions::StrOrString;
 use std::{sync::Arc, time::Duration};
 
+#[cfg(feature = "with-ssh")]
+use crate::ssh::*;
+
 use crate::{
     count_result::CountResult,
     sql::SqlData,
@@ -20,6 +23,8 @@ use crate::{
 pub struct MyPostgres {
     connection: Arc<PostgresConnection>,
     sql_request_timeout: Duration,
+    #[cfg(feature = "with-ssh")]
+    ssh_target: Arc<SshTarget>,
 }
 
 #[derive(Debug)]
@@ -48,6 +53,16 @@ impl MyPostgres {
         MyPostgresBuilder::from_connection(connection)
     }
 
+    #[cfg(feature = "with-ssh")]
+    pub async fn set_ssh_credentials(&self, ssh_credentials: Arc<my_ssh::SshCredentials>) {
+        self.ssh_target.set_credentials(ssh_credentials).await;
+    }
+
+    #[cfg(feature = "with-ssh")]
+    pub async fn set_ssh_session_pool(&self, ssh_session_pool: Arc<my_ssh::SshSessionsPool>) {
+        self.ssh_target.set_sessions_pool(ssh_session_pool).await;
+    }
+
     pub fn create(connection: Arc<PostgresConnection>, sql_request_timeout: Duration) -> Self {
         println!(
             "Created connection with sql_timeout: {:?}",
@@ -56,6 +71,8 @@ impl MyPostgres {
         Self {
             connection,
             sql_request_timeout,
+            #[cfg(feature = "with-ssh")]
+            ssh_target: Arc::new(SshTarget::new()),
         }
     }
 

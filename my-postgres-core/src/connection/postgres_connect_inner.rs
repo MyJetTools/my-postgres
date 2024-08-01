@@ -17,14 +17,21 @@ pub struct PostgresConnectionSingleThreaded {
     postgres_client: Option<tokio_postgres::Client>,
     to_start: Option<Arc<PostgresConnectionInner>>,
     db_name: String,
+    #[cfg(feature = "with-ssh")]
+    ssh_target: Arc<crate::ssh::SshTarget>,
 }
 
 impl PostgresConnectionSingleThreaded {
-    pub fn new(db_name: String) -> Self {
+    pub fn new(
+        db_name: String,
+        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
+    ) -> Self {
         Self {
             postgres_client: None,
             to_start: None,
             db_name,
+            #[cfg(feature = "with-ssh")]
+            ssh_target,
         }
     }
 
@@ -53,6 +60,8 @@ impl PostgresConnectionSingleThreaded {
             tokio::spawn(super::connection_loop::start_connection_loop(
                 to_start,
                 self.db_name.clone(),
+                #[cfg(feature = "with-ssh")]
+                self.ssh_target.clone(),
             ));
             return true;
         }
@@ -83,6 +92,7 @@ impl PostgresConnectionInner {
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         db_name: String,
+        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
@@ -90,7 +100,11 @@ impl PostgresConnectionInner {
         Self {
             app_name,
             postgres_settings,
-            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new(db_name))),
+            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new(
+                db_name,
+                #[cfg(feature = "with-ssh")]
+                ssh_target,
+            ))),
             connected: Arc::new(AtomicBool::new(false)),
 
             to_be_disposable: AtomicBool::new(false),

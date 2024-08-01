@@ -36,4 +36,7 @@ mod group_by_fields;
 pub use group_by_fields::*;
 pub mod utils;
 
+#[cfg(feature = "with-ssh")]
+mod ssh;
+
 pub extern crate tokio_postgres;

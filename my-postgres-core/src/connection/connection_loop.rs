@@ -8,11 +8,17 @@ use openssl::ssl::{SslConnector, SslMethod};
 #[cfg(feature = "with-tls")]
 use postgres_openssl::MakeTlsConnector;
 
-use crate::ConnectionString;
+use crate::PostgresConnectionString;
+
+pub const POSTGRES_DEFAULT_PORT: u16 = 5432;
 
 use super::postgres_connect_inner::PostgresConnectionInner;
 
-pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>, db_name: String) {
+pub async fn start_connection_loop(
+    inner: Arc<PostgresConnectionInner>,
+    db_name: String,
+    #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
+) {
     loop {
         if inner.is_to_be_disposable() {
             break;
@@ -46,8 +52,14 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>, db_name:
                 tokio::time::sleep(Duration::from_secs(3)).await;
             }
         } else {
-            println!("Starting Postgres connection  for db {db_name} without sslmode=require");
-            create_and_start_no_tls_connection(conn_string, &inner).await;
+            println!("Starting Postgres connection for db {db_name} with NO sslmode=require");
+            create_and_start_no_tls_connection(
+                conn_string,
+                &inner,
+                #[cfg(feature = "with-ssh")]
+                &ssh_target,
+            )
+            .await;
         }
 
         inner.disconnect();
@@ -61,7 +73,39 @@ pub async fn start_connection_loop(inner: Arc<PostgresConnectionInner>, db_name:
 async fn create_and_start_no_tls_connection(
     connection_string: String,
     inner: &Arc<PostgresConnectionInner>,
+    #[cfg(feature = "with-ssh")] ssh_target: &Arc<crate::ssh::SshTarget>,
 ) {
+    #[cfg(feature = "with-ssh")]
+    let result = if let Some(ssh_target) = ssh_target.get_value().await {
+        let ssh_session = ssh_target.get_ssh_session().await;
+
+        let connection_string = PostgresConnectionString::from_str(connection_string.as_str());
+
+        let get_host_endpoint = connection_string.get_host_endpoint();
+
+        let unix_socket_file = crate::ssh::generate_unix_socket_file(
+            ssh_target.credentials.as_ref().unwrap(),
+            get_host_endpoint,
+        );
+        let result = ssh_session
+            .start_port_forward(
+                unix_socket_file,
+                get_host_endpoint.host.to_string(),
+                get_host_endpoint.port.unwrap_or(POSTGRES_DEFAULT_PORT),
+            )
+            .await;
+
+        if let Err(result) = result {
+            println!("Can not start port forwarding with error: {:?}", result);
+        }
+
+        let con_string = connection_string.to_string(&inner.app_name);
+        tokio_postgres::connect(con_string.as_str(), NoTls).await
+    } else {
+        tokio_postgres::connect(connection_string.as_str(), NoTls).await
+    };
+
+    #[cfg(not(feature = "with-ssh"))]
     let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
 
     match result {
@@ -183,7 +227,7 @@ async fn create_and_start_with_tls(
     }
 }
 
-fn get_conn_string(src: &str) -> ConnectionString {
+fn get_conn_string(src: &str) -> PostgresConnectionString {
     let conn_string_format = crate::ConnectionStringFormat::parse_and_detect(src);
-    ConnectionString::parse(conn_string_format)
+    PostgresConnectionString::parse(conn_string_format)
 }

@@ -43,6 +43,8 @@ async fn check_if_db_exists_int(
         std::sync::Arc::new(tech_conn_string),
         #[cfg(feature = "with-logs-and-telemetry")]
         connection.get_logger().clone(),
+        #[cfg(feature = "with-ssh")]
+        connection.clone_ssh_target(),
     )
     .await;
 

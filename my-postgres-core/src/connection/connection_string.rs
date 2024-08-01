@@ -1,3 +1,7 @@
+use rust_extensions::url_utils::HostEndpoint;
+
+use super::connection_loop::POSTGRES_DEFAULT_PORT;
+
 const PREFIX: &str = "postgresql://";
 
 pub struct Position {
@@ -5,17 +9,17 @@ pub struct Position {
     to: usize,
 }
 
-pub struct ConnectionString {
+pub struct PostgresConnectionString {
     conn_string: Vec<u8>,
     user_name: Position,
     password: Position,
     host: Position,
-    port: u32,
+    port: u16,
     db_name: Position,
     ssl_require: bool,
 }
 
-impl ConnectionString {
+impl PostgresConnectionString {
     pub fn from_str(src: &str) -> Self {
         let conn_string = ConnectionStringFormat::parse_and_detect(src);
         Self::parse(conn_string)
@@ -42,12 +46,20 @@ impl ConnectionString {
         self.ssl_require
     }
 
+    pub fn get_host_endpoint(&self) -> HostEndpoint {
+        HostEndpoint {
+            scheme: None,
+            host: self.get_field_value(&self.host),
+            port: Some(self.port),
+        }
+    }
+
     fn parse_space_separated(conn_string: Vec<u8>) -> Self {
         let mut user_name = None;
         let mut password = None;
         let mut db_name = None;
         let mut host = None;
-        let mut port: u32 = 5432;
+        let mut port: u16 = POSTGRES_DEFAULT_PORT;
         let mut ssl_require = false;
 
         let mut pos = 0;
@@ -98,7 +110,7 @@ impl ConnectionString {
                         .unwrap()
                         .trim();
 
-                    port = value.parse::<u32>().unwrap();
+                    port = value.parse::<u16>().unwrap();
                 }
 
                 "dbname" => {
@@ -138,7 +150,7 @@ impl ConnectionString {
         let mut password = None;
         let mut db_name = None;
         let mut host = None;
-        let mut port: u32 = 5432;
+        let mut port: u16 = POSTGRES_DEFAULT_PORT;
         let mut ssl_require = false;
 
         let mut pos = 0;
@@ -194,7 +206,7 @@ impl ConnectionString {
                         .unwrap()
                         .trim();
 
-                    port = value.parse::<u32>().unwrap();
+                    port = value.parse::<u16>().unwrap();
                 }
 
                 "database" => {
@@ -278,7 +290,7 @@ impl ConnectionString {
 
         let port = std::str::from_utf8(&conn_string[port_start..port_end])
             .unwrap()
-            .parse::<u32>()
+            .parse::<u16>()
             .unwrap();
 
         let db_name_start = port_end + 1;
@@ -354,6 +366,29 @@ impl ConnectionString {
         }
     }
 
+    pub fn to_string_with_host_as_unix_socket(&self, host_path: &str, app_name: &str) -> String {
+        if self.ssl_require {
+            format!(
+                "host={} dbname={} user={} password={} application_name={} sslmode=require",
+                host_path,
+                self.get_field_value(&self.db_name),
+                self.get_field_value(&self.user_name),
+                self.get_field_value(&self.password),
+                app_name
+            )
+        } else {
+            format!(
+                "host={} port={} dbname={} user={} password={} application_name={}",
+                self.get_field_value(&self.host),
+                &self.port,
+                self.get_field_value(&self.db_name),
+                self.get_field_value(&self.user_name),
+                self.get_field_value(&self.password),
+                app_name
+            )
+        }
+    }
+
     pub fn to_string_with_new_db_name(&self, app_name: &str, db_name: &str) -> String {
         if self.ssl_require {
             format!(
@@ -398,7 +433,7 @@ pub fn format(conn_string: &str, app_name: &str) -> String {
         return format!("{} application_name={}", conn_string, app_name);
     }
 
-    let conn_string = ConnectionString::parse(conn_string_format);
+    let conn_string = PostgresConnectionString::parse(conn_string_format);
 
     conn_string.to_string(app_name)
 }
@@ -455,7 +490,7 @@ mod test {
             "postgresql://username@username:password@localhost:5432/dbname",
         );
 
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         assert_eq!(
             "username@username",
@@ -487,7 +522,7 @@ mod test {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "postgresql://username@username:password@localhost:5432/dbname?sslmode=require",
         );
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         assert_eq!(
             "username@username",
@@ -519,7 +554,7 @@ mod test {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "postgresql://admin:example@10.0.0.3:5432/my_dbname?connect_timeout=10",
         );
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         assert_eq!(
             "admin",
@@ -551,7 +586,7 @@ mod test {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "Server=localhost;UserId=usr;Password=password;Database=payments;sslmode=require;Port=5566",
         );
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         assert_eq!(
             "usr",
@@ -583,7 +618,7 @@ mod test {
         let conn_string_format = ConnectionStringFormat::parse_and_detect(
             "Server=localhost;User Id=usr;Password=password;Database=payments;Ssl Mode=require;Port=5566",
         );
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         assert_eq!(
             "usr",

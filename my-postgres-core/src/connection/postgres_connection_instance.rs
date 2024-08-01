@@ -9,7 +9,8 @@ use rust_extensions::Logger;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    count_result::CountResult, sql::SqlData, ConnectionString, MyPostgresError, PostgresSettings,
+    count_result::CountResult, sql::SqlData, MyPostgresError, PostgresConnectionString,
+    PostgresSettings,
 };
 
 use super::PostgresConnectionInner;
@@ -19,6 +20,8 @@ pub struct PostgresConnectionInstance {
     #[cfg(feature = "with-logs-and-telemetry")]
     pub logger: Arc<dyn Logger + Send + Sync + 'static>,
     pub created: DateTimeAsMicroseconds,
+    #[cfg(feature = "with-ssh")]
+    pub ssh_target: Arc<crate::ssh::SshTarget>,
 }
 
 impl PostgresConnectionInstance {
@@ -26,12 +29,15 @@ impl PostgresConnectionInstance {
         app_name: String,
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
             app_name,
             postgres_settings,
             db_name,
+            #[cfg(feature = "with-ssh")]
+            ssh_target.clone(),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.clone(),
         ));
@@ -41,6 +47,8 @@ impl PostgresConnectionInstance {
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
             created: DateTimeAsMicroseconds::now(),
+            #[cfg(feature = "with-ssh")]
+            ssh_target,
         };
 
         result.inner.engage(result.inner.clone()).await;
@@ -80,7 +88,7 @@ impl PostgresConnectionInstance {
         let conn_string_format =
             crate::ConnectionStringFormat::parse_and_detect(conn_string.as_str());
 
-        let connection_string = ConnectionString::parse(conn_string_format);
+        let connection_string = PostgresConnectionString::parse(conn_string_format);
 
         connection_string.get_db_name().to_string()
     }

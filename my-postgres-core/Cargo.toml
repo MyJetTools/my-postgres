@@ -9,6 +9,7 @@ edition = "2021"
 default = []
 with-tls = ["postgres-openssl", "openssl"]
 with-logs-and-telemetry = ["my-telemetry"]
+with-ssh = ["my-ssh"]
 
 [dependencies]
 my-json = { tag = "0.2.1", git = "https://github.com/MyJetTools/my-json.git" }
@@ -17,6 +18,7 @@ rust-extensions = { tag = "0.1.4", git = "https://github.com/MyJetTools/rust-ext
     "with-tokio",
 ] }
 my-telemetry = { tag = "1.1.1", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
+my-ssh = { tag = "0.1.1", git = "https://github.com/MyJetTools/my-ssh.git", optional = true }
 
 tokio = { version = "*", features = ["full"] }
 tokio-postgres = { version = "*", features = ["with-chrono-0_4"] }
