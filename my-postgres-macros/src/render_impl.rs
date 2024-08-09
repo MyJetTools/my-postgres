@@ -11,7 +11,7 @@ pub fn implement_select_value_provider(
         quote!(my_postgres::sql_select::SelectValueProvider),
         || {
             quote::quote! {
-                fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, metadata: &Option<my_postgres::SqlValueMetadata>) {
+                fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, db_column_name: &'static str,  metadata: &Option<my_postgres::SqlValueMetadata>) {
                     #content
                 }
             }

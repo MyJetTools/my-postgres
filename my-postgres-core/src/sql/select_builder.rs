@@ -13,6 +13,7 @@ pub enum SelectFieldValue {
     GroupByField {
         statement: StrOrString<'static>,
         field_name: &'static str,
+        db_column_name: &'static str,
     },
 }
 
@@ -248,6 +249,7 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
             SelectFieldValue::GroupByField {
                 field_name,
                 statement,
+                db_column_name: _,
             } => {
                 sql.push_str(format!("{} as \"{}\"", statement.as_str(), field_name).as_str());
             }

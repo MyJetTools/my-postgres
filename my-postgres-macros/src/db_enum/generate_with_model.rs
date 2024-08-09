@@ -37,7 +37,7 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
                 }
             }
 
-            pub fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, metadata: &Option<my_postgres::SqlValueMetadata>) {
+            pub fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, db_column_name: &'static str, metadata: &Option<my_postgres::SqlValueMetadata>) {
                #select_part
             }
 

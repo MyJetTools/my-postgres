@@ -19,6 +19,7 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
+        db_column_name: &'static str,
         metadata: &Option<SqlValueMetadata>,
     ) {
         let sql_type = if let Some(metadata) = metadata {
@@ -34,6 +35,7 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
             statement: format!("COUNT(*)::{}", sql_type).into(),
+            db_column_name,
         });
     }
 }

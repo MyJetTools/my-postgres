@@ -21,6 +21,7 @@ impl<T: std::fmt::Debug + GroupByFieldType + Send + Sync + 'static> SelectValueP
     fn fill_select_part(
         sql: &mut SelectBuilder,
         field_name: &'static str,
+        db_column_name: &'static str,
         metadata: &Option<SqlValueMetadata>,
     ) {
         let sql_type = if let Some(metadata) = metadata {
@@ -35,7 +36,8 @@ impl<T: std::fmt::Debug + GroupByFieldType + Send + Sync + 'static> SelectValueP
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             field_name,
-            statement: format!("AVG({field_name})::{}", sql_type).into(),
+            statement: format!("AVG({db_column_name})::{}", sql_type).into(),
+            db_column_name,
         });
     }
 }
