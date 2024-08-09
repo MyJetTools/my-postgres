@@ -16,7 +16,8 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
     let select_part = super::utils::render_select_part_as_json();
 
     let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body_as_json();
-
+    let db_field_type = crate::render_impl::get_column_type_as_parameter();
+    
     let result = quote! {
 
         impl #enum_name{
@@ -37,7 +38,7 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
                 }
             }
 
-            pub fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, db_column_name: &'static str, metadata: &Option<my_postgres::SqlValueMetadata>) {
+            pub fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder,  column_name: #db_field_type ,  metadata: &Option<my_postgres::SqlValueMetadata>) {
                #select_part
             }
 
@@ -56,13 +57,13 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
        
 
         impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
-            fn from_db_row(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
-                let value: String = row.get(name);
+            fn from_db_row(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
+                let value: String = row.get(column_name.db_column_name);
                 Self::from_db_value(value.as_str())
             }
 
-            fn from_db_row_opt(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
-                let value: Option<String> = row.get(name);
+            fn from_db_row_opt(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
+                let value: Option<String> = row.get(column_name.db_column_name);
                 Self::from_db_value(value?.as_str()).into()
             }
         }

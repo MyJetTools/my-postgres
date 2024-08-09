@@ -106,6 +106,7 @@ pub fn generate(
         }
     });
     
+    let db_field_type = crate::render_impl::get_column_type_as_parameter();
 
     let result = quote! {
 
@@ -138,8 +139,8 @@ pub fn generate(
                 }
             }
 
-            pub fn fill_select_part(sql: &mut  my_postgres::sql::SelectBuilder, field_name: &'static str,db_column_name: &'static str,  metadata: &Option<my_postgres::SqlValueMetadata>) {
-                sql.push(my_postgres::sql::SelectFieldValue::Field(field_name));
+            pub fn fill_select_part(sql: &mut  my_postgres::sql::SelectBuilder,  column_name: #db_field_type ,  metadata: &Option<my_postgres::SqlValueMetadata>) {
+                sql.push(my_postgres::sql::SelectFieldValue::Field(column_name));
             }
 
         }
@@ -157,13 +158,13 @@ pub fn generate(
         #impl_where_value_provider
 
         impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
-            fn from_db_row(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
-                let result: #sql_db_type = row.get(name);
+            fn from_db_row(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
+                let result: #sql_db_type = row.get(column_name.db_column_name);
                 #from_db_result
             }
 
-            fn from_db_row_opt(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
-                let result: Option<#sql_db_type> = row.get(name);
+            fn from_db_row_opt(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
+                let result: Option<#sql_db_type> = row.get(column_name.db_column_name);
                 let result = result?;
                 Some(#from_db_result)
             }

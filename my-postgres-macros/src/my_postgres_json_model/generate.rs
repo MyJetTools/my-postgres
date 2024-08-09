@@ -19,7 +19,7 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
     let select_value_provider_impl =
         crate::render_impl::implement_select_value_provider(&type_name, || {
             quote::quote! {
-                    sql.push(my_postgres::sql::SelectFieldValue::Json(field_name));
+                    sql.push(my_postgres::sql::SelectFieldValue::Json(column_name));
             }
         });
 
@@ -27,13 +27,13 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
         &type_name,
         || {
             quote::quote! {
-                let str_value: String = row.get(name);
+                let str_value: String = row.get(column_name.db_column_name);
                 Self::from_str(str_value.as_str())
             }
         },
         || {
             quote::quote! {
-                let str_value: Option<String> = row.get(name);
+                let str_value: Option<String> = row.get(column_name.db_column_name);
                 let str_value = str_value.as_ref()?;
 
                 let result = Self::from_str(str_value);

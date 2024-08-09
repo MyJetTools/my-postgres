@@ -3,7 +3,7 @@ use tokio_postgres::types::FromSql;
 use crate::{
     sql::SelectBuilder,
     sql_select::{FromDbRow, SelectValueProvider},
-    GroupByFieldType, SqlValueMetadata,
+    DbColumnName, GroupByFieldType, SqlValueMetadata,
 };
 #[derive(Debug)]
 pub struct GroupBySum<T: Send + Sync + 'static>(T);
@@ -17,8 +17,7 @@ impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> GroupBySum<T> {
 impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for GroupBySum<T> {
     fn fill_select_part(
         sql: &mut SelectBuilder,
-        field_name: &'static str,
-        db_column_name: &'static str,
+        column_name: DbColumnName,
         metadata: &Option<SqlValueMetadata>,
     ) {
         let sql_type = if let Some(metadata) = metadata {
@@ -32,9 +31,8 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
         };
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
-            field_name,
-            statement: format!("SUM({db_column_name})::{}", sql_type).into(),
-            db_column_name,
+            statement: format!("SUM({})::{}", column_name.db_column_name, sql_type).into(),
+            column_name,
         });
     }
 }
@@ -44,18 +42,18 @@ impl<'s, T: Copy + FromSql<'s> + Send + Sync + 'static> FromDbRow<'s, GroupBySum
 {
     fn from_db_row(
         row: &'s crate::DbRow,
-        name: &str,
+        column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> GroupBySum<T> {
-        GroupBySum(row.get(name))
+        GroupBySum(row.get(column_name.field_name))
     }
 
     fn from_db_row_opt(
         row: &'s crate::DbRow,
-        name: &str,
+        column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<GroupBySum<T>> {
-        let result: Option<T> = row.get(name);
+        let result: Option<T> = row.get(column_name.field_name);
         Some(GroupBySum(result?))
     }
 }

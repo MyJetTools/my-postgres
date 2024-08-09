@@ -6,12 +6,13 @@ pub fn implement_select_value_provider(
     content: impl Fn() -> proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let content = content();
+    let db_field_type = get_column_type_as_parameter();
     render_implement_trait(
         type_name,
         quote!(my_postgres::sql_select::SelectValueProvider),
         || {
             quote::quote! {
-                fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, field_name: &'static str, db_column_name: &'static str,  metadata: &Option<my_postgres::SqlValueMetadata>) {
+                fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, column_name: #db_field_type  ,  metadata: &Option<my_postgres::SqlValueMetadata>) {
                     #content
                 }
             }
@@ -33,13 +34,15 @@ pub fn impl_from_db_row(
     let fn_from_db_row = fn_from_db_row();
     let fn_from_db_row_opt = fn_from_db_row_opt();
 
+    let column_name_type = get_column_type_as_parameter();
+
     render_implement_trait(type_name, trait_name, || {
         quote::quote! {
-            fn from_db_row(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> #name_no_generics_ident {
+            fn from_db_row(row: &'s my_postgres::DbRow, column_name: #column_name_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> #name_no_generics_ident {
                 #fn_from_db_row
             }
 
-            fn from_db_row_opt(row: &'s my_postgres::DbRow, name: &str, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<#name_no_generics_ident> {
+            fn from_db_row_opt(row: &'s my_postgres::DbRow, column_name: #column_name_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<#name_no_generics_ident> {
                 #fn_from_db_row_opt
             }
         }
@@ -217,4 +220,8 @@ fn render_implement_trait(
             #content
         }
     }
+}
+
+pub fn get_column_type_as_parameter() -> proc_macro2::TokenStream {
+    quote! { my_postgres::DbColumnName  }
 }

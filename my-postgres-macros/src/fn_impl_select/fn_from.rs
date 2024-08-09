@@ -13,9 +13,7 @@ pub fn fn_from<'s>(
     for field in fields {
         let name_ident = field.get_field_name_ident();
 
-        let db_column_name = field.get_db_column_name()?;
-
-        let db_column_name = db_column_name.as_str();
+        let db_column_name = field.get_db_column_name()?.to_column_name_token();
 
         let metadata = field.get_field_metadata()?;
 

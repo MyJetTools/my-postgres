@@ -22,11 +22,7 @@ pub fn fn_fill_select_fields<'s>(
                 sql.push_str(#attr_value);
             });
         } else {
-            let db_column_name = prop.get_db_column_name()?;
-
-            let field_name = prop.get_field_name_ident().to_string();
-
-            let db_column_name = db_column_name.as_str();
+            let db_column_name = prop.get_db_column_name()?.to_column_name_token();
 
             let metadata = prop.get_field_metadata()?;
 
@@ -35,7 +31,7 @@ pub fn fn_fill_select_fields<'s>(
 
                 result.push(
                     quote! {
-                        #type_ident::fill_select_part(sql, #field_name, #db_column_name,  &#metadata);
+                        #type_ident::fill_select_part(sql, #db_column_name,  &#metadata);
                     }
                     .into(),
                 );
@@ -43,7 +39,7 @@ pub fn fn_fill_select_fields<'s>(
                 let type_ident = prop.ty.get_token_stream_with_generics();
                 result.push(
                     quote! {
-                        #type_ident::fill_select_part(sql, #field_name, #db_column_name, &#metadata);
+                        #type_ident::fill_select_part(sql, #db_column_name, &#metadata);
                     }
                     .into(),
                 );

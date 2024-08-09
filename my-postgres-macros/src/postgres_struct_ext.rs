@@ -8,6 +8,20 @@ pub struct DbColumnName<'s> {
     pub property_name: &'s str,
 }
 
+impl<'s> DbColumnName<'s> {
+    pub fn to_column_name_token(&'s self) -> proc_macro2::TokenStream {
+        let db_column_name = match self.attr.as_ref() {
+            Some(attr) => attr.name,
+            None => self.property_name,
+        };
+
+        let filed_name = self.property_name;
+        quote::quote! {
+            my_postgres::DbColumnName{ field_name: #filed_name, db_column_name: #db_column_name  }
+        }
+    }
+}
+
 impl DbColumnName<'_> {
     pub fn as_str(&self) -> &str {
         if let Some(attr) = &self.attr {

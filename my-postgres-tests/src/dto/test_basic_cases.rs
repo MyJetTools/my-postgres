@@ -100,9 +100,18 @@ mod tests {
 
         assert_eq!(builder.len(), 3);
 
-        assert_eq!(builder.get(0).unwrap().unwrap_as_field(), "client_id");
-        assert_eq!(builder.get(1).unwrap().unwrap_as_field(), "key");
-        assert_eq!(builder.get(2).unwrap().unwrap_as_field(), "value");
+        assert_eq!(
+            builder.get(0).unwrap().unwrap_as_field().db_column_name,
+            "client_id"
+        );
+        assert_eq!(
+            builder.get(1).unwrap().unwrap_as_field().db_column_name,
+            "key"
+        );
+        assert_eq!(
+            builder.get(2).unwrap().unwrap_as_field().db_column_name,
+            "value"
+        );
     }
 
     #[test]

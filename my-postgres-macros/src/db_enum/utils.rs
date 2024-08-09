@@ -12,7 +12,7 @@ pub fn render_update_value_provider_fn_body_as_json() -> proc_macro2::TokenStrea
 
 pub fn render_select_part_as_json() -> proc_macro2::TokenStream {
     quote::quote! {
-        sql.push(my_postgres::sql::SelectFieldValue::Json(field_name));
+        sql.push(my_postgres::sql::SelectFieldValue::Json(column_name));
     }
 }
 
