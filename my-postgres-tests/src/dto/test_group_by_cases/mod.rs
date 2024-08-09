@@ -26,5 +26,8 @@ fn test_same_field_min_max() {
     let mut sql_values = SqlValues::new();
     select_builder.build_select_sql(&mut sql, &mut sql_values, "test", NoneWhereModel::new());
 
-    println!("{}", sql);
+    assert_eq!(
+        r#"SELECT candle_type,instrument_id,is_bid,MIN(date)::bigint as "min",MAX(date)::bigint as "max" FROM test"#,
+        sql
+    );
 }
