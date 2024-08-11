@@ -10,7 +10,8 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    ConcurrentOperationResult, MyPostgresError, PostgresConnection, UpdateConflictType,
+    ConcurrentOperationResult, MyPostgresError, PostgresConnection, PostgresReadStream,
+    UpdateConflictType,
 };
 
 pub struct SqlOperationWithRetries {
@@ -205,6 +206,38 @@ impl SqlOperationWithRetries {
                     format!("execute_sql_as_vec"),
                     self.sql_request_timeout,
                     |row| TEntity::from(row),
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
+                .await;
+
+            match result {
+                Ok(result) => return Ok(result),
+                Err(err) => {
+                    self.handle_error(err, attempt_no).await?;
+                    attempt_no += 1;
+                }
+            }
+        }
+    }
+
+    pub async fn query_rows_as_stream<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        where_model: Option<&TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
+        let mut attempt_no = 0;
+        loop {
+            let result = self
+                .connection
+                .query_rows_as_stream(
+                    table_name,
+                    where_model,
+                    self.sql_request_timeout,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
