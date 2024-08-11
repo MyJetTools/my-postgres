@@ -10,7 +10,8 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    ConcurrentOperationResult, MyPostgresError, PostgresConnection, UpdateConflictType,
+    ConcurrentOperationResult, MyPostgresError, PostgresConnection, PostgresReadStream,
+    UpdateConflictType,
 };
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
@@ -165,6 +166,30 @@ impl PostgresConnection {
             format!("Select rows from {}", table_name),
             sql_request_timeout,
             |row| TEntity::from(row),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await
+    }
+
+    pub async fn query_rows_as_stream<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        where_model: Option<&TWhereModel>,
+        sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
+        let select_builder = SelectBuilder::from_select_model::<TEntity>();
+
+        let sql = select_builder.to_sql_string(table_name, where_model);
+
+        self.execute_sql_as_stream(
+            &sql,
+            format!("Select rows from {}", table_name),
+            sql_request_timeout,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         )

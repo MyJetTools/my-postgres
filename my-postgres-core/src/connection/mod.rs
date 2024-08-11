@@ -9,3 +9,5 @@ pub use connections_pool::*;
 use postgres_connect_inner::*;
 pub use postgres_connection::*;
 pub use postgres_connection_instance::*;
+mod postgres_read_stream;
+pub use postgres_read_stream::*;

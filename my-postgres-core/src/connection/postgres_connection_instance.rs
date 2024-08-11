@@ -9,11 +9,11 @@ use rust_extensions::Logger;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    count_result::CountResult, sql::SqlData, MyPostgresError, PostgresConnectionString,
-    PostgresSettings,
+    count_result::CountResult, sql::SqlData, sql_select::SelectEntity, MyPostgresError,
+    PostgresConnectionString, PostgresSettings,
 };
 
-use super::PostgresConnectionInner;
+use super::{PostgresConnectionInner, PostgresReadStream};
 
 pub struct PostgresConnectionInstance {
     inner: Arc<PostgresConnectionInner>,
@@ -155,6 +155,24 @@ impl PostgresConnectionInstance {
         }
 
         Ok(result)
+    }
+
+    pub async fn execute_sql_as_stream<'s, TEntity: SelectEntity + Send + Sync + 'static>(
+        &self,
+        sql: &SqlData,
+        process_name: String,
+        sql_request_time_out: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
+        self.inner
+            .execute_sql_as_stream(
+                sql,
+                process_name,
+                sql_request_time_out,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
     }
 
     pub async fn get_count<TCountResult: CountResult>(

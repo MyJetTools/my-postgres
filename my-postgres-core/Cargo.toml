@@ -26,6 +26,7 @@ serde = { version = "*", features = ["derive"] }
 async-trait = "*"
 serde_json = "*"
 lazy_static = "*"
+futures-util = "*"
 
 #tls
 postgres-openssl = { version = "*", optional = true }

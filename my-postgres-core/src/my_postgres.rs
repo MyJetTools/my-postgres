@@ -16,7 +16,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
-    MyPostgresBuilder, MyPostgresError, PostgresConnection, PostgresSettings,
+    MyPostgresBuilder, MyPostgresError, PostgresConnection, PostgresReadStream, PostgresSettings,
     SqlOperationWithRetries, UpdateConflictType,
 };
 
@@ -160,6 +160,26 @@ impl MyPostgres {
                 "execute_sql_as_vec".to_string(),
                 self.sql_request_timeout,
                 |row| TEntity::from(row),
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn query_rows_as_stream<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        where_model: Option<&TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
+        self.connection
+            .query_rows_as_stream(
+                table_name,
+                where_model,
+                self.sql_request_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )

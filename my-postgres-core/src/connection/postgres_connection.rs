@@ -8,9 +8,11 @@ use rust_extensions::StrOrString;
 use tokio_postgres::Row;
 
 use crate::{
-    sql::SqlData, ConnectionsPool, MyPostgresError, PostgresConnectionInstance,
-    PostgresConnectionString, PostgresSettings,
+    sql::SqlData, sql_select::SelectEntity, ConnectionsPool, MyPostgresError,
+    PostgresConnectionInstance, PostgresConnectionString, PostgresSettings,
 };
+
+use super::PostgresReadStream;
 
 pub enum PostgresConnection {
     Single(PostgresConnectionInstance),
@@ -217,6 +219,41 @@ impl PostgresConnection {
                         sql,
                         process_name,
                         transform,
+                        sql_request_timeout,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                    .await
+            }
+        }
+    }
+
+    pub async fn execute_sql_as_stream<TEntity: SelectEntity + Send + Sync + 'static>(
+        &self,
+        sql: &SqlData,
+        process_name: String,
+        sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
+        match self {
+            PostgresConnection::Single(connection) => {
+                connection
+                    .execute_sql_as_stream(
+                        &sql,
+                        process_name,
+                        sql_request_timeout,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                    .await
+            }
+            PostgresConnection::Pool(pool) => {
+                let connection = pool.get().await;
+                connection
+                    .as_ref()
+                    .execute_sql_as_stream(
+                        sql,
+                        process_name,
                         sql_request_timeout,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         telemetry_context,
