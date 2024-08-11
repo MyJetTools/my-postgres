@@ -407,13 +407,26 @@ impl PostgresConnectionInner {
                             process_name,
                             execution,
                             sql_request_time_out,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &self.logger,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            started,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            telemetry_context,
                         )
                         .await?;
 
                     return Ok(PostgresReadStream::new(
+                        sql.sql.to_string(),
                         stream,
                         self.connected.clone(),
                         sql_request_time_out,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        &self.logger,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        started,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
                     ));
                 }
                 None => {
@@ -532,7 +545,7 @@ async fn write_fail_telemetry_and_log(
 }
 
 #[cfg(feature = "with-logs-and-telemetry")]
-fn get_sql_telemetry_tags(sql: Option<&str>) -> Option<Vec<my_telemetry::TelemetryEventTag>> {
+pub fn get_sql_telemetry_tags(sql: Option<&str>) -> Option<Vec<my_telemetry::TelemetryEventTag>> {
     if let Some(sql) = sql {
         Some(vec![my_telemetry::TelemetryEventTag {
             key: "SQL".to_string(),
