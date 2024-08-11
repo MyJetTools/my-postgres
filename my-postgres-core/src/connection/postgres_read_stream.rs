@@ -84,6 +84,8 @@ async fn start_reading<TEntity: SelectEntity + Send + Sync + 'static>(
 
     pin_mut!(stream);
 
+    let mut read_ok_rows = 0;
+
     loop {
         let next_future = stream.try_next();
 
@@ -98,8 +100,9 @@ async fn start_reading<TEntity: SelectEntity + Send + Sync + 'static>(
             break;
         }
 
-        match stream.try_next().await {
+        match read_result.unwrap() {
             Ok(row) => {
+                read_ok_rows += 1;
                 if row.is_none() {
                     #[cfg(feature = "with-logs-and-telemetry")]
                     if let Some(my_telemetry) = telemetry_context.as_ref() {
@@ -127,7 +130,7 @@ async fn start_reading<TEntity: SelectEntity + Send + Sync + 'static>(
                 #[cfg(feature = "with-logs-and-telemetry")]
                 {
                     let process = "Reading sql request as stream".to_string();
-                    let error_message = format!("{:?}", e);
+                    let error_message = format!("Pulled {} ok rows before error: {:?}",read_ok_rows, e);
                     if let Some(my_telemetry) = telemetry_context.as_ref() {
                         my_telemetry::TELEMETRY_INTERFACE
                             .write_fail(
@@ -148,9 +151,10 @@ async fn start_reading<TEntity: SelectEntity + Send + Sync + 'static>(
 
                 #[cfg(not(feature = "with-logs-and-telemetry"))]
                 println!(
-                    "Error reading sql request as stream. Err: {:?}. Sql: {}",
-                    e, sql
+                    "Error reading sql request as stream before reading ok amount: {}. Err: {:?}. Sql: {}",
+                    read_ok_rows, e, sql, 
                 );
+
 
                 connected.store(false, std::sync::atomic::Ordering::Relaxed);
                 sender.send(Err(e.into())).await.unwrap();
