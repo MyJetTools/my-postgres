@@ -347,6 +347,7 @@ impl MyPostgres {
         &self,
         table_name: &str,
         where_models: Vec<TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<UnionModel<TEntity, TWhereModel>>, MyPostgresError> {
         self.connection
             .bulk_query_with_union(
