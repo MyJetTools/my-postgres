@@ -350,9 +350,32 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<UnionModel<TEntity, TWhereModel>>, MyPostgresError> {
         self.connection
-            .bulk_query_with_union(
+            .bulk_query(
                 table_name,
                 where_models,
+                self.sql_request_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn bulk_query_with_transformation<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TOut: Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        transformation: impl Fn(TEntity) -> TOut,
+        where_models: Vec<TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<UnionModel<TOut, TWhereModel>>, MyPostgresError> {
+        self.connection
+            .bulk_query_with_transformation(
+                table_name,
+                where_models,
+                &transformation,
                 self.sql_request_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,

@@ -4,9 +4,9 @@ use crate::{
     sql_where::SqlWhereModel,
 };
 
-pub struct UnionModel<TSelectEntity: SelectEntity, TWhereModel: SqlWhereModel> {
+pub struct UnionModel<TEntity, TWhereModel: SqlWhereModel> {
     pub where_model: TWhereModel,
-    pub items: Vec<TSelectEntity>,
+    pub items: Vec<TEntity>,
 }
 
 pub fn compile_union_select<TSelectEntity: SelectEntity, TWhereModel: SqlWhereModel>(

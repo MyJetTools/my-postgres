@@ -470,7 +470,7 @@ impl PostgresConnection {
         .await
     }
 
-    pub async fn bulk_query_with_union<
+    pub async fn bulk_query<
         TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel,
     >(
@@ -514,6 +514,57 @@ impl PostgresConnection {
             let line_no: i32 = db_row.get(0);
             let entity = TEntity::from(&db_row);
             result[line_no as usize].items.push(entity);
+        }
+
+        Ok(result)
+    }
+
+    pub async fn bulk_query_with_transformation<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TOut: Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        where_models: Vec<TWhereModel>,
+        transformation: &impl Fn(TEntity) -> TOut,
+        sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<UnionModel<TOut, TWhereModel>>, MyPostgresError> {
+        let mut sql = String::new();
+        let mut values = SqlValues::new();
+
+        crate::union::compile_union_select::<TEntity, TWhereModel>(
+            &mut sql,
+            &mut values,
+            table_name,
+            &where_models,
+        );
+
+        let sql_data = SqlData::new(sql, values);
+
+        let mut result_stream = self
+            .execute_sql_as_row_stream(
+                &sql_data,
+                "Bulk query with union".to_string(),
+                sql_request_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await?;
+
+        let mut result: Vec<UnionModel<TOut, TWhereModel>> = Vec::new();
+        for where_model in where_models {
+            result.push(UnionModel {
+                where_model,
+                items: Vec::new(),
+            });
+        }
+
+        while let Some(db_row) = result_stream.get_next().await? {
+            let line_no: i32 = db_row.get(0);
+            let entity = TEntity::from(&db_row);
+            result[line_no as usize].items.push(transformation(entity));
         }
 
         Ok(result)

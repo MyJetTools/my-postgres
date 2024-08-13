@@ -82,7 +82,7 @@ impl SqlOperationWithRetries {
         loop {
             let result = self
                 .connection
-                .bulk_query_with_union(
+                .bulk_query(
                     table_name,
                     where_models.clone(),
                     self.sql_request_timeout,
@@ -100,6 +100,42 @@ impl SqlOperationWithRetries {
             }
         }
     }
+
+    pub async fn bulk_query_with_transformation<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TOut: Send + Sync + 'static,
+        TWhereModel: SqlWhereModel + Clone,
+    >(
+        &self,
+        table_name: &str,
+        transformation: impl Fn(TEntity) -> TOut,
+        where_models: Vec<TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<UnionModel<TOut, TWhereModel>>, MyPostgresError> {
+        let mut attempt_no = 0;
+        loop {
+            let result = self
+                .connection
+                .bulk_query_with_transformation(
+                    table_name,
+                    where_models.clone(),
+                    &transformation,
+                    self.sql_request_timeout,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
+                .await;
+
+            match result {
+                Ok(result) => return Ok(result),
+                Err(err) => {
+                    self.handle_error(err, attempt_no).await?;
+                    attempt_no += 1;
+                }
+            }
+        }
+    }
+
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
         &self,
         table_name: &str,
