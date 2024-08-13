@@ -340,7 +340,7 @@ impl MyPostgres {
             .await
     }
 
-    pub async fn bulk_query_with_union<
+    pub async fn bulk_query<
         TEntity: SelectEntity + Send + Sync + 'static,
         TWhereModel: SqlWhereModel,
     >(

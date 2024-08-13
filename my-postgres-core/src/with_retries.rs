@@ -10,6 +10,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity, ToSqlString},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
+    union::UnionModel,
     ConcurrentOperationResult, MyPostgresError, PostgresConnection, PostgresReadStream,
     UpdateConflictType,
 };
@@ -68,6 +69,37 @@ impl SqlOperationWithRetries {
         }
     }
 
+    pub async fn bulk_query<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel + Clone,
+    >(
+        &self,
+        table_name: &str,
+        where_models: Vec<TWhereModel>,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<Vec<UnionModel<TEntity, TWhereModel>>, MyPostgresError> {
+        let mut attempt_no = 0;
+        loop {
+            let result = self
+                .connection
+                .bulk_query_with_union(
+                    table_name,
+                    where_models.clone(),
+                    self.sql_request_timeout,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    telemetry_context,
+                )
+                .await;
+
+            match result {
+                Ok(result) => return Ok(result),
+                Err(err) => {
+                    self.handle_error(err, attempt_no).await?;
+                    attempt_no += 1;
+                }
+            }
+        }
+    }
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
         &self,
         table_name: &str,
