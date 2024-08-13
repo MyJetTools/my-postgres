@@ -23,3 +23,4 @@ mod tests_real_cases;
 mod where_model;
 mod where_model_with_ignore_if_none;
 mod where_model_with_str;
+mod where_model_with_vec;
