@@ -16,6 +16,7 @@ use crate::{
     sql_select::{BulkSelectBuilder, BulkSelectEntity, SelectEntity},
     sql_update::SqlUpdateModel,
     sql_where::SqlWhereModel,
+    union::UnionModel,
     MyPostgresBuilder, MyPostgresError, PostgresConnection, PostgresReadStream, PostgresSettings,
     SqlOperationWithRetries, UpdateConflictType,
 };
@@ -332,6 +333,25 @@ impl MyPostgres {
             .update_db_entity(
                 entity,
                 table_name,
+                self.sql_request_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn bulk_query_with_union<
+        TEntity: SelectEntity + Send + Sync + 'static,
+        TWhereModel: SqlWhereModel,
+    >(
+        &self,
+        table_name: &str,
+        where_models: Vec<TWhereModel>,
+    ) -> Result<Vec<UnionModel<TEntity, TWhereModel>>, MyPostgresError> {
+        self.connection
+            .bulk_query_with_union(
+                table_name,
+                where_models,
                 self.sql_request_timeout,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,

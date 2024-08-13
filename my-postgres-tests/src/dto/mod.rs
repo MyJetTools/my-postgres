@@ -13,6 +13,7 @@ mod test_json_field;
 mod test_json_field_where_cases;
 mod test_json_hashmap_dto;
 mod test_primary_key;
+mod test_union;
 mod test_where_inline_case;
 mod test_where_inline_case_with_no_value;
 mod test_where_json_field;

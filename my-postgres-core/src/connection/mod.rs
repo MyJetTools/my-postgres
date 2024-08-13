@@ -11,3 +11,5 @@ pub use postgres_connection::*;
 pub use postgres_connection_instance::*;
 mod postgres_read_stream;
 pub use postgres_read_stream::*;
+mod postgres_row_read_stream;
+pub use postgres_row_read_stream::*;

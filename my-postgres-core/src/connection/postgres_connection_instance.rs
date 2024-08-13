@@ -13,7 +13,7 @@ use crate::{
     PostgresConnectionString, PostgresSettings,
 };
 
-use super::{PostgresConnectionInner, PostgresReadStream};
+use super::{PostgresConnectionInner, PostgresReadStream, PostgresRowReadStream};
 
 pub struct PostgresConnectionInstance {
     inner: Arc<PostgresConnectionInner>,
@@ -166,6 +166,24 @@ impl PostgresConnectionInstance {
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
         self.inner
             .execute_sql_as_stream(
+                sql,
+                process_name,
+                sql_request_time_out,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
+    pub async fn execute_sql_as_row_stream(
+        &self,
+        sql: &SqlData,
+        process_name: String,
+        sql_request_time_out: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresRowReadStream, MyPostgresError> {
+        self.inner
+            .execute_sql_as_row_stream(
                 sql,
                 process_name,
                 sql_request_time_out,

@@ -34,6 +34,7 @@ mod column_name;
 pub use column_name::*;
 mod group_by_fields;
 pub use group_by_fields::*;
+pub mod union;
 pub mod utils;
 
 #[cfg(feature = "with-ssh")]

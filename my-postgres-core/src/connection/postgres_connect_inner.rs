@@ -13,7 +13,7 @@ use tokio_postgres::Row;
 
 use crate::{sql::SqlData, sql_select::SelectEntity, MyPostgresError, PostgresSettings};
 
-use super::PostgresReadStream;
+use super::{PostgresReadStream, PostgresRowReadStream};
 
 pub struct PostgresConnectionSingleThreaded {
     postgres_client: Option<tokio_postgres::Client>,
@@ -417,6 +417,74 @@ impl PostgresConnectionInner {
                         .await?;
 
                     return Ok(PostgresReadStream::new(
+                        sql.sql.to_string(),
+                        stream,
+                        self.connected.clone(),
+                        sql_request_time_out,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        &self.logger,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        started,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    ));
+                }
+                None => {
+                    start_connection = true;
+                }
+            }
+        }
+    }
+
+    pub async fn execute_sql_as_row_stream(
+        &self,
+        sql: &SqlData,
+        process_name: String,
+        sql_request_time_out: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
+            &my_telemetry::MyTelemetryContext,
+        >,
+    ) -> Result<PostgresRowReadStream, MyPostgresError> {
+        let mut start_connection = false;
+        loop {
+            if start_connection {
+                self.start_connection().await;
+            }
+
+            let connection_access = self.inner.read().await;
+
+            let connection_access = connection_access.get_connection()?;
+
+            match connection_access {
+                Some(connection_access) => {
+                    if std::env::var("DEBUG").is_ok() {
+                        println!("SQL: {}", &sql.sql);
+                    }
+
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    let started = DateTimeAsMicroseconds::now();
+
+                    let params = sql.values.get_values_to_invoke();
+
+                    let execution =
+                        connection_access.query_raw(sql.sql.as_str(), params.into_iter());
+
+                    let stream = self
+                        .execute_with_timeout(
+                            Some(&sql.sql),
+                            process_name,
+                            execution,
+                            sql_request_time_out,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &self.logger,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            started,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            telemetry_context,
+                        )
+                        .await?;
+
+                    return Ok(PostgresRowReadStream::new(
                         sql.sql.to_string(),
                         stream,
                         self.connected.clone(),

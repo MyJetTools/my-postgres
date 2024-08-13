@@ -12,7 +12,7 @@ use crate::{
     PostgresConnectionInstance, PostgresConnectionString, PostgresSettings,
 };
 
-use super::PostgresReadStream;
+use super::{PostgresReadStream, PostgresRowReadStream};
 
 pub enum PostgresConnection {
     Single(PostgresConnectionInstance),
@@ -252,6 +252,41 @@ impl PostgresConnection {
                 connection
                     .as_ref()
                     .execute_sql_as_stream(
+                        sql,
+                        process_name,
+                        sql_request_timeout,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                    .await
+            }
+        }
+    }
+
+    pub async fn execute_sql_as_row_stream(
+        &self,
+        sql: &SqlData,
+        process_name: String,
+        sql_request_timeout: Duration,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<PostgresRowReadStream, MyPostgresError> {
+        match self {
+            PostgresConnection::Single(connection) => {
+                connection
+                    .execute_sql_as_row_stream(
+                        &sql,
+                        process_name,
+                        sql_request_timeout,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        telemetry_context,
+                    )
+                    .await
+            }
+            PostgresConnection::Pool(pool) => {
+                let connection = pool.get().await;
+                connection
+                    .as_ref()
+                    .execute_sql_as_row_stream(
                         sql,
                         process_name,
                         sql_request_timeout,

@@ -102,6 +102,7 @@ impl SelectFieldValue {
 }
 
 pub struct SelectBuilder {
+    pub bulk_where_no: Option<i64>,
     items: Vec<SelectFieldValue>,
     order_by_columns: Option<&'static str>,
     group_by_columns: Option<&'static str>,
@@ -113,6 +114,7 @@ impl SelectBuilder {
             items: Vec::new(),
             order_by_columns: None,
             group_by_columns: None,
+            bulk_where_no: None,
         }
     }
 
@@ -157,6 +159,7 @@ impl SelectBuilder {
             where_model,
             self.order_by_columns,
             self.group_by_columns,
+            self.bulk_where_no,
         );
 
         SqlData { sql, values }
@@ -177,6 +180,7 @@ impl SelectBuilder {
             where_model,
             self.order_by_columns,
             self.group_by_columns,
+            self.bulk_where_no,
         );
     }
 }
@@ -189,8 +193,14 @@ pub fn build_select<TSqlWhereModel: SqlWhereModel>(
     where_model: Option<&TSqlWhereModel>,
     order_by_columns: Option<&'static str>,
     group_by_columns: Option<&'static str>,
+    bulk_where_no: Option<i64>,
 ) {
     sql.push_str("SELECT ");
+
+    if let Some(bulk_where_no) = bulk_where_no {
+        sql.push_str(bulk_where_no.to_string().as_str());
+        sql.push_str("::int as where_no,");
+    }
 
     fill_select_fields(sql, items);
 
