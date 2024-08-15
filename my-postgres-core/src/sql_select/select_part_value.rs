@@ -194,16 +194,12 @@ impl SelectValueProvider for DateTimeAsMicroseconds {
         if let Some(metadata) = metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "timestamp" {
-                    sql.push(SelectFieldValue::DateTimeAsTimestamp(
-                        column_name.db_column_name,
-                    ));
+                    sql.push(SelectFieldValue::DateTimeAsTimestamp(column_name));
                     return;
                 }
 
                 if sql_type == "bigint" {
-                    sql.push(SelectFieldValue::DateTimeAsBigint(
-                        column_name.db_column_name,
-                    ));
+                    sql.push(SelectFieldValue::DateTimeAsBigint(column_name));
 
                     return;
                 }
