@@ -72,6 +72,23 @@ impl<'s> WhereFields<'s> {
         }
     }
 
+    pub fn has_at_least_one_non_optional_field(&self)->bool{
+        for itm in &self.where_fields{
+
+            if itm.ty.is_vec(){
+                continue;
+            }
+
+            if itm.ty.is_option() && itm.has_ignore_if_none_attr(){
+                continue;
+            }
+
+            return true;
+        }
+
+        false
+    }
+
 
     pub fn get_fields_with_programmatically_understanding_has_condition(&self)->Vec<&StructProperty>{
         let mut result = Vec::new();
@@ -96,6 +113,10 @@ impl<'s> WhereFields<'s> {
             return quote::quote!(false)    ;
         }
 
+
+        if self.has_at_least_one_non_optional_field(){
+            return quote::quote!(true);
+        }
 
         let fields_to_render = self.get_fields_with_programmatically_understanding_has_condition();
 

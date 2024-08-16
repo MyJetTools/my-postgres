@@ -20,6 +20,7 @@ mod test_where_json_field;
 mod test_where_raw_model;
 mod test_where_with_dynamic_json_values;
 mod tests_real_cases;
+mod where_from_real_life;
 mod where_model;
 mod where_model_with_ignore_if_none;
 mod where_model_with_str;
