@@ -80,6 +80,10 @@ pub fn generate_where_raw_model<'s>(
         }
     }
 
+    if let Some(prev_raw_content) = prev_raw_content {
+        content_to_render.push(prev_raw_content);
+    }
+
     let impl_where_model = crate::render_impl::impl_sql_where_model(
         &type_name,
         {
