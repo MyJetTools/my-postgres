@@ -406,7 +406,7 @@ impl PostgresConnection {
         Ok(())
     }
 
-    pub async fn delete_db_entity<TWhereModel: SqlWhereModel>(
+    pub async fn delete<TWhereModel: SqlWhereModel>(
         &self,
         table_name: &str,
         where_model: &TWhereModel,

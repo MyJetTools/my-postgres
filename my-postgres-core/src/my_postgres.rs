@@ -425,14 +425,14 @@ impl MyPostgres {
             .await
     }
 
-    pub async fn delete_db_entity<TWhereModel: SqlWhereModel>(
+    pub async fn delete<TWhereModel: SqlWhereModel>(
         &self,
         table_name: &str,
         where_model: &TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         self.connection
-            .delete_db_entity(
+            .delete(
                 table_name,
                 where_model,
                 self.sql_request_timeout,
