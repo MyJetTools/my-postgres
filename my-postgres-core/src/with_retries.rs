@@ -549,7 +549,13 @@ impl SqlOperationWithRetries {
         where_model: &TWhereModel,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        self.delete(table_name, where_model).await
+        self.delete(
+            table_name,
+            where_model,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        )
+        .await
     }
 
     pub async fn delete<TWhereModel: SqlWhereModel>(
