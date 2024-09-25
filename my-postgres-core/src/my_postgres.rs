@@ -425,6 +425,24 @@ impl MyPostgres {
             .await
     }
 
+    #[deprecated(note = "Please use delete instead")]
+    pub async fn delete_db_entity<TWhereModel: SqlWhereModel>(
+        &self,
+        table_name: &str,
+        where_model: &TWhereModel,
+        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+    ) -> Result<(), MyPostgresError> {
+        self.connection
+            .delete(
+                table_name,
+                where_model,
+                self.sql_request_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                telemetry_context,
+            )
+            .await
+    }
+
     pub async fn delete<TWhereModel: SqlWhereModel>(
         &self,
         table_name: &str,
