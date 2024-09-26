@@ -3,7 +3,6 @@ use std::{sync::Arc, time::Duration};
 use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
 use crate::{
-    ssh::SshTarget,
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
     MyPostgres, PostgresConnection, PostgresConnectionInstance, PostgresConnectionString,
     PostgresSettings,
