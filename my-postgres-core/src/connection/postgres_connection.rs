@@ -23,7 +23,6 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
@@ -36,7 +35,7 @@ impl PostgresConnection {
             conn_string.get_db_name().to_string(),
             postgres_settings,
             #[cfg(feature = "with-ssh")]
-            ssh_target,
+            conn_string.get_ssh_target().into(),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         )
@@ -57,7 +56,6 @@ impl PostgresConnection {
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
-        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
@@ -70,7 +68,7 @@ impl PostgresConnection {
             postgres_settings,
             max_pool_size,
             #[cfg(feature = "with-ssh")]
-            ssh_target,
+            conn_string.get_ssh_target().into(),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         ))

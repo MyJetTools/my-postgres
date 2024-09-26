@@ -17,6 +17,7 @@ pub struct PostgresConnectionString {
     port: u16,
     db_name: Position,
     ssl_require: bool,
+    ssh: Option<Position>,
 }
 
 impl PostgresConnectionString {
@@ -42,6 +43,11 @@ impl PostgresConnectionString {
         self.get_field_value(&self.db_name)
     }
 
+    pub fn get_ssh(&self) -> Option<&str> {
+        let result = self.get_field_value(self.ssh.as_ref()?);
+        Some(result)
+    }
+
     pub fn get_ssl_require(&self) -> bool {
         self.ssl_require
     }
@@ -61,6 +67,7 @@ impl PostgresConnectionString {
         let mut host = None;
         let mut port: u16 = POSTGRES_DEFAULT_PORT;
         let mut ssl_require = false;
+        let mut ssh = None;
 
         let mut pos = 0;
         while pos < conn_string.len() {
@@ -93,6 +100,12 @@ impl PostgresConnectionString {
                 }
                 "user" => {
                     user_name = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+                "ssh" => {
+                    ssh = Some(Position {
                         from: eq_pos + 1,
                         to: end_of_value,
                     });
@@ -142,7 +155,29 @@ impl PostgresConnectionString {
             port,
             db_name: db_name.unwrap(),
             ssl_require,
+            ssh,
         }
+    }
+
+    #[cfg(feature = "with-ssh")]
+    pub fn get_ssh_target(&self) -> crate::ssh::SshTarget {
+        let result = crate::ssh::SshTarget::new();
+
+        if let Some(ssh) = self.get_ssh() {
+            let ssh_credentials = my_ssh::SshCredentials::try_from_str(ssh);
+
+            if ssh_credentials.is_none() {
+                panic!(
+                    "Invalid ssh credentials {} at postgres connection string of host: {}",
+                    ssh,
+                    self.get_field_value(&self.host)
+                );
+            }
+
+            result.set_credentials(ssh_credentials.unwrap().into());
+        }
+
+        result
     }
 
     fn parse_column_separated(conn_string: Vec<u8>) -> Self {
@@ -150,6 +185,7 @@ impl PostgresConnectionString {
         let mut password = None;
         let mut db_name = None;
         let mut host = None;
+        let mut ssh = None;
         let mut port: u16 = POSTGRES_DEFAULT_PORT;
         let mut ssl_require = false;
 
@@ -178,6 +214,12 @@ impl PostgresConnectionString {
             match key.as_str() {
                 "server" => {
                     host = Some(Position {
+                        from: eq_pos + 1,
+                        to: end_of_value,
+                    });
+                }
+                "ssh" => {
+                    ssh = Some(Position {
                         from: eq_pos + 1,
                         to: end_of_value,
                     });
@@ -246,6 +288,7 @@ impl PostgresConnectionString {
             port,
             db_name: db_name.unwrap(),
             ssl_require,
+            ssh,
         }
     }
 
@@ -335,6 +378,7 @@ impl PostgresConnectionString {
                 to: db_name_end,
             },
             ssl_require,
+            ssh: None,
         }
     }
 

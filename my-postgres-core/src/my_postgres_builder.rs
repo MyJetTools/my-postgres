@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
 use crate::{
+    ssh::SshTarget,
     table_schema::{PrimaryKeySchema, TableSchema, TableSchemaProvider},
     MyPostgres, PostgresConnection, PostgresConnectionInstance, PostgresConnectionString,
     PostgresSettings,
@@ -15,8 +16,6 @@ pub enum MyPostgresBuilder {
         table_schema_data: Vec<TableSchema>,
         sql_request_timeout: Duration,
         sql_db_sync_timeout: Duration,
-        #[cfg(feature = "with-ssh")]
-        ssh_target: Arc<crate::ssh::SshTarget>,
         #[cfg(feature = "with-logs-and-telemetry")]
         logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
     },
@@ -44,8 +43,6 @@ impl MyPostgresBuilder {
             table_schema_data: Vec::new(),
             sql_request_timeout: Duration::from_secs(5),
             sql_db_sync_timeout: Duration::from_secs(60),
-            #[cfg(feature = "with-ssh")]
-            ssh_target: Arc::new(crate::ssh::SshTarget::new()),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -138,8 +135,6 @@ impl MyPostgresBuilder {
                 sql_request_timeout,
                 sql_db_sync_timeout,
 
-                #[cfg(feature = "with-ssh")]
-                ssh_target,
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger,
             } => {
@@ -152,7 +147,7 @@ impl MyPostgresBuilder {
                     conn_string.get_db_name().to_string(),
                     postgres_settings,
                     #[cfg(feature = "with-ssh")]
-                    ssh_target,
+                    conn_string.get_ssh_target().into(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )
