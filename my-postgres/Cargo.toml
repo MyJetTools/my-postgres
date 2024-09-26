@@ -9,6 +9,7 @@ default = []
 macros = ["dep:my-postgres-macros"]
 debug-table-schema = ["my-postgres-macros?/debug-table-schema"]
 with-tls = ["my-postgres-core/with-tls"]
+with-ssh = ["my-postgres-core/with-ssh"]
 with-telemetry = ["my-postgres-core/with-logs-and-telemetry"]
 
 [dependencies]
