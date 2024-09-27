@@ -215,7 +215,7 @@ impl PostgresConnectionInner {
                         .write_success(
                             telemetry_context,
                             started,
-                            process_name,
+                            process_name.to_string(),
                             "Ok".to_string(),
                             get_sql_telemetry_tags(sql),
                         )
