@@ -145,12 +145,21 @@ impl PostgresConnectionInner {
         &self,
         postgres_client: tokio_postgres::Client,
         host: &str,
+        tls: bool,
     ) -> DateTimeAsMicroseconds {
         let connected_date_time = DateTimeAsMicroseconds::now();
-        println!(
-            "{}: Postgres SQL Connection is established to {host}",
-            connected_date_time.to_rfc3339()
-        );
+
+        if tls {
+            println!(
+                "{}: TLS Postgres SQL Connection is established to {host}",
+                connected_date_time.to_rfc3339()
+            );
+        } else {
+            println!(
+                "{}: NoTls Postgres SQL Connection is established to {host}",
+                connected_date_time.to_rfc3339()
+            );
+        }
 
         {
             let mut write_access: tokio::sync::RwLockWriteGuard<

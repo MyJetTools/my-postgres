@@ -95,7 +95,7 @@ async fn create_and_start_no_tls_connection(
     #[cfg(feature = "with-logs-and-telemetry")]
     let mut ctx = std::collections::HashMap::new();
     #[cfg(feature = "with-logs-and-telemetry")]
-    ctx.insert("Host".to_string(), postgres_host);
+    ctx.insert("Host".to_string(), postgres_host.to_string());
 
     let connection_string = connection_string.to_string(&inner.app_name);
 
@@ -104,7 +104,7 @@ async fn create_and_start_no_tls_connection(
     match result {
         Ok((postgres_client, postgres_connection)) => {
             let connected_date_time = inner
-                .handle_connection_is_established(postgres_client, &postgres_host)
+                .handle_connection_is_established(postgres_client, &postgres_host, false)
                 .await;
 
             #[cfg(feature = "with-logs-and-telemetry")]
@@ -183,8 +183,6 @@ async fn create_and_start_with_tls(
     inner: &Arc<PostgresConnectionInner>,
     postgres_host: String,
 ) {
-    use rust_extensions::date_time::DateTimeAsMicroseconds;
-
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
 
     builder.set_verify_callback(openssl::ssl::SslVerifyMode::all(), |_, _| true);
@@ -194,7 +192,7 @@ async fn create_and_start_with_tls(
     #[cfg(feature = "with-logs-and-telemetry")]
     let mut ctx = std::collections::HashMap::new();
     #[cfg(feature = "with-logs-and-telemetry")]
-    ctx.insert("Host".to_string(), postgres_host);
+    ctx.insert("Host".to_string(), postgres_host.clone());
 
     let connection_string = connection_string.to_string(&inner.app_name);
 
@@ -204,7 +202,7 @@ async fn create_and_start_with_tls(
     match result {
         Ok((postgres_client, postgres_connection)) => {
             let connected_date_time = inner
-                .handle_connection_is_established(postgres_client, &postgres_host)
+                .handle_connection_is_established(postgres_client, &postgres_host, true)
                 .await;
 
             #[cfg(feature = "with-logs-and-telemetry")]
