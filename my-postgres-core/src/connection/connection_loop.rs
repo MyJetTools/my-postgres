@@ -17,7 +17,7 @@ use super::postgres_connect_inner::PostgresConnectionInner;
 pub async fn start_connection_loop(
     inner: Arc<PostgresConnectionInner>,
     db_name: String,
-    #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
+    #[cfg(feature = "with-ssh")] ssh_target: Option<crate::ssh::PostgresSshConfig>,
 ) {
     loop {
         if inner.is_to_be_disposable() {
@@ -73,10 +73,10 @@ pub async fn start_connection_loop(
 async fn create_and_start_no_tls_connection(
     connection_string: String,
     inner: &Arc<PostgresConnectionInner>,
-    #[cfg(feature = "with-ssh")] ssh_target: &Arc<crate::ssh::SshTarget>,
+    #[cfg(feature = "with-ssh")] ssh_target: &Option<crate::ssh::PostgresSshConfig>,
 ) {
     #[cfg(feature = "with-ssh")]
-    let (result, postgres_host) = if let Some(ssh_target) = ssh_target.get_value().await {
+    let (result, postgres_host) = if let Some(ssh_target) = ssh_target {
         let ssh_session = ssh_target.get_ssh_session().await;
 
         let connection_string = PostgresConnectionString::from_str(connection_string.as_str());
@@ -84,14 +84,10 @@ async fn create_and_start_no_tls_connection(
         let get_host_endpoint = connection_string.get_host_endpoint();
 
         let (host, port) = crate::ssh::generate_unix_socket_file(
-            ssh_target.credentials.as_ref().unwrap(),
+            ssh_target.credentials.as_ref(),
             get_host_endpoint,
         );
 
-        println!(
-            "Establishing Postgres SSH connection through {}:{}",
-            host, port
-        );
         let result = ssh_session
             .start_port_forward(
                 format!("{}:{}", host, port),

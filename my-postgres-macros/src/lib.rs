@@ -21,6 +21,7 @@ mod postgres_struct_ext;
 mod render_impl;
 use syn;
 mod attributes;
+mod consts;
 mod my_postgres_json_where_model;
 mod postgres_struct_schema;
 mod where_fields;
@@ -38,7 +39,7 @@ mod where_fields;
         primary_key,
         default_if_null,
         wrap_column_name,
-        force_cast_to_db_type,
+        force_cast_db_type,
     )
 )]
 pub fn postgres_select_model(input: TokenStream) -> TokenStream {

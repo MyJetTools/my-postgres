@@ -15,6 +15,8 @@ pub enum MyPostgresBuilder {
         table_schema_data: Vec<TableSchema>,
         sql_request_timeout: Duration,
         sql_db_sync_timeout: Duration,
+        #[cfg(feature = "with-ssh")]
+        ssh: crate::ssh::SshConfigBuilder,
         #[cfg(feature = "with-logs-and-telemetry")]
         logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
     },
@@ -42,6 +44,8 @@ impl MyPostgresBuilder {
             table_schema_data: Vec::new(),
             sql_request_timeout: Duration::from_secs(5),
             sql_db_sync_timeout: Duration::from_secs(60),
+            #[cfg(feature = "with-ssh")]
+            ssh: crate::ssh::SshConfigBuilder::new(),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -82,6 +86,41 @@ impl MyPostgresBuilder {
             } => *sql_db_sync_timeout = value,
         }
 
+        self
+    }
+
+    #[cfg(feature = "with-ssh")]
+    pub fn with_ssh_sessions(mut self, my_ssh_sessions: Arc<my_ssh::SshSessionsPool>) -> Self {
+        match &mut self {
+            MyPostgresBuilder::AsSettings { ssh, .. } => {
+                ssh.sessions_pool = Some(my_ssh_sessions);
+            }
+            MyPostgresBuilder::AsSharedConnection { .. } => {
+                panic!("Can not set ssh sessions for shared connection. Please set session_pool the moment you create SharedConnection");
+            }
+        }
+        self
+    }
+
+    #[cfg(feature = "with-ssh")]
+    pub fn with_ssh_private_key(
+        mut self,
+        private_key_content: String,
+        pass_phrase: Option<String>,
+    ) -> Self {
+        use my_ssh::SshAuthenticationType;
+
+        match &mut self {
+            MyPostgresBuilder::AsSettings { ssh, .. } => {
+                ssh.auth_type = SshAuthenticationType::PrivateKey {
+                    private_key_content,
+                    pass_phrase,
+                };
+            }
+            MyPostgresBuilder::AsSharedConnection { .. } => {
+                panic!("Can not set ssh private key for shared connection. Please set session_pool the moment you create SharedConnection");
+            }
+        }
         self
     }
 
@@ -134,6 +173,9 @@ impl MyPostgresBuilder {
                 sql_request_timeout,
                 sql_db_sync_timeout,
 
+                #[cfg(feature = "with-ssh")]
+                ssh,
+
                 #[cfg(feature = "with-logs-and-telemetry")]
                 logger,
             } => {
@@ -141,12 +183,14 @@ impl MyPostgresBuilder {
 
                 let conn_string = PostgresConnectionString::from_str(&conn_string);
 
+                #[cfg(feature = "with-ssh")]
+                let ssh_config = conn_string.get_ssh_config(Some(ssh));
                 let connection = PostgresConnectionInstance::new(
                     app_name,
                     conn_string.get_db_name().to_string(),
                     postgres_settings,
                     #[cfg(feature = "with-ssh")]
-                    conn_string.get_ssh_target().await.into(),
+                    ssh_config.clone(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )
@@ -155,8 +199,13 @@ impl MyPostgresBuilder {
                 let connection = Arc::new(PostgresConnection::Single(connection));
 
                 if table_schema_data.len() > 0 {
-                    super::sync_table_schema::check_if_db_exists(&connection, sql_db_sync_timeout)
-                        .await;
+                    super::sync_table_schema::check_if_db_exists(
+                        &connection,
+                        sql_db_sync_timeout,
+                        #[cfg(feature = "with-ssh")]
+                        ssh_config,
+                    )
+                    .await;
 
                     for table_schema in table_schema_data {
                         check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
@@ -172,8 +221,13 @@ impl MyPostgresBuilder {
                 sql_db_sync_timeout,
             } => {
                 if table_schema_data.len() > 0 {
-                    super::sync_table_schema::check_if_db_exists(&connection, sql_db_sync_timeout)
-                        .await;
+                    super::sync_table_schema::check_if_db_exists(
+                        &connection,
+                        sql_db_sync_timeout,
+                        #[cfg(feature = "with-ssh")]
+                        connection.get_ssh_config(),
+                    )
+                    .await;
 
                     for table_schema in table_schema_data {
                         check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;

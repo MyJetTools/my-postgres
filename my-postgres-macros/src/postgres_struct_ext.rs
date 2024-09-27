@@ -9,7 +9,7 @@ pub struct DbColumnName<'s> {
 }
 
 impl<'s> DbColumnName<'s> {
-    pub fn to_column_name_token(&'s self, force_cast_to_db_type: bool) -> proc_macro2::TokenStream {
+    pub fn to_column_name_token(&'s self, force_cast_db_type: bool) -> proc_macro2::TokenStream {
         let db_column_name = match self.attr.as_ref() {
             Some(attr) => attr.name,
             None => self.property_name,
@@ -20,7 +20,7 @@ impl<'s> DbColumnName<'s> {
             my_postgres::DbColumnName{
                 field_name: #filed_name,
                 db_column_name: #db_column_name,
-                force_cast_to_db_type: #force_cast_to_db_type
+                force_cast_db_type: #force_cast_db_type
             }
         }
     }
@@ -87,7 +87,7 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn inside_json(&self) -> Result<Option<&str>, syn::Error>;
 
-    fn get_force_cast_to_db_type(&self) -> bool;
+    fn get_force_cast_db_type(&self) -> bool;
 
     fn fill_attributes(
         &self,
@@ -179,8 +179,8 @@ pub trait PostgresStructPropertyExt<'s> {
 }
 
 impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
-    fn get_force_cast_to_db_type(&self) -> bool {
-        self.attrs.try_get_attr("force_cast_to_db_type").is_some()
+    fn get_force_cast_db_type(&self) -> bool {
+        self.attrs.try_get_attr("force_cast_db_type").is_some()
     }
 
     fn get_field_name_ident(&self) -> &syn::Ident {
@@ -270,7 +270,8 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     fn get_field_metadata(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
         let sql_type: Option<SqlTypeAttribute> = self.try_get_attribute()?;
         let operator: Option<WhereOperatorAttribute> = self.try_get_attribute()?;
-        if sql_type.is_none() && operator.is_none() {
+        let wrap_column_name: Option<WrapColumnNameAttribute> = self.try_get_attribute()?;
+        if sql_type.is_none() && operator.is_none() && wrap_column_name.is_none() {
             return Ok(quote::quote!(None));
         }
 
@@ -288,10 +289,18 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             quote::quote!(None)
         };
 
+        let wrap_column_name = if let Some(wrap_column_name) = wrap_column_name {
+            let name = wrap_column_name.name;
+            quote::quote!(Some(#name))
+        } else {
+            quote::quote!(None)
+        };
+
         Ok(quote::quote! {
             Some(my_postgres::SqlValueMetadata{
                 sql_type: #sql_type,
-                operator: #operator
+                operator: #operator,
+                wrap_column_name: #wrap_column_name
             })
         })
     }

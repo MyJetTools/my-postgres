@@ -105,8 +105,10 @@ pub fn generate(
             true
         }
     });
-    
+
     let db_field_type = crate::render_impl::get_column_type_as_parameter();
+    
+    let fn_fill_select_type = crate::consts::render_fn_fill_select_part_as_field();
 
     let result = quote! {
 
@@ -139,9 +141,7 @@ pub fn generate(
                 }
             }
 
-            pub fn fill_select_part(sql: &mut  my_postgres::sql::SelectBuilder,  column_name: #db_field_type ,  metadata: &Option<my_postgres::SqlValueMetadata>) {
-                sql.push(my_postgres::sql::SelectFieldValue::Field(column_name));
-            }
+            #fn_fill_select_type
 
         }
 

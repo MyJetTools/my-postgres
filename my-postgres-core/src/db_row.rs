@@ -4,5 +4,5 @@ pub type DbRow = tokio_postgres::Row;
 pub struct DbColumnName {
     pub field_name: &'static str,
     pub db_column_name: &'static str,
-    pub force_cast_to_db_type: bool,
+    pub force_cast_db_type: bool,
 }

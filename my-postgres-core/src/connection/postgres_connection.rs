@@ -23,7 +23,9 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
+
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
+        #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
@@ -35,7 +37,7 @@ impl PostgresConnection {
             conn_string.get_db_name().to_string(),
             postgres_settings,
             #[cfg(feature = "with-ssh")]
-            conn_string.get_ssh_target().await.into(),
+            conn_string.get_ssh_config(ssh_config_builder),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         )
@@ -45,10 +47,10 @@ impl PostgresConnection {
     }
 
     #[cfg(feature = "with-ssh")]
-    pub fn clone_ssh_target(&self) -> Arc<crate::ssh::SshTarget> {
+    pub fn get_ssh_config(&self) -> Option<crate::ssh::PostgresSshConfig> {
         match self {
-            PostgresConnection::Single(connection) => connection.ssh_target.clone(),
-            PostgresConnection::Pool(pool) => pool.ssh_target.clone(),
+            PostgresConnection::Single(connection) => connection.ssh_config.clone(),
+            PostgresConnection::Pool(pool) => pool.ssh_config.clone(),
         }
     }
 
@@ -56,6 +58,7 @@ impl PostgresConnection {
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
+        #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
@@ -68,7 +71,7 @@ impl PostgresConnection {
             postgres_settings,
             max_pool_size,
             #[cfg(feature = "with-ssh")]
-            conn_string.get_ssh_target().await.into(),
+            conn_string.get_ssh_config(ssh_config_builder),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         ))

@@ -19,21 +19,14 @@ pub struct PostgresConnectionSingleThreaded {
     postgres_client: Option<tokio_postgres::Client>,
     to_start: Option<Arc<PostgresConnectionInner>>,
     db_name: String,
-    #[cfg(feature = "with-ssh")]
-    ssh_target: Arc<crate::ssh::SshTarget>,
 }
 
 impl PostgresConnectionSingleThreaded {
-    pub fn new(
-        db_name: String,
-        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
-    ) -> Self {
+    pub fn new(db_name: String) -> Self {
         Self {
             postgres_client: None,
             to_start: None,
             db_name,
-            #[cfg(feature = "with-ssh")]
-            ssh_target,
         }
     }
 
@@ -57,13 +50,16 @@ impl PostgresConnectionSingleThreaded {
         }
     }
 
-    pub fn start_connection(&mut self) -> bool {
+    pub fn start_connection(
+        &mut self,
+        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    ) -> bool {
         if let Some(to_start) = self.to_start.take() {
             tokio::spawn(super::connection_loop::start_connection_loop(
                 to_start,
                 self.db_name.clone(),
                 #[cfg(feature = "with-ssh")]
-                self.ssh_target.clone(),
+                ssh_config,
             ));
             return true;
         }
@@ -85,6 +81,8 @@ pub struct PostgresConnectionInner {
     pub app_name: String,
     pub postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     pub to_be_disposable: AtomicBool,
+    #[cfg(feature = "with-ssh")]
+    ssh_config: Option<crate::ssh::PostgresSshConfig>,
     #[cfg(feature = "with-logs-and-telemetry")]
     pub logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
 }
@@ -94,7 +92,7 @@ impl PostgresConnectionInner {
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         db_name: String,
-        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
+        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
             dyn rust_extensions::Logger + Send + Sync + 'static,
         >,
@@ -102,14 +100,12 @@ impl PostgresConnectionInner {
         Self {
             app_name,
             postgres_settings,
-            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new(
-                db_name,
-                #[cfg(feature = "with-ssh")]
-                ssh_target,
-            ))),
+            inner: Arc::new(RwLock::new(PostgresConnectionSingleThreaded::new(db_name))),
             connected: Arc::new(AtomicBool::new(false)),
 
             to_be_disposable: AtomicBool::new(false),
+            #[cfg(feature = "with-ssh")]
+            ssh_config,
             #[cfg(feature = "with-logs-and-telemetry")]
             logger,
         }
@@ -173,7 +169,7 @@ impl PostgresConnectionInner {
     >(
         &self,
         sql: Option<&str>,
-        process_name: String,
+        process_name: &str,
         execution: TFuture,
         sql_request_time_out: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<
@@ -245,7 +241,10 @@ impl PostgresConnectionInner {
     async fn start_connection(&self) {
         let started = {
             let mut write_access = self.inner.write().await;
-            write_access.start_connection()
+            write_access.start_connection(
+                #[cfg(feature = "with-ssh")]
+                self.ssh_config.clone(),
+            )
         };
 
         if started {
@@ -268,6 +267,7 @@ impl PostgresConnectionInner {
         >,
     ) -> Result<u64, MyPostgresError> {
         let mut start_connection = false;
+        let started = DateTimeAsMicroseconds::now();
         loop {
             if start_connection {
                 self.start_connection().await;
@@ -286,13 +286,10 @@ impl PostgresConnectionInner {
                         println!("SQL: {}", &sql.sql);
                     }
 
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    let started = DateTimeAsMicroseconds::now();
-
                     let result = self
                         .execute_with_timeout(
                             Some(&sql.sql),
-                            process_name,
+                            &process_name,
                             execution,
                             sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -304,7 +301,14 @@ impl PostgresConnectionInner {
                         )
                         .await;
 
-                    return Ok(self.handle_error(result)?);
+                    match result {
+                        Ok(result) => {
+                            return Ok(result);
+                        }
+                        Err(err) => {
+                            self.handle_error(err, started, sql_request_time_out)?;
+                        }
+                    }
                 }
                 None => {
                     start_connection = true;
@@ -323,6 +327,8 @@ impl PostgresConnectionInner {
         >,
     ) -> Result<Vec<Row>, MyPostgresError> {
         let mut start_connection = false;
+        let started = DateTimeAsMicroseconds::now();
+
         loop {
             if start_connection {
                 self.start_connection().await;
@@ -338,16 +344,13 @@ impl PostgresConnectionInner {
                         println!("SQL: {}", &sql.sql);
                     }
 
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    let started = DateTimeAsMicroseconds::now();
-
                     let params = sql.values.get_values_to_invoke();
                     let execution = connection_access.query(&sql.sql, params.as_slice());
 
                     let result = self
                         .execute_with_timeout(
                             Some(&sql.sql),
-                            process_name,
+                            &process_name,
                             execution,
                             sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -359,7 +362,14 @@ impl PostgresConnectionInner {
                         )
                         .await;
 
-                    return Ok(self.handle_error(result)?);
+                    match result {
+                        Ok(result) => {
+                            return Ok(result);
+                        }
+                        Err(err) => {
+                            self.handle_error(err, started, sql_request_time_out)?;
+                        }
+                    };
                 }
                 None => {
                     start_connection = true;
@@ -378,6 +388,10 @@ impl PostgresConnectionInner {
         >,
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
         let mut start_connection = false;
+
+        #[cfg(feature = "with-logs-and-telemetry")]
+        let started = DateTimeAsMicroseconds::now();
+
         loop {
             if start_connection {
                 self.start_connection().await;
@@ -393,9 +407,6 @@ impl PostgresConnectionInner {
                         println!("SQL: {}", &sql.sql);
                     }
 
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    let started = DateTimeAsMicroseconds::now();
-
                     let params = sql.values.get_values_to_invoke();
 
                     let execution =
@@ -404,7 +415,7 @@ impl PostgresConnectionInner {
                     let stream = self
                         .execute_with_timeout(
                             Some(&sql.sql),
-                            process_name,
+                            &process_name,
                             execution,
                             sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -472,7 +483,7 @@ impl PostgresConnectionInner {
                     let stream = self
                         .execute_with_timeout(
                             Some(&sql.sql),
-                            process_name,
+                            &process_name,
                             execution,
                             sql_request_time_out,
                             #[cfg(feature = "with-logs-and-telemetry")]
@@ -513,14 +524,13 @@ impl PostgresConnectionInner {
             &my_telemetry::MyTelemetryContext,
         >,
     ) -> Result<(), MyPostgresError> {
+        let started = DateTimeAsMicroseconds::now();
+
         if std::env::var("DEBUG").is_ok() {
             if let Some(first_value) = sql_with_params.get(0) {
                 println!("SQL: {:?}", first_value.sql);
             }
         }
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let started = DateTimeAsMicroseconds::now();
 
         let mut connection_access = self.inner.write().await;
 
@@ -541,7 +551,7 @@ impl PostgresConnectionInner {
         let result = self
             .execute_with_timeout(
                 None,
-                process_name,
+                &process_name,
                 execution,
                 sql_request_time_out,
                 #[cfg(feature = "with-logs-and-telemetry")]
@@ -553,29 +563,39 @@ impl PostgresConnectionInner {
             )
             .await;
 
-        self.handle_error(result)
-    }
-
-    fn handle_error<TResult>(
-        &self,
-        result: Result<TResult, MyPostgresError>,
-    ) -> Result<TResult, MyPostgresError> {
-        if let Err(err) = &result {
-            match err {
-                MyPostgresError::NoConnection => {}
-                MyPostgresError::SingleRowRequestReturnedMultipleRows(_) => {}
-                MyPostgresError::PostgresError(_) => {}
-                MyPostgresError::Other(_) => {
-                    self.disconnect();
-                }
-                MyPostgresError::TimeOut(_) => {
-                    self.disconnect();
-                }
-                MyPostgresError::ConnectionNotStartedYet => {}
-            }
+        if let Err(err) = result {
+            self.handle_error(err, started, sql_request_time_out)?;
         }
 
-        result
+        Ok(())
+    }
+
+    fn handle_error(
+        &self,
+        err: MyPostgresError,
+        started: DateTimeAsMicroseconds,
+        request_timeout: Duration,
+    ) -> Result<(), MyPostgresError> {
+        match &err {
+            MyPostgresError::NoConnection => {}
+            MyPostgresError::SingleRowRequestReturnedMultipleRows(_) => {}
+            MyPostgresError::PostgresError(_) => {}
+            MyPostgresError::Other(_) => {
+                self.disconnect();
+            }
+            MyPostgresError::TimeOut(_) => {
+                self.disconnect();
+            }
+            MyPostgresError::ConnectionNotStartedYet => {}
+        }
+
+        let now = DateTimeAsMicroseconds::now();
+
+        if now.duration_since(started).as_positive_or_zero() > request_timeout {
+            return Err(err);
+        }
+
+        Ok(())
     }
 }
 

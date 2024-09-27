@@ -1,12 +1,15 @@
 use rust_extensions::StrOrString;
 
-use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel, DbColumnName};
+use crate::{sql_select::SelectEntity, sql_where::SqlWhereModel, DbColumnName, SqlValueMetadata};
 
 use super::{SqlData, SqlValues};
 
 pub enum SelectFieldValue {
     LineNo(usize),
-    Field(DbColumnName),
+    Field {
+        column_name: DbColumnName,
+        wrap_column_name: Option<&'static str>,
+    },
     FieldWithCast {
         column_name: DbColumnName,
         cast_to: &'static str,
@@ -21,10 +24,30 @@ pub enum SelectFieldValue {
 }
 
 impl SelectFieldValue {
+    pub fn create_as_field(column_name: DbColumnName, metadata: &Option<SqlValueMetadata>) -> Self {
+        if let Some(metadata) = metadata {
+            return Self::Field {
+                column_name,
+                wrap_column_name: metadata.wrap_column_name,
+            };
+        }
+
+        Self::Field {
+            column_name,
+            wrap_column_name: None,
+        }
+    }
+
     pub fn unwrap_as_line_no(&self) -> usize {
         match self {
             SelectFieldValue::LineNo(line_no) => *line_no,
-            SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::Field {
+                column_name,
+                wrap_column_name,
+            } => panic!(
+                "Value is Field: {:?} with wrap_column_name: {:?}",
+                column_name, wrap_column_name
+            ),
             SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to,
@@ -47,7 +70,7 @@ impl SelectFieldValue {
     pub fn unwrap_as_field(&self) -> &DbColumnName {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
-            SelectFieldValue::Field(db_column_name) => db_column_name,
+            SelectFieldValue::Field { column_name, .. } => column_name,
             SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to: _,
@@ -68,9 +91,13 @@ impl SelectFieldValue {
     pub fn unwrap_as_json(&self) -> &DbColumnName {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
-            SelectFieldValue::Field(db_column_name) => {
-                panic!("Value is Field: {:?}", db_column_name)
-            }
+            SelectFieldValue::Field {
+                column_name,
+                wrap_column_name,
+            } => panic!(
+                "Value is Field: {:?} with wrap_column_name: {:?}",
+                column_name, wrap_column_name
+            ),
             SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to,
@@ -93,7 +120,13 @@ impl SelectFieldValue {
     pub fn unwrap_as_date_time_as_bigint(&self) -> &DbColumnName {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
-            SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::Field {
+                column_name,
+                wrap_column_name,
+            } => panic!(
+                "Value is Field: {:?} with wrap_column_name: {:?}",
+                column_name, wrap_column_name
+            ),
             SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to,
@@ -114,7 +147,13 @@ impl SelectFieldValue {
     pub fn unwrap_as_date_time_as_timestamp(&self) -> &DbColumnName {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
-            SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::Field {
+                column_name,
+                wrap_column_name,
+            } => panic!(
+                "Value is Field: {:?} with wrap_column_name: {:?}",
+                column_name, wrap_column_name
+            ),
             SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to,
@@ -267,8 +306,25 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
         }
 
         match value {
-            SelectFieldValue::Field(db_column_name) => {
-                sql.push_str(&db_column_name.db_column_name);
+            SelectFieldValue::Field {
+                column_name,
+                wrap_column_name,
+            } => {
+                if let Some(wrap_column_name) = wrap_column_name {
+                    let mut sides = wrap_column_name.split("${}");
+
+                    if let Some(value) = sides.next() {
+                        sql.push_str(value);
+                    }
+
+                    sql.push_str(&column_name.db_column_name);
+
+                    if let Some(value) = sides.next() {
+                        sql.push_str(value);
+                    }
+                } else {
+                    sql.push_str(&column_name.db_column_name);
+                }
             }
             SelectFieldValue::FieldWithCast {
                 column_name,

@@ -19,9 +19,9 @@ pub struct PostgresConnectionInstance {
     inner: Arc<PostgresConnectionInner>,
     #[cfg(feature = "with-logs-and-telemetry")]
     pub logger: Arc<dyn Logger + Send + Sync + 'static>,
-    pub created: DateTimeAsMicroseconds,
     #[cfg(feature = "with-ssh")]
-    pub ssh_target: Arc<crate::ssh::SshTarget>,
+    pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    pub created: DateTimeAsMicroseconds,
 }
 
 impl PostgresConnectionInstance {
@@ -29,7 +29,7 @@ impl PostgresConnectionInstance {
         app_name: String,
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-ssh")] ssh_target: Arc<crate::ssh::SshTarget>,
+        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
         #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
@@ -37,7 +37,7 @@ impl PostgresConnectionInstance {
             postgres_settings,
             db_name,
             #[cfg(feature = "with-ssh")]
-            ssh_target.clone(),
+            ssh_config.clone(),
             #[cfg(feature = "with-logs-and-telemetry")]
             logger.clone(),
         ));
@@ -48,7 +48,7 @@ impl PostgresConnectionInstance {
             logger,
             created: DateTimeAsMicroseconds::now(),
             #[cfg(feature = "with-ssh")]
-            ssh_target,
+            ssh_config,
         };
 
         result.inner.engage(result.inner.clone()).await;

@@ -21,15 +21,15 @@ impl SelectValueProvider for String {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        if column_name.force_cast_to_db_type {
+        if column_name.force_cast_db_type {
             sql.push(SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to: DB_TYPE_TEXT,
             });
         } else {
-            sql.push(SelectFieldValue::Field(column_name));
+            sql.push(SelectFieldValue::create_as_field(column_name, metadata));
         }
     }
 }
@@ -38,15 +38,15 @@ impl<'s> SelectValueProvider for &'s str {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        if column_name.force_cast_to_db_type {
+        if column_name.force_cast_db_type {
             sql.push(SelectFieldValue::FieldWithCast {
                 column_name,
                 cast_to: DB_TYPE_TEXT,
             });
         } else {
-            sql.push(SelectFieldValue::Field(column_name));
+            sql.push(SelectFieldValue::create_as_field(column_name, metadata));
         }
     }
 }
@@ -55,9 +55,9 @@ impl SelectValueProvider for usize {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -65,9 +65,9 @@ impl SelectValueProvider for i64 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -75,9 +75,9 @@ impl SelectValueProvider for u64 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -85,9 +85,9 @@ impl SelectValueProvider for i32 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -95,9 +95,9 @@ impl SelectValueProvider for u32 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -105,9 +105,9 @@ impl SelectValueProvider for i16 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -115,9 +115,9 @@ impl SelectValueProvider for u16 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -125,9 +125,9 @@ impl SelectValueProvider for i8 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -135,9 +135,9 @@ impl SelectValueProvider for u8 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -145,9 +145,9 @@ impl SelectValueProvider for f64 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -155,9 +155,9 @@ impl SelectValueProvider for f32 {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -165,9 +165,9 @@ impl SelectValueProvider for bool {
     fn fill_select_part(
         sql: &mut SelectBuilder,
         column_name: DbColumnName,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 

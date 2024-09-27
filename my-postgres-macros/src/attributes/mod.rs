@@ -30,3 +30,5 @@ mod ignore_table_column;
 pub use ignore_table_column::*;
 mod inside_json;
 pub use inside_json::*;
+mod wrap_select_field;
+pub use wrap_select_field::*;

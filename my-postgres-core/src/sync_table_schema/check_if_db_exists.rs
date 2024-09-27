@@ -4,8 +4,19 @@ use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, Pos
 
 const TECH_DB_NAME: &str = "postgres";
 
-pub async fn check_if_db_exists(connection: &PostgresConnection, sql_timeout: Duration) {
-    if let Err(error) = check_if_db_exists_int(connection, sql_timeout).await {
+pub async fn check_if_db_exists(
+    connection: &PostgresConnection,
+    sql_timeout: Duration,
+    #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+) {
+    if let Err(error) = check_if_db_exists_int(
+        connection,
+        sql_timeout,
+        #[cfg(feature = "with-ssh")]
+        ssh_config,
+    )
+    .await
+    {
         println!(
             "Can not execute script which checks DataBase existence. Error: {:?}",
             error
@@ -29,6 +40,7 @@ pub async fn check_if_db_exists(connection: &PostgresConnection, sql_timeout: Du
 async fn check_if_db_exists_int(
     connection: &PostgresConnection,
     sql_timeout: Duration,
+    #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
 ) -> Result<(), MyPostgresError> {
     let (app_name, connection_string) = connection.get_connection_string().await;
 
@@ -42,7 +54,7 @@ async fn check_if_db_exists_int(
         TECH_DB_NAME.to_string(),
         std::sync::Arc::new(tech_conn_string),
         #[cfg(feature = "with-ssh")]
-        connection.clone_ssh_target(),
+        ssh_config,
         #[cfg(feature = "with-logs-and-telemetry")]
         connection.get_logger().clone(),
     )

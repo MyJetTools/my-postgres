@@ -160,27 +160,15 @@ impl PostgresConnectionString {
     }
 
     #[cfg(feature = "with-ssh")]
-    pub async fn get_ssh_target(&self) -> crate::ssh::SshTarget {
-        let result = crate::ssh::SshTarget::new();
+    pub fn get_ssh_config(
+        &self,
+        ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
+    ) -> Option<crate::ssh::PostgresSshConfig> {
+        let ssh_target_builder = ssh_config_builder.unwrap();
+        let ssh_line = self.get_ssh()?;
 
-        if let Some(ssh) = self.get_ssh() {
-            println!("Parsing SSH credentials: {}", ssh);
-            let ssh_credentials = my_ssh::SshCredentials::try_from_str(ssh);
-
-            if ssh_credentials.is_none() {
-                panic!(
-                    "Invalid ssh credentials {} at postgres connection string of host: {}",
-                    ssh,
-                    self.get_field_value(&self.host)
-                );
-            }
-
-            result
-                .set_credentials(ssh_credentials.unwrap().into())
-                .await;
-        }
-
-        result
+        let ssh_target = ssh_target_builder.build(ssh_line);
+        ssh_target.into()
     }
 
     fn parse_column_separated(conn_string: Vec<u8>) -> Self {
@@ -437,27 +425,26 @@ impl PostgresConnectionString {
     }
 
     pub fn to_string_with_new_db_name(&self, app_name: &str, db_name: &str) -> String {
+        let mut result = format!(
+            "host={} port={} dbname={} user={} password={} application_name={}",
+            self.get_field_value(&self.host),
+            &self.port,
+            db_name,
+            self.get_field_value(&self.user_name),
+            self.get_field_value(&self.password),
+            app_name
+        );
+
         if self.ssl_require {
-            format!(
-                "host={} port={} dbname={} user={} password={} application_name={} sslmode=require",
-                self.get_field_value(&self.host),
-                &self.port,
-                db_name,
-                self.get_field_value(&self.user_name),
-                self.get_field_value(&self.password),
-                app_name
-            )
-        } else {
-            format!(
-                "host={} port={} dbname={} user={} password={} application_name={}",
-                self.get_field_value(&self.host),
-                &self.port,
-                db_name,
-                self.get_field_value(&self.user_name),
-                self.get_field_value(&self.password),
-                app_name
-            )
+            result.push_str(" sslmode=require");
         }
+
+        if let Some(ssh) = self.get_ssh() {
+            result.push_str(" ssh=");
+            result.push_str(ssh);
+        }
+
+        result
     }
 }
 

@@ -22,11 +22,11 @@ pub fn fn_fill_select_fields<'s>(
                 sql.push_str(#attr_value);
             });
         } else {
-            let force_cast_to_db_type = prop.get_force_cast_to_db_type();
+            let force_cast_db_type = prop.get_force_cast_db_type();
 
             let db_column_name = prop
                 .get_db_column_name()?
-                .to_column_name_token(force_cast_to_db_type);
+                .to_column_name_token(force_cast_db_type);
 
             let metadata = prop.get_field_metadata()?;
 
