@@ -122,7 +122,11 @@ async fn create_and_start_no_tls_connection(
     };
 
     #[cfg(not(feature = "with-ssh"))]
-    let result = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
+    let (result, postgres_host) = {
+        let cs = PostgresConnectionString::from_str(connection_string.as_str());
+        let connect = tokio_postgres::connect(connection_string.as_str(), NoTls).await;
+        (connect, format!("{:?}", cs.get_host_endpoint()))
+    };
 
     match result {
         Ok((postgres_client, postgres_connection)) => {
