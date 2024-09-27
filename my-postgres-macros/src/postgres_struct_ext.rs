@@ -9,7 +9,7 @@ pub struct DbColumnName<'s> {
 }
 
 impl<'s> DbColumnName<'s> {
-    pub fn to_column_name_token(&'s self) -> proc_macro2::TokenStream {
+    pub fn to_column_name_token(&'s self, force_cast_to_db_type: bool) -> proc_macro2::TokenStream {
         let db_column_name = match self.attr.as_ref() {
             Some(attr) => attr.name,
             None => self.property_name,
@@ -17,7 +17,11 @@ impl<'s> DbColumnName<'s> {
 
         let filed_name = self.property_name;
         quote::quote! {
-            my_postgres::DbColumnName{ field_name: #filed_name, db_column_name: #db_column_name  }
+            my_postgres::DbColumnName{
+                field_name: #filed_name,
+                db_column_name: #db_column_name,
+                force_cast_to_db_type: #force_cast_to_db_type
+            }
         }
     }
 }
@@ -82,6 +86,8 @@ pub trait PostgresStructPropertyExt<'s> {
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
     fn inside_json(&self) -> Result<Option<&str>, syn::Error>;
+
+    fn get_force_cast_to_db_type(&self) -> bool;
 
     fn fill_attributes(
         &self,
@@ -173,6 +179,10 @@ pub trait PostgresStructPropertyExt<'s> {
 }
 
 impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
+    fn get_force_cast_to_db_type(&self) -> bool {
+        self.attrs.try_get_attr("force_cast_to_db_type").is_some()
+    }
+
     fn get_field_name_ident(&self) -> &syn::Ident {
         self.get_field_name_ident()
     }

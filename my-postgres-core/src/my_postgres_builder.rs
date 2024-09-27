@@ -146,7 +146,7 @@ impl MyPostgresBuilder {
                     conn_string.get_db_name().to_string(),
                     postgres_settings,
                     #[cfg(feature = "with-ssh")]
-                    conn_string.get_ssh_target().into(),
+                    conn_string.get_ssh_target().await.into(),
                     #[cfg(feature = "with-logs-and-telemetry")]
                     logger,
                 )

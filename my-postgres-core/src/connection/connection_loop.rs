@@ -76,20 +76,25 @@ async fn create_and_start_no_tls_connection(
     #[cfg(feature = "with-ssh")] ssh_target: &Arc<crate::ssh::SshTarget>,
 ) {
     #[cfg(feature = "with-ssh")]
-    let result = if let Some(ssh_target) = ssh_target.get_value().await {
+    let (result, postgres_host) = if let Some(ssh_target) = ssh_target.get_value().await {
         let ssh_session = ssh_target.get_ssh_session().await;
 
         let connection_string = PostgresConnectionString::from_str(connection_string.as_str());
 
         let get_host_endpoint = connection_string.get_host_endpoint();
 
-        let unix_socket_file = crate::ssh::generate_unix_socket_file(
+        let (host, port) = crate::ssh::generate_unix_socket_file(
             ssh_target.credentials.as_ref().unwrap(),
             get_host_endpoint,
         );
+
+        println!(
+            "Establishing Postgres SSH connection through {}:{}",
+            host, port
+        );
         let result = ssh_session
             .start_port_forward(
-                unix_socket_file,
+                format!("{}:{}", host, port),
                 get_host_endpoint.host.to_string(),
                 get_host_endpoint.port.unwrap_or(POSTGRES_DEFAULT_PORT),
             )
@@ -99,10 +104,21 @@ async fn create_and_start_no_tls_connection(
             println!("Can not start port forwarding with error: {:?}", result);
         }
 
-        let con_string = connection_string.to_string(&inner.app_name);
-        tokio_postgres::connect(con_string.as_str(), NoTls).await
+        let con_string = connection_string.to_string_new_host_port(&host, port, &inner.app_name);
+
+        (
+            tokio_postgres::connect(con_string.as_str(), NoTls).await,
+            format!("{}:{}", host, port),
+        )
     } else {
-        tokio_postgres::connect(connection_string.as_str(), NoTls).await
+        #[cfg(feature = "with-ssh")]
+        println!("Postgres SSH connection is not set up");
+
+        let cs = PostgresConnectionString::from_str(connection_string.as_str());
+        (
+            tokio_postgres::connect(connection_string.as_str(), NoTls).await,
+            format!("{:?}", cs.get_host_endpoint()),
+        )
     };
 
     #[cfg(not(feature = "with-ssh"))]
@@ -155,8 +171,9 @@ async fn create_and_start_no_tls_connection(
         Err(err) => {
             #[cfg(not(feature = "with-logs-and-telemetry"))]
             println!(
-                "{}: Can not establish postgres connection with Err: {:?}",
+                "{}: Can not establish postgres connection with {} Err: {:?}",
                 DateTimeAsMicroseconds::now().to_rfc3339(),
+                postgres_host,
                 err
             );
 

@@ -38,6 +38,7 @@ mod where_fields;
         primary_key,
         default_if_null,
         wrap_column_name,
+        force_cast_to_db_type,
     )
 )]
 pub fn postgres_select_model(input: TokenStream) -> TokenStream {

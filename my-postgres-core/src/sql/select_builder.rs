@@ -7,6 +7,10 @@ use super::{SqlData, SqlValues};
 pub enum SelectFieldValue {
     LineNo(usize),
     Field(DbColumnName),
+    FieldWithCast {
+        column_name: DbColumnName,
+        cast_to: &'static str,
+    },
     Json(DbColumnName),
     DateTimeAsBigint(DbColumnName),
     DateTimeAsTimestamp(DbColumnName),
@@ -21,6 +25,12 @@ impl SelectFieldValue {
         match self {
             SelectFieldValue::LineNo(line_no) => *line_no,
             SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to,
+            } => {
+                panic!("Value is Field: {:?} with Cast to {}", column_name, cast_to)
+            }
             SelectFieldValue::Json(field_name) => panic!("Value is Json: {:?}", field_name),
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 panic!("Value is DateTimeAsBigint: {:?}", field_name)
@@ -38,6 +48,10 @@ impl SelectFieldValue {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
             SelectFieldValue::Field(db_column_name) => db_column_name,
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to: _,
+            } => column_name,
             SelectFieldValue::Json(db_column_name) => panic!("Value is Json: {:?}", db_column_name),
             SelectFieldValue::DateTimeAsBigint(db_column_name) => {
                 panic!("Value is DateTimeAsBigint: {:?}", db_column_name)
@@ -57,6 +71,12 @@ impl SelectFieldValue {
             SelectFieldValue::Field(db_column_name) => {
                 panic!("Value is Field: {:?}", db_column_name)
             }
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to,
+            } => {
+                panic!("Value is Field: {:?} with Cast to {}", column_name, cast_to)
+            }
             SelectFieldValue::Json(field_name) => field_name,
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 panic!("Value is DateTimeAsBigint: {:?}", field_name)
@@ -74,6 +94,12 @@ impl SelectFieldValue {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
             SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to,
+            } => {
+                panic!("Value is Field: {:?} with Cast to {}", column_name, cast_to)
+            }
             SelectFieldValue::Json(field_name) => panic!("Value is Json: {:?}", field_name),
             SelectFieldValue::DateTimeAsBigint(field_name) => field_name,
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {
@@ -89,6 +115,12 @@ impl SelectFieldValue {
         match self {
             SelectFieldValue::LineNo(line_no) => panic!("Value is LineNo: {}", line_no),
             SelectFieldValue::Field(field_name) => panic!("Value is Field: {:?}", field_name),
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to,
+            } => {
+                panic!("Value is Field: {:?} with Cast to {}", column_name, cast_to)
+            }
             SelectFieldValue::Json(field_name) => panic!("Value is Json: {:?}", field_name),
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 panic!("Value is DateTimeAsBigint: {:?}", field_name)
@@ -237,6 +269,14 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
         match value {
             SelectFieldValue::Field(db_column_name) => {
                 sql.push_str(&db_column_name.db_column_name);
+            }
+            SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to,
+            } => {
+                sql.push_str(&column_name.db_column_name);
+                sql.push_str("::");
+                sql.push_str(cast_to);
             }
             SelectFieldValue::Json(field_name) => {
                 sql.push_str(field_name.db_column_name);

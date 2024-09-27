@@ -160,10 +160,11 @@ impl PostgresConnectionString {
     }
 
     #[cfg(feature = "with-ssh")]
-    pub fn get_ssh_target(&self) -> crate::ssh::SshTarget {
+    pub async fn get_ssh_target(&self) -> crate::ssh::SshTarget {
         let result = crate::ssh::SshTarget::new();
 
         if let Some(ssh) = self.get_ssh() {
+            println!("Parsing SSH credentials: {}", ssh);
             let ssh_credentials = my_ssh::SshCredentials::try_from_str(ssh);
 
             if ssh_credentials.is_none() {
@@ -174,7 +175,9 @@ impl PostgresConnectionString {
                 );
             }
 
-            result.set_credentials(ssh_credentials.unwrap().into());
+            result
+                .set_credentials(ssh_credentials.unwrap().into())
+                .await;
         }
 
         result
@@ -411,26 +414,26 @@ impl PostgresConnectionString {
     }
 
     pub fn to_string_with_host_as_unix_socket(&self, host_path: &str, app_name: &str) -> String {
-        if self.ssl_require {
-            format!(
-                "host={} dbname={} user={} password={} application_name={} sslmode=require",
-                host_path,
-                self.get_field_value(&self.db_name),
-                self.get_field_value(&self.user_name),
-                self.get_field_value(&self.password),
-                app_name
-            )
-        } else {
-            format!(
-                "host={} port={} dbname={} user={} password={} application_name={}",
-                self.get_field_value(&self.host),
-                &self.port,
-                self.get_field_value(&self.db_name),
-                self.get_field_value(&self.user_name),
-                self.get_field_value(&self.password),
-                app_name
-            )
-        }
+        format!(
+            "host={} dbname={} user={} password={} application_name={}",
+            host_path,
+            self.get_field_value(&self.db_name),
+            self.get_field_value(&self.user_name),
+            self.get_field_value(&self.password),
+            app_name
+        )
+    }
+
+    pub fn to_string_new_host_port(&self, host: &str, port: u16, app_name: &str) -> String {
+        format!(
+            "host={} port={} dbname={} user={} password={} application_name={}",
+            host,
+            port,
+            self.get_field_value(&self.db_name),
+            self.get_field_value(&self.user_name),
+            self.get_field_value(&self.password),
+            app_name
+        )
     }
 
     pub fn to_string_with_new_db_name(&self, app_name: &str, db_name: &str) -> String {

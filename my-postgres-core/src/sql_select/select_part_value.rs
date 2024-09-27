@@ -7,6 +7,8 @@ use crate::{
     DbColumnName, SqlValueMetadata,
 };
 
+const DB_TYPE_TEXT: &str = "text";
+
 pub trait SelectValueProvider {
     fn fill_select_part(
         sql: &mut SelectBuilder,
@@ -21,7 +23,14 @@ impl SelectValueProvider for String {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        if column_name.force_cast_to_db_type {
+            sql.push(SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to: DB_TYPE_TEXT,
+            });
+        } else {
+            sql.push(SelectFieldValue::Field(column_name));
+        }
     }
 }
 
@@ -31,7 +40,14 @@ impl<'s> SelectValueProvider for &'s str {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) {
-        sql.push(SelectFieldValue::Field(column_name));
+        if column_name.force_cast_to_db_type {
+            sql.push(SelectFieldValue::FieldWithCast {
+                column_name,
+                cast_to: DB_TYPE_TEXT,
+            });
+        } else {
+            sql.push(SelectFieldValue::Field(column_name));
+        }
     }
 }
 
