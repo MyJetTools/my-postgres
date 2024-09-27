@@ -144,10 +144,11 @@ impl PostgresConnectionInner {
     pub async fn handle_connection_is_established(
         &self,
         postgres_client: tokio_postgres::Client,
+        host: &str,
     ) -> DateTimeAsMicroseconds {
         let connected_date_time = DateTimeAsMicroseconds::now();
         println!(
-            "{}: Postgres SQL Connection is established",
+            "{}: Postgres SQL Connection is established to {host}",
             connected_date_time.to_rfc3339()
         );
 
