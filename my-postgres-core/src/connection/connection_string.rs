@@ -1,6 +1,6 @@
 use rust_extensions::url_utils::HostEndpoint;
 
-use super::connection_loop::POSTGRES_DEFAULT_PORT;
+use crate::POSTGRES_DEFAULT_PORT;
 
 const PREFIX: &str = "postgresql://";
 
@@ -9,11 +9,22 @@ pub struct Position {
     to: usize,
 }
 
+pub enum ValueWithOverride {
+    Value(Position),
+    Override(String),
+}
+
+impl Into<ValueWithOverride> for Position {
+    fn into(self) -> ValueWithOverride {
+        ValueWithOverride::Value(self)
+    }
+}
+
 pub struct PostgresConnectionString {
     conn_string: Vec<u8>,
     user_name: Position,
     password: Position,
-    host: Position,
+    host: ValueWithOverride,
     port: u16,
     db_name: Position,
     ssl_require: bool,
@@ -52,10 +63,25 @@ impl PostgresConnectionString {
         self.ssl_require
     }
 
+    pub fn get_host(&self) -> &str {
+        match &self.host {
+            ValueWithOverride::Value(position) => self.get_field_value(position),
+            ValueWithOverride::Override(value) => value.as_str(),
+        }
+    }
+
+    pub fn set_host(&mut self, host: String) {
+        self.host = ValueWithOverride::Override(host);
+    }
+
+    pub fn set_port(&mut self, port: u16) {
+        self.port = port;
+    }
+
     pub fn get_host_endpoint(&self) -> HostEndpoint {
         HostEndpoint {
             scheme: None,
-            host: self.get_field_value(&self.host),
+            host: self.get_host(),
             port: Some(self.port),
         }
     }
@@ -151,7 +177,7 @@ impl PostgresConnectionString {
             conn_string: conn_string,
             user_name: user_name.unwrap(),
             password: password.unwrap(),
-            host: host.unwrap(),
+            host: host.unwrap().into(),
             port,
             db_name: db_name.unwrap(),
             ssl_require,
@@ -275,7 +301,7 @@ impl PostgresConnectionString {
             conn_string: conn_string,
             user_name: user_name.unwrap(),
             password: password.unwrap(),
-            host: host.unwrap(),
+            host: host.unwrap().into(),
             port,
             db_name: db_name.unwrap(),
             ssl_require,
@@ -362,7 +388,8 @@ impl PostgresConnectionString {
             host: Position {
                 from: host_start,
                 to: host_end,
-            },
+            }
+            .into(),
             port,
             db_name: Position {
                 from: db_name_start,
@@ -381,7 +408,7 @@ impl PostgresConnectionString {
         if self.ssl_require {
             format!(
                 "host={} port={} dbname={} user={} password={} application_name={} sslmode=require",
-                self.get_field_value(&self.host),
+                self.get_host(),
                 &self.port,
                 self.get_field_value(&self.db_name),
                 self.get_field_value(&self.user_name),
@@ -391,7 +418,7 @@ impl PostgresConnectionString {
         } else {
             format!(
                 "host={} port={} dbname={} user={} password={} application_name={}",
-                self.get_field_value(&self.host),
+                self.get_host(),
                 &self.port,
                 self.get_field_value(&self.db_name),
                 self.get_field_value(&self.user_name),
@@ -427,7 +454,7 @@ impl PostgresConnectionString {
     pub fn to_string_with_new_db_name(&self, app_name: &str, db_name: &str) -> String {
         let mut result = format!(
             "host={} port={} dbname={} user={} password={} application_name={}",
-            self.get_field_value(&self.host),
+            self.get_host(),
             &self.port,
             db_name,
             self.get_field_value(&self.user_name),
@@ -536,10 +563,7 @@ mod test {
             connection_string.get_field_value(&connection_string.password)
         );
 
-        assert_eq!(
-            "localhost",
-            connection_string.get_field_value(&connection_string.host)
-        );
+        assert_eq!("localhost", connection_string.get_host());
 
         assert_eq!(5432, connection_string.port);
 
@@ -568,10 +592,7 @@ mod test {
             connection_string.get_field_value(&connection_string.password)
         );
 
-        assert_eq!(
-            "localhost",
-            connection_string.get_field_value(&connection_string.host)
-        );
+        assert_eq!("localhost", connection_string.get_host());
 
         assert_eq!(5432, connection_string.port);
 
@@ -600,10 +621,7 @@ mod test {
             connection_string.get_field_value(&connection_string.password)
         );
 
-        assert_eq!(
-            "10.0.0.3",
-            connection_string.get_field_value(&connection_string.host)
-        );
+        assert_eq!("10.0.0.3", connection_string.get_host());
 
         assert_eq!(5432, connection_string.port);
 
@@ -632,10 +650,7 @@ mod test {
             connection_string.get_field_value(&connection_string.password)
         );
 
-        assert_eq!(
-            "localhost",
-            connection_string.get_field_value(&connection_string.host)
-        );
+        assert_eq!("localhost", connection_string.get_host());
 
         assert_eq!(5566, connection_string.port);
 
@@ -664,10 +679,7 @@ mod test {
             connection_string.get_field_value(&connection_string.password)
         );
 
-        assert_eq!(
-            "localhost",
-            connection_string.get_field_value(&connection_string.host)
-        );
+        assert_eq!("localhost", connection_string.get_host());
 
         assert_eq!(5566, connection_string.port);
 

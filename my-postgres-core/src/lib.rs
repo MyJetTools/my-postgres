@@ -41,3 +41,5 @@ pub mod utils;
 mod ssh;
 
 pub extern crate tokio_postgres;
+
+const POSTGRES_DEFAULT_PORT: u16 = 5432;
