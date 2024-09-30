@@ -190,7 +190,7 @@ impl PostgresConnectionString {
         &self,
         ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
     ) -> Option<crate::ssh::PostgresSshConfig> {
-        let ssh_target_builder = ssh_config_builder.unwrap();
+        let ssh_target_builder = ssh_config_builder?;
         let ssh_line = self.get_ssh()?;
 
         let ssh_target = ssh_target_builder.build(ssh_line);

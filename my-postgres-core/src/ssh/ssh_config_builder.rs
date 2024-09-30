@@ -17,7 +17,7 @@ impl SshConfigBuilder {
         }
     }
 
-    pub async fn set_cert(&mut self, private_key_content: String, pass_phrase: Option<String>) {
+    pub fn set_cert(&mut self, private_key_content: String, pass_phrase: Option<String>) {
         self.auth_type = SshAuthenticationType::PrivateKey {
             private_key_content,
             pass_phrase,

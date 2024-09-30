@@ -108,14 +108,9 @@ impl MyPostgresBuilder {
         private_key_content: String,
         pass_phrase: Option<String>,
     ) -> Self {
-        use my_ssh::SshAuthenticationType;
-
         match &mut self {
             MyPostgresBuilder::AsSettings { ssh, .. } => {
-                ssh.auth_type = SshAuthenticationType::PrivateKey {
-                    private_key_content,
-                    pass_phrase,
-                };
+                ssh.set_cert(private_key_content, pass_phrase);
             }
             MyPostgresBuilder::AsSharedConnection { .. } => {
                 panic!("Can not set ssh private key for shared connection. Please set session_pool the moment you create SharedConnection");

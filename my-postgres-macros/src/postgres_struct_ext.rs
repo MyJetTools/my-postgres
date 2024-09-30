@@ -60,14 +60,10 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_db_column_name(&self) -> Result<DbColumnName, syn::Error>;
 
-    fn has_json_attr(&self) -> bool;
-
     fn has_ignore_attr(&self) -> bool;
     fn has_ignore_if_none_attr(&self) -> bool;
 
     fn is_line_no(&self) -> bool;
-
-    fn sql_value_to_mask(&self) -> bool;
 
     fn get_field_metadata(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
@@ -191,20 +187,6 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         &self.ty
     }
 
-    fn sql_value_to_mask(&self) -> bool {
-        if self.ty.is_string() {
-            return true;
-        }
-
-        if let PropertyType::OptionOf(sub_ty) = &self.ty {
-            if sub_ty.is_string() {
-                return true;
-            }
-        }
-
-        false
-    }
-
     fn inside_json(&self) -> Result<Option<&str>, syn::Error> {
         let json_attr: Option<InsideJsonAttribute> = self.try_get_attribute()?;
         if let Some(json_attr) = json_attr {
@@ -245,9 +227,11 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         self.attrs.has_attr(IgnoreTableColumnAttribute::NAME)
     }
 
+    /*
     fn has_json_attr(&self) -> bool {
         self.attrs.has_attr(JsonAttribute::NAME)
     }
+     */
 
     fn is_line_no(&self) -> bool {
         self.attrs.has_attr(LineNoAttribute::NAME) || self.name == LineNoAttribute::NAME
