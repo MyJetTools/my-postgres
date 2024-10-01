@@ -34,9 +34,16 @@ pub async fn start_connection_loop(
         let postgres_host = if let Some(ssh_config) = &ssh_config {
             let postgres_host = conn_string.get_host_endpoint();
 
+            let ssh_cred_type = match ssh_config.credentials.as_ref() {
+                my_ssh::SshCredentials::SshAgent { .. } => "SshAgent",
+                my_ssh::SshCredentials::UserNameAndPassword { .. } => "UserNameAndPassword",
+                my_ssh::SshCredentials::PrivateKey { .. } => "PrivateKey",
+            };
+
             let (ssh_host, ssh_port) = ssh_config.credentials.get_host_port();
             format!(
-                "ssh:{}:{}->{}",
+                "[{}]ssh:{}:{}->{}",
+                ssh_cred_type,
                 ssh_host,
                 ssh_port,
                 postgres_host.get_host_port().as_str()
