@@ -1,8 +1,6 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
 
-#[cfg(feature = "with-logs-and-telemetry")]
-use rust_extensions::Logger;
 use rust_extensions::StrOrString;
 use std::{sync::Arc, time::Duration};
 
@@ -35,14 +33,8 @@ impl MyPostgres {
     pub fn from_settings(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> MyPostgresBuilder {
-        MyPostgresBuilder::new(
-            app_name,
-            postgres_settings,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
-        )
+        MyPostgresBuilder::new(app_name, postgres_settings)
     }
 
     pub fn from_connection_string(connection: Arc<PostgresConnection>) -> MyPostgresBuilder {
@@ -122,31 +114,23 @@ impl MyPostgres {
         sql: SqlData,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
-        self.connection
-            .execute_sql(
-                &sql,
-                "execute_sql".to_string(),
-                self.sql_request_timeout,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
+        let ctx = crate::RequestContext::new(
+            self.sql_request_timeout,
+            "execute_sql".to_string(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
+        self.connection.execute_sql(&sql, &ctx).await
     }
 
     pub async fn execute_sql_as_vec<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         sql: SqlData,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         self.connection
-            .execute_sql_as_vec(
-                &sql,
-                "execute_sql_as_vec".to_string(),
-                self.sql_request_timeout,
-                |row| TEntity::from(row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), ctx)
             .await
     }
 

@@ -1,5 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
+#[cfg(feature = "with-logs-and-telemetry")]
+use my_telemetry::MyTelemetryContext;
 use rust_extensions::{date_time::DateTimeAsMicroseconds, StrOrString};
 
 use crate::{
@@ -17,8 +19,6 @@ pub enum MyPostgresBuilder {
         sql_db_sync_timeout: Duration,
         #[cfg(feature = "with-ssh")]
         ssh: crate::ssh::SshConfigBuilder,
-        #[cfg(feature = "with-logs-and-telemetry")]
-        logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
     },
     AsSharedConnection {
         connection: Arc<PostgresConnection>,
@@ -32,9 +32,6 @@ impl MyPostgresBuilder {
     pub fn new(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
-            dyn rust_extensions::Logger + Send + Sync + 'static,
-        >,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
@@ -46,8 +43,6 @@ impl MyPostgresBuilder {
             sql_db_sync_timeout: Duration::from_secs(60),
             #[cfg(feature = "with-ssh")]
             ssh: crate::ssh::SshConfigBuilder::new(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
         }
     }
     pub fn from_connection(connection: Arc<PostgresConnection>) -> Self {
@@ -170,9 +165,6 @@ impl MyPostgresBuilder {
 
                 #[cfg(feature = "with-ssh")]
                 ssh,
-
-                #[cfg(feature = "with-logs-and-telemetry")]
-                logger,
             } => {
                 let conn_string = postgres_settings.get_connection_string().await;
 
@@ -186,24 +178,33 @@ impl MyPostgresBuilder {
                     postgres_settings,
                     #[cfg(feature = "with-ssh")]
                     ssh_config.clone(),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger,
                 )
                 .await;
 
                 let connection = Arc::new(PostgresConnection::Single(connection));
 
                 if table_schema_data.len() > 0 {
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    let tracker = MyTelemetryContext::start_duration_tracking("sync-table-schema");
                     super::sync_table_schema::check_if_db_exists(
                         &connection,
                         sql_db_sync_timeout,
                         #[cfg(feature = "with-ssh")]
                         ssh_config,
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        &tracker.my_telemetry,
                     )
                     .await;
 
                     for table_schema in table_schema_data {
-                        check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
+                        check_table_schema(
+                            &connection,
+                            table_schema,
+                            sql_db_sync_timeout,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &tracker.my_telemetry,
+                        )
+                        .await;
                     }
                 }
 
@@ -216,16 +217,27 @@ impl MyPostgresBuilder {
                 sql_db_sync_timeout,
             } => {
                 if table_schema_data.len() > 0 {
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    let tracker = MyTelemetryContext::start_duration_tracking("sync-table-schema");
                     super::sync_table_schema::check_if_db_exists(
                         &connection,
                         sql_db_sync_timeout,
                         #[cfg(feature = "with-ssh")]
                         connection.get_ssh_config(),
+                        #[cfg(feature = "with-logs-and-telemetry")]
+                        &tracker.my_telemetry,
                     )
                     .await;
 
                     for table_schema in table_schema_data {
-                        check_table_schema(&connection, table_schema, sql_db_sync_timeout).await;
+                        check_table_schema(
+                            &connection,
+                            table_schema,
+                            sql_db_sync_timeout,
+                            #[cfg(feature = "with-logs-and-telemetry")]
+                            &tracker.my_telemetry,
+                        )
+                        .await;
                     }
                 }
 
@@ -239,11 +251,18 @@ pub async fn check_table_schema(
     connection: &PostgresConnection,
     table_schema: TableSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) {
     let started = DateTimeAsMicroseconds::now();
 
-    while let Err(err) =
-        crate::sync_table_schema::sync_schema(connection, &table_schema, sql_timeout).await
+    while let Err(err) = crate::sync_table_schema::sync_schema(
+        connection,
+        &table_schema,
+        sql_timeout,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        my_telemetry,
+    )
+    .await
     {
         println!(
             "Can not verify schema for table {} because of error {:?}",

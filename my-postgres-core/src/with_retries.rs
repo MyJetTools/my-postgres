@@ -12,7 +12,7 @@ use crate::{
     sql_where::SqlWhereModel,
     union::UnionModel,
     ConcurrentOperationResult, MyPostgresError, PostgresConnection, PostgresReadStream,
-    UpdateConflictType,
+    RequestContext, UpdateConflictType,
 };
 
 pub struct SqlOperationWithRetries {
@@ -235,17 +235,16 @@ impl SqlOperationWithRetries {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let mut attempt_no = 0;
+
+        let ctx = RequestContext::new(
+            self.sql_request_timeout,
+            "execute_sql with retires".to_string(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
         loop {
-            let result = self
-                .connection
-                .execute_sql(
-                    &sql,
-                    format!("execute_sql"),
-                    self.sql_request_timeout,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                )
-                .await;
+            let result = self.connection.execute_sql(&sql, &ctx).await;
 
             match result {
                 Ok(result) => return Ok(result),
@@ -266,17 +265,18 @@ impl SqlOperationWithRetries {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let mut attempt_no = 0;
+
+        let ctx = RequestContext::new(
+            self.sql_request_timeout,
+            "execute_sql_as_vec with retires".to_string(),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
         loop {
             let result = self
                 .connection
-                .execute_sql_as_vec(
-                    &sql,
-                    format!("execute_sql_as_vec"),
-                    self.sql_request_timeout,
-                    |row| TEntity::from(row),
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    telemetry_context,
-                )
+                .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
                 .await;
 
             match result {

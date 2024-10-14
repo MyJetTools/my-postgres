@@ -1,15 +1,11 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-#[cfg(feature = "with-logs-and-telemetry")]
-use my_telemetry::MyTelemetryContext;
-#[cfg(feature = "with-logs-and-telemetry")]
-use rust_extensions::Logger;
 use rust_extensions::StrOrString;
 use tokio_postgres::Row;
 
 use crate::{
     sql::SqlData, sql_select::SelectEntity, ConnectionsPool, MyPostgresError,
-    PostgresConnectionInstance, PostgresConnectionString, PostgresSettings,
+    PostgresConnectionInstance, PostgresConnectionString, PostgresSettings, RequestContext,
 };
 
 use super::{PostgresReadStream, PostgresRowReadStream};
@@ -23,8 +19,6 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
         #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
@@ -38,8 +32,6 @@ impl PostgresConnection {
             postgres_settings,
             #[cfg(feature = "with-ssh")]
             conn_string.get_ssh_config(ssh_config_builder),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
         )
         .await;
 
@@ -59,7 +51,6 @@ impl PostgresConnection {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
         let conn_string = postgres_settings.get_connection_string().await;
@@ -72,42 +63,19 @@ impl PostgresConnection {
             max_pool_size,
             #[cfg(feature = "with-ssh")]
             conn_string.get_ssh_config(ssh_config_builder),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
         ))
     }
 
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_timeout: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &RequestContext,
     ) -> Result<u64, MyPostgresError> {
         match self {
-            PostgresConnection::Single(connection) => {
-                connection
-                    .execute_sql(
-                        sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
-            }
+            PostgresConnection::Single(connection) => connection.execute_sql(sql, ctx).await,
             PostgresConnection::Pool(pool) => {
                 let connection = pool.get().await;
-                connection
-                    .as_ref()
-                    .execute_sql(
-                        sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.as_ref().execute_sql(sql, ctx).await
             }
         }
     }
@@ -115,33 +83,17 @@ impl PostgresConnection {
     pub async fn execute_bulk_sql(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: String,
-        sql_request_timeout: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: RequestContext,
     ) -> Result<(), MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
-                connection
-                    .execute_bulk_sql(
-                        sql_with_params,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.execute_bulk_sql(sql_with_params, ctx).await
             }
             PostgresConnection::Pool(pool) => {
                 let connection = pool.get().await;
                 connection
                     .as_ref()
-                    .execute_bulk_sql(
-                        sql_with_params,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
+                    .execute_bulk_sql(sql_with_params, ctx)
                     .await
             }
         }
@@ -194,36 +146,18 @@ impl PostgresConnection {
     pub async fn execute_sql_as_vec<TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_timeout: Duration,
         transform: TTransform,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
-                connection
-                    .execute_sql_as_vec(
-                        &sql,
-                        process_name,
-                        transform,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.execute_sql_as_vec(&sql, transform, ctx).await
             }
             PostgresConnection::Pool(pool) => {
                 let connection = pool.get().await;
                 connection
                     .as_ref()
-                    .execute_sql_as_vec(
-                        sql,
-                        process_name,
-                        transform,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
+                    .execute_sql_as_vec(sql, transform, ctx)
                     .await
             }
         }
@@ -232,34 +166,15 @@ impl PostgresConnection {
     pub async fn execute_sql_as_stream<TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_timeout: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: crate::RequestContext,
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
-                connection
-                    .execute_sql_as_stream(
-                        &sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.execute_sql_as_stream(sql, ctx).await
             }
             PostgresConnection::Pool(pool) => {
                 let connection = pool.get().await;
-                connection
-                    .as_ref()
-                    .execute_sql_as_stream(
-                        sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.as_ref().execute_sql_as_stream(sql, ctx).await
             }
         }
     }
@@ -267,43 +182,19 @@ impl PostgresConnection {
     pub async fn execute_sql_as_row_stream(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_timeout: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<PostgresRowReadStream, MyPostgresError> {
         match self {
             PostgresConnection::Single(connection) => {
-                connection
-                    .execute_sql_as_row_stream(
-                        &sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
-                    .await
+                connection.execute_sql_as_row_stream(&sql, ctx).await
             }
             PostgresConnection::Pool(pool) => {
                 let connection = pool.get().await;
                 connection
                     .as_ref()
-                    .execute_sql_as_row_stream(
-                        sql,
-                        process_name,
-                        sql_request_timeout,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
-                    )
+                    .execute_sql_as_row_stream(sql, ctx)
                     .await
             }
-        }
-    }
-
-    #[cfg(feature = "with-logs-and-telemetry")]
-    pub fn get_logger(&self) -> &Arc<dyn Logger + Sync + Send + 'static> {
-        match self {
-            PostgresConnection::Single(connection) => &connection.logger,
-            PostgresConnection::Pool(pool) => &pool.logger,
         }
     }
 }

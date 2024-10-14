@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use my_logger::LogEventCtx;
 use tokio_postgres::NoTls;
 
 #[cfg(feature = "with-tls")]
@@ -71,12 +71,14 @@ pub async fn start_connection_loop(
             #[cfg(not(feature = "with-tls"))]
             {
                 println!("Can not Start Postgres connection to {postgres_host} for db {db_name}. Please enabled tls feature.");
-                #[cfg(feature = "with-logs-and-telemetry")]
-                inner.logger.write_error(
-                    "PostgresConnection".to_string(),
-                    "Postgres connection with sslmode=require is not supported without tls feature"
-                        .to_string(),
-                    None,
+
+                my_logger::LOGGER.write_error(
+                    "PostgresConnection",
+                    "Postgres connection with sslmode=require is not supported without tls feature",
+                    LogEventCtx::new()
+                        .add("Host", postgres_host)
+                        .add("DbName", db_name.to_string())
+                        .add("TLS", "true"),
                 );
 
                 tokio::time::sleep(Duration::from_secs(3)).await;
@@ -99,10 +101,9 @@ async fn create_and_start_no_tls_connection(
     inner: &Arc<PostgresConnectionInner>,
     postgres_host: String,
 ) {
-    #[cfg(feature = "with-logs-and-telemetry")]
-    let mut ctx = std::collections::HashMap::new();
-    #[cfg(feature = "with-logs-and-telemetry")]
-    ctx.insert("Host".to_string(), postgres_host.to_string());
+    let mut ctx = LogEventCtx::new()
+        .add("Host", postgres_host.to_string())
+        .add("db_name", connection_string.get_db_name());
 
     let connection_string = connection_string.to_string(&inner.app_name);
 
@@ -114,45 +115,24 @@ async fn create_and_start_no_tls_connection(
                 .handle_connection_is_established(postgres_client, &postgres_host, false)
                 .await;
 
-            #[cfg(feature = "with-logs-and-telemetry")]
-            ctx.insert("Connected".to_string(), connected_date_time.to_rfc3339());
+            ctx = ctx.add("Connected".to_string(), connected_date_time.to_rfc3339());
 
-            #[cfg(feature = "with-logs-and-telemetry")]
             let ctx_spawned = ctx.clone();
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            let logger_spawned = inner.logger.clone();
             let inner_spawned = inner.clone();
-
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            let postgres_host_spawned = postgres_host.clone();
-
             tokio::spawn(async move {
                 match postgres_connection.await {
                     Ok(_) => {
-                        #[cfg(not(feature = "with-logs-and-telemetry"))]
-                        println!(
-                            "{}: NoTLS Connection to {} established at {} is closed.",
-                            DateTimeAsMicroseconds::now().to_rfc3339(),
-                            postgres_host_spawned,
-                            connected_date_time.to_rfc3339(),
+                        my_logger::LOGGER.write_debug(
+                            "Postgres background".to_string(),
+                            format!("Exist connection loop with no error"),
+                            ctx_spawned,
                         );
                     }
                     Err(err) => {
-                        #[cfg(not(feature = "with-logs-and-telemetry"))]
-                        println!(
-                            "{}: NoTLS Connection to {:?} established at {} is closed with error: {}",
-                            DateTimeAsMicroseconds::now().to_rfc3339(),
-                            postgres_host_spawned,
-                            connected_date_time.to_rfc3339(),
-                            err
-                        );
-
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        logger_spawned.write_debug_info(
+                        my_logger::LOGGER.write_debug(
                             "Postgres background".to_string(),
                             format!("Exist connection loop with error: {:?}", err),
-                            Some(ctx_spawned),
+                            ctx_spawned,
                         );
                     }
                 }
@@ -165,19 +145,10 @@ async fn create_and_start_no_tls_connection(
             }
         }
         Err(err) => {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "{}: Can not establish postgres connection with {} Err: {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                postgres_host,
-                err
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            inner.logger.write_fatal_error(
+            my_logger::LOGGER.write_fatal_error(
                 "Connecting to postgres".to_string(),
                 format!("Can not establish postgres connection. {:?}", err),
-                Some(ctx),
+                ctx,
             );
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -196,48 +167,31 @@ async fn create_and_start_with_tls(
 
     let connector = MakeTlsConnector::new(builder.build());
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    let mut ctx = std::collections::HashMap::new();
-    #[cfg(feature = "with-logs-and-telemetry")]
-    ctx.insert("Host".to_string(), postgres_host.clone());
+    let ctx = LogEventCtx::new().add("host", postgres_host.clone());
 
     let connection_string = connection_string.to_string(&inner.app_name);
 
     let result = tokio_postgres::connect(connection_string.as_str(), connector).await;
-    #[cfg(feature = "with-logs-and-telemetry")]
-    let logger_spawned = inner.logger.clone();
+
     match result {
         Ok((postgres_client, postgres_connection)) => {
             let connected_date_time = inner
                 .handle_connection_is_established(postgres_client, &postgres_host, true)
                 .await;
 
-            #[cfg(feature = "with-logs-and-telemetry")]
-            ctx.insert("Connected".to_string(), connected_date_time.to_rfc3339());
+            ctx.clone()
+                .add("Connected".to_string(), connected_date_time.to_rfc3339());
 
-            #[cfg(feature = "with-logs-and-telemetry")]
             let ctx_spawned = ctx.clone();
-
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            let postgres_host_spawned = postgres_host.clone();
 
             let inner_spawned = inner.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = postgres_connection.await {
-                    #[cfg(not(feature = "with-logs-and-telemetry"))]
-                    println!(
-                        "Connection via TLS to {} started at {} has error: {}",
-                        postgres_host_spawned,
-                        connected_date_time.to_rfc3339(),
-                        e
-                    );
-
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger_spawned.write_fatal_error(
+                    my_logger::LOGGER.write_fatal_error(
                         "Connecting to Postgres via TLS".to_string(),
                         format!("Can not establish postgres connection. {:?}", e),
-                        Some(ctx_spawned),
+                        ctx_spawned,
                     );
                 }
 
@@ -249,19 +203,10 @@ async fn create_and_start_with_tls(
             }
         }
         Err(err) => {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "{}: Can not establish postgres connection with {} Err: {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                postgres_host,
-                err
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            inner.logger.write_fatal_error(
+            my_logger::LOGGER.write_fatal_error(
                 "Connecting to Postgres via TLS".to_string(),
                 format!("Can not establish postgres connection. {:?}", err),
-                Some(ctx),
+                ctx,
             );
             tokio::time::sleep(Duration::from_secs(1)).await;
         }

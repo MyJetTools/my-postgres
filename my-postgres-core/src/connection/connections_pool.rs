@@ -1,5 +1,3 @@
-#[cfg(feature = "with-logs-and-telemetry")]
-use rust_extensions::Logger;
 use rust_extensions::{
     objects_pool::{ObjectsPool, RentedObject},
     StrOrString,
@@ -14,8 +12,6 @@ struct MyPostgresFactory {
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     #[cfg(feature = "with-ssh")]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
-    #[cfg(feature = "with-logs-and-telemetry")]
-    logger: Arc<dyn Logger + Sync + Send + 'static>,
 }
 
 impl MyPostgresFactory {
@@ -24,7 +20,6 @@ impl MyPostgresFactory {
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
             postgres_settings,
@@ -32,8 +27,6 @@ impl MyPostgresFactory {
             db_name,
             #[cfg(feature = "with-ssh")]
             ssh_config,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
         }
     }
 }
@@ -49,8 +42,6 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
             self.postgres_settings.clone(),
             #[cfg(feature = "with-ssh")]
             self.ssh_config.clone(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            self.logger.clone(),
         )
         .await
     }
@@ -58,8 +49,6 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
 
 pub struct ConnectionsPool {
     connections: ObjectsPool<PostgresConnectionInstance, MyPostgresFactory>,
-    #[cfg(feature = "with-logs-and-telemetry")]
-    pub logger: Arc<dyn Logger + Sync + Send + 'static>,
     #[cfg(feature = "with-ssh")]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
 }
@@ -71,11 +60,8 @@ impl ConnectionsPool {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
         #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Sync + Send + 'static>,
     ) -> Self {
         Self {
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger: logger.clone(),
             #[cfg(feature = "with-ssh")]
             ssh_config: ssh_config.clone(),
             connections: ObjectsPool::new(
@@ -86,8 +72,6 @@ impl ConnectionsPool {
                     postgres_settings.clone(),
                     #[cfg(feature = "with-ssh")]
                     ssh_config,
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    logger,
                 )),
             ),
         }

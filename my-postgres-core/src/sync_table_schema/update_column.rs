@@ -1,8 +1,12 @@
 use std::time::Duration;
 
+use my_logger::LogEventCtx;
+#[cfg(feature = "with-logs-and-telemetry")]
+use my_telemetry::MyTelemetryContext;
+
 use crate::{
     table_schema::{ColumnDifference, TableColumn, TableColumnType, DEFAULT_SCHEMA},
-    ColumnName, PostgresConnection,
+    ColumnName, PostgresConnection, RequestContext,
 };
 
 pub struct UpdateColumnError {
@@ -16,6 +20,7 @@ pub async fn update_column(
     table_name: &str,
     differences: &[ColumnDifference],
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) -> Result<(), UpdateColumnError> {
     for difference in differences {
         if !difference
@@ -23,38 +28,20 @@ pub async fn update_column(
             .sql_type
             .equals_to(&difference.required.sql_type)
         {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "DB: {}. Updating column {}  type: {:?}->{:?}",
-                table_name,
-                difference.required.name.to_string(),
-                difference.db.get_default(),
-                difference.required.get_default(),
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            {
-                let mut ctx = std::collections::HashMap::new();
-
-                ctx.insert("table".to_string(), table_name.to_string());
-                ctx.insert(
-                    "db_type".to_string(),
-                    difference.db.sql_type.to_db_type().to_string(),
-                );
-                ctx.insert(
-                    "required_type".to_string(),
-                    difference.required.sql_type.to_db_type().to_string(),
-                );
-
-                conn_string.get_logger().write_warning(
-                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!(
-                        "Updating Type of column {}.",
-                        difference.db.name.name.as_str()
+            my_logger::LOGGER.write_warning(
+                super::TABLE_SCHEMA_SYNCHRONIZATION,
+                format!(
+                    "Updating Type of column {}.",
+                    difference.db.name.name.as_str()
+                ),
+                LogEventCtx::new()
+                    .add("table", table_name.to_string())
+                    .add("db_type", difference.db.sql_type.to_db_type().to_string())
+                    .add(
+                        "required_type",
+                        difference.required.sql_type.to_db_type().to_string(),
                     ),
-                    Some(ctx),
-                );
-            }
+            );
 
             try_to_update_column_type(
                 conn_string,
@@ -63,43 +50,27 @@ pub async fn update_column(
                 &difference.db.sql_type,
                 &difference.required.sql_type,
                 sql_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                my_telemetry,
             )
             .await?;
         }
 
         if difference.db.is_nullable != difference.required.is_nullable {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "DB: {}. Updating column {} nullable: {}->{}",
-                table_name,
-                difference.required.name.to_string(),
-                difference.db.is_nullable,
-                difference.required.is_nullable,
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            {
-                let mut ctx = std::collections::HashMap::new();
-
-                ctx.insert("table".to_string(), table_name.to_string());
-                ctx.insert(
-                    "db_nullable".to_string(),
-                    difference.db.is_nullable.to_string(),
-                );
-                ctx.insert(
-                    "required_nullable".to_string(),
-                    difference.required.is_nullable.to_string(),
-                );
-
-                conn_string.get_logger().write_warning(
-                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!(
-                        "Updating IsNullable of column {}.",
-                        difference.db.name.name.as_str()
+            my_logger::LOGGER.write_warning(
+                super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                format!(
+                    "Updating IsNullable of column {}.",
+                    difference.db.name.name.as_str()
+                ),
+                LogEventCtx::new()
+                    .add("table", table_name.to_string())
+                    .add("db_nullable", difference.db.is_nullable.to_string())
+                    .add(
+                        "required_nullable",
+                        difference.required.is_nullable.to_string(),
                     ),
-                    Some(ctx),
-                );
-            }
+            );
 
             try_to_update_is_nullable(
                 conn_string,
@@ -108,43 +79,27 @@ pub async fn update_column(
                 difference.db.is_nullable,
                 difference.required.is_nullable,
                 sql_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                my_telemetry,
             )
             .await?;
         }
 
         if !difference.db.is_default_the_same(&difference.required) {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            println!(
-                "DB: {}. Updating column {} default: {:?}->{:?}",
-                table_name,
-                difference.required.name.to_string(),
-                difference.db.get_default(),
-                difference.required.get_default(),
-            );
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            {
-                let mut ctx = std::collections::HashMap::new();
-
-                ctx.insert("table".to_string(), table_name.to_string());
-                ctx.insert(
-                    "db_default".to_string(),
-                    format!("{:?}", difference.db.get_default()),
-                );
-                ctx.insert(
-                    "required_default".to_string(),
-                    format!("{:?}", difference.required.get_default()),
-                );
-
-                conn_string.get_logger().write_warning(
-                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!(
-                        "Updating Default of column {}.",
-                        difference.db.name.name.as_str()
+            my_logger::LOGGER.write_warning(
+                super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                format!(
+                    "Updating Default of column {}.",
+                    difference.db.name.name.as_str()
+                ),
+                LogEventCtx::new()
+                    .add("table", table_name.to_string())
+                    .add("db_default", format!("{:?}", difference.db.get_default()))
+                    .add(
+                        "required_default",
+                        format!("{:?}", difference.required.get_default()),
                     ),
-                    Some(ctx),
-                );
-            }
+            );
 
             try_to_update_default(
                 conn_string,
@@ -152,6 +107,8 @@ pub async fn update_column(
                 &difference.db,
                 &difference.required,
                 sql_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                my_telemetry,
             )
             .await?;
         }
@@ -167,7 +124,15 @@ async fn try_to_update_is_nullable(
     db_nullable: bool,
     required_to_be_nullable: bool,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<(), UpdateColumnError> {
+    let ctx = RequestContext::new(
+        sql_timeout,
+        format!("ALTER TABLE {} ", table_name),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
+
     if required_to_be_nullable {
         let sql = format!(
             r#"alter table {DEFAULT_SCHEMA}.{table_name}
@@ -175,16 +140,7 @@ async fn try_to_update_is_nullable(
             column_name = column_name.to_string()
         );
 
-        conn_string
-            .execute_sql(
-                &sql.into(),
-                format!("ALTER TABLE {} ", table_name),
-                sql_timeout,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                None,
-            )
-            .await
-            .unwrap();
+        conn_string.execute_sql(&sql.into(), &ctx).await.unwrap();
 
         return Ok(());
     }
@@ -195,16 +151,7 @@ async fn try_to_update_is_nullable(
         column_name = column_name.to_string()
     );
 
-    match conn_string
-        .execute_sql(
-            &sql.clone().into(),
-            format!("ALTER TABLE {} ", table_name),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await
-    {
+    match conn_string.execute_sql(&sql.clone().into(), &ctx).await {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(UpdateColumnError {
@@ -223,6 +170,7 @@ async fn try_to_update_column_type(
     now_type: &TableColumnType,
     required_type: &TableColumnType,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<(), UpdateColumnError> {
     let db_type = required_type.to_db_type();
 
@@ -232,20 +180,18 @@ async fn try_to_update_column_type(
         column_name = column_name.to_string()
     );
 
-    match conn_string
-        .execute_sql(
-            &sql.clone().into(),
-            format!(
-                "ALTER column {} of table {} ",
-                column_name.name.as_str(),
-                table_name
-            ),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await
-    {
+    let ctx = RequestContext::new(
+        sql_timeout,
+        format!(
+            "ALTER column {} of table {} ",
+            column_name.name.as_str(),
+            table_name
+        ),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
+
+    match conn_string.execute_sql(&sql.clone().into(), &ctx).await {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(UpdateColumnError {
@@ -267,6 +213,7 @@ async fn try_to_update_default(
     db: &TableColumn,
     required: &TableColumn,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) -> Result<(), UpdateColumnError> {
     let sql = if let Some(now_default) = db.default.as_ref() {
         if let Some(required_default) = required.default.as_ref() {
@@ -301,16 +248,14 @@ async fn try_to_update_default(
         }
     };
 
-    match conn_string
-        .execute_sql(
-            &sql.clone().into(),
-            format!("Updating default for table {} ", table_name),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await
-    {
+    let ctx = RequestContext::new(
+        sql_timeout,
+        format!("Updating default for table {} ", table_name),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(my_telemetry),
+    );
+
+    match conn_string.execute_sql(&sql.clone().into(), &ctx).await {
         Ok(_) => Ok(()),
         Err(err) => {
             return Err(UpdateColumnError {

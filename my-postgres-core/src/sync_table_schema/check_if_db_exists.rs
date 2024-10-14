@@ -1,6 +1,13 @@
 use std::time::Duration;
 
-use crate::{MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings};
+use my_logger::LogEventCtx;
+#[cfg(feature = "with-logs-and-telemetry")]
+use my_telemetry::MyTelemetryContext;
+
+use crate::{
+    MyPostgresError, PostgresConnection, PostgresConnectionInstance, PostgresSettings,
+    RequestContext,
+};
 
 const TECH_DB_NAME: &str = "postgres";
 
@@ -8,38 +15,37 @@ pub async fn check_if_db_exists(
     connection: &PostgresConnection,
     sql_timeout: Duration,
     #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) {
     if let Err(error) = check_if_db_exists_int(
         connection,
         sql_timeout,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        my_telemetry,
         #[cfg(feature = "with-ssh")]
         ssh_config,
     )
     .await
     {
-        println!(
-            "Can not execute script which checks DataBase existence. Error: {:?}",
-            error
+        let mut ctx = std::collections::HashMap::new();
+
+        ctx.insert("Err".to_string(), format!("{:?}", error));
+
+        my_logger::LOGGER.write_info(
+            "Table Existence verification",
+            format!(
+                "Can not execute script which checks DataBase existence. Err: {:?}",
+                error
+            ),
+            LogEventCtx::new().add("db_name", connection.get_db_name().await),
         );
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        {
-            let mut ctx = std::collections::HashMap::new();
-
-            ctx.insert("Err".to_string(), format!("{:?}", error));
-
-            connection.get_logger().write_info(
-                "Table Existence verification".into(),
-                format!("Can not execute script which checks DataBase existence",),
-                Some(ctx),
-            );
-        }
     }
 }
 
 async fn check_if_db_exists_int(
     connection: &PostgresConnection,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
     #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
 ) -> Result<(), MyPostgresError> {
     let (app_name, connection_string) = connection.get_connection_string().await;
@@ -55,8 +61,6 @@ async fn check_if_db_exists_int(
         std::sync::Arc::new(tech_conn_string),
         #[cfg(feature = "with-ssh")]
         ssh_config,
-        #[cfg(feature = "with-logs-and-telemetry")]
-        connection.get_logger().clone(),
     )
     .await;
 
@@ -65,15 +69,13 @@ async fn check_if_db_exists_int(
     println!("Checking that DB {} exists", db_name.as_str());
     let sql: String = format!("SELECT count(*) FROM pg_database WHERE datname='{db_name}'");
 
-    let result: Option<usize> = tech_connection
-        .get_count(
-            &sql.into(),
-            format!("checking_if_db_exists {}", db_name),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await?;
+    let req_ctx = RequestContext::new(
+        sql_timeout,
+        format!("checking_if_db_exists {}", db_name),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
+    let result: Option<usize> = tech_connection.get_count(&sql.into(), &req_ctx).await?;
 
     if let Some(count) = result {
         if count > 0 {
@@ -86,27 +88,22 @@ async fn check_if_db_exists_int(
 
     let sql: String = format!("CREATE DATABASE {db_name}");
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    {
-        let mut ctx = std::collections::HashMap::new();
+    my_logger::LOGGER.write_debug(
+        "check_if_db_exists".to_string(),
+        format!("Creating table {db_name}"),
+        LogEventCtx::new()
+            .add("db_name", db_name.to_string())
+            .add("sql", sql.to_string()),
+    );
 
-        ctx.insert("sql".to_string(), sql.to_string());
-        connection.get_logger().write_warning(
-            "check_if_db_exists".to_string(),
-            format!("Creating table {db_name}"),
-            Some(ctx),
-        );
-    }
+    let req_ctx = RequestContext::new(
+        sql_timeout,
+        format!("creating_db_{}", db_name),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
 
-    tech_connection
-        .execute_sql(
-            &sql.into(),
-            format!("creating_db_{}", db_name),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await?;
+    tech_connection.execute_sql(&sql.into(), &req_ctx).await?;
 
     Ok(())
 }

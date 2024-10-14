@@ -83,8 +83,6 @@ pub struct PostgresConnectionInner {
     pub to_be_disposable: AtomicBool,
     #[cfg(feature = "with-ssh")]
     ssh_config: Option<crate::ssh::PostgresSshConfig>,
-    #[cfg(feature = "with-logs-and-telemetry")]
-    pub logger: Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
 }
 
 impl PostgresConnectionInner {
@@ -93,9 +91,6 @@ impl PostgresConnectionInner {
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         db_name: String,
         #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<
-            dyn rust_extensions::Logger + Send + Sync + 'static,
-        >,
     ) -> Self {
         Self {
             app_name,
@@ -106,8 +101,6 @@ impl PostgresConnectionInner {
             to_be_disposable: AtomicBool::new(false),
             #[cfg(feature = "with-ssh")]
             ssh_config,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
         }
     }
 
@@ -179,23 +172,15 @@ impl PostgresConnectionInner {
     >(
         &self,
         sql: Option<&str>,
-        process_name: &str,
         execution: TFuture,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: &Arc<
-            dyn rust_extensions::Logger + Send + Sync + 'static,
-        >,
-        #[cfg(feature = "with-logs-and-telemetry")] started: DateTimeAsMicroseconds,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: &crate::RequestContext,
     ) -> Result<TResult, MyPostgresError> {
         let timeout_result: Result<Result<TResult, tokio_postgres::Error>, Elapsed> =
-            tokio::time::timeout(sql_request_time_out, execution).await;
+            tokio::time::timeout(ctx.sql_request_time_out, execution).await;
 
         let result = if timeout_result.is_err() {
             self.connected.store(false, Ordering::Relaxed);
-            Err(MyPostgresError::TimeOut(sql_request_time_out))
+            Err(MyPostgresError::TimeOut(ctx.sql_request_time_out))
         } else {
             match timeout_result.unwrap() {
                 Ok(result) => Ok(result),
@@ -203,45 +188,36 @@ impl PostgresConnectionInner {
             }
         };
 
-        if let Err(err) = &result {
-            println!(
-                "{}: Execution request {} finished with error {:?}",
-                DateTimeAsMicroseconds::now().to_rfc3339(),
-                process_name,
-                err
-            );
+        /*
+               if let Err(err) = &result {
+                   println!(
+                       "{}: Execution request {} finished with error {:?}",
+                       DateTimeAsMicroseconds::now().to_rfc3339(),
+                       process_name,
+                       err
+                   );
 
-            if let Some(sql) = sql {
-                let sql = if sql.len() > 255 { &sql[..255] } else { sql };
-                println!("SQL: {}", sql);
-            }
-        }
+                   if let Some(sql) = sql {
+                       let sql = if sql.len() > 255 { &sql[..255] } else { sql };
+                       println!("SQL: {}", sql);
+                   }
+               }
+        */
 
-        #[cfg(feature = "with-logs-and-telemetry")]
-        if let Some(telemetry_context) = &telemetry_context {
-            match &result {
-                Ok(_) => {
-                    my_telemetry::TELEMETRY_INTERFACE
-                        .write_success(
-                            telemetry_context,
-                            started,
-                            process_name.to_string(),
-                            "Ok".to_string(),
-                            get_sql_telemetry_tags(sql),
-                        )
-                        .await;
-                }
-                Err(err) => {
-                    write_fail_telemetry_and_log(
-                        started,
-                        "execute_sql".to_string(),
-                        sql,
-                        format!("{:?}", err),
-                        telemetry_context,
-                        logger,
-                    )
+        match &result {
+            Ok(_) => {
+                #[cfg(feature = "with-logs-and-telemetry")]
+                ctx.write_success("Sql execution ok".to_string(), get_sql_telemetry_tags(sql))
                     .await;
-                }
+            }
+            Err(err) => {
+                ctx.write_fail(
+                    format!("{:?}", err),
+                    sql,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    get_sql_telemetry_tags(sql),
+                )
+                .await;
             }
         }
 
@@ -270,14 +246,9 @@ impl PostgresConnectionInner {
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: &crate::RequestContext,
     ) -> Result<u64, MyPostgresError> {
         let mut start_connection = false;
-        let started = DateTimeAsMicroseconds::now();
         loop {
             if start_connection {
                 self.start_connection().await;
@@ -297,18 +268,7 @@ impl PostgresConnectionInner {
                     }
 
                     let result = self
-                        .execute_with_timeout(
-                            Some(&sql.sql),
-                            &process_name,
-                            execution,
-                            sql_request_time_out,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            &self.logger,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            started,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            telemetry_context,
-                        )
+                        .execute_with_timeout(Some(&sql.sql), execution, &ctx)
                         .await;
 
                     match result {
@@ -316,7 +276,7 @@ impl PostgresConnectionInner {
                             return Ok(result);
                         }
                         Err(err) => {
-                            self.handle_error(err, started, sql_request_time_out)?;
+                            self.handle_error(err, &ctx)?;
                         }
                     }
                 }
@@ -330,14 +290,9 @@ impl PostgresConnectionInner {
     pub async fn execute_sql_as_vec<'s>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: &crate::RequestContext,
     ) -> Result<Vec<Row>, MyPostgresError> {
         let mut start_connection = false;
-        let started = DateTimeAsMicroseconds::now();
 
         loop {
             if start_connection {
@@ -358,18 +313,7 @@ impl PostgresConnectionInner {
                     let execution = connection_access.query(&sql.sql, params.as_slice());
 
                     let result = self
-                        .execute_with_timeout(
-                            Some(&sql.sql),
-                            &process_name,
-                            execution,
-                            sql_request_time_out,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            &self.logger,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            started,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            telemetry_context,
-                        )
+                        .execute_with_timeout(Some(&sql.sql), execution, &ctx)
                         .await;
 
                     match result {
@@ -377,7 +321,7 @@ impl PostgresConnectionInner {
                             return Ok(result);
                         }
                         Err(err) => {
-                            self.handle_error(err, started, sql_request_time_out)?;
+                            self.handle_error(err, &ctx)?;
                         }
                     };
                 }
@@ -391,16 +335,9 @@ impl PostgresConnectionInner {
     pub async fn execute_sql_as_stream<'s, TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: crate::RequestContext,
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
         let mut start_connection = false;
-
-        #[cfg(feature = "with-logs-and-telemetry")]
-        let started = DateTimeAsMicroseconds::now();
 
         loop {
             if start_connection {
@@ -423,31 +360,14 @@ impl PostgresConnectionInner {
                         connection_access.query_raw(sql.sql.as_str(), params.into_iter());
 
                     let stream = self
-                        .execute_with_timeout(
-                            Some(&sql.sql),
-                            &process_name,
-                            execution,
-                            sql_request_time_out,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            &self.logger,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            started,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            telemetry_context,
-                        )
+                        .execute_with_timeout(Some(&sql.sql), execution, &ctx)
                         .await?;
 
                     return Ok(PostgresReadStream::new(
                         sql.sql.to_string(),
                         stream,
                         self.connected.clone(),
-                        sql_request_time_out,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        &self.logger,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        started,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
+                        ctx,
                     ));
                 }
                 None => {
@@ -460,11 +380,7 @@ impl PostgresConnectionInner {
     pub async fn execute_sql_as_row_stream(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: &crate::RequestContext,
     ) -> Result<PostgresRowReadStream, MyPostgresError> {
         let mut start_connection = false;
         loop {
@@ -482,40 +398,20 @@ impl PostgresConnectionInner {
                         println!("SQL: {}", &sql.sql);
                     }
 
-                    #[cfg(feature = "with-logs-and-telemetry")]
-                    let started = DateTimeAsMicroseconds::now();
-
                     let params = sql.values.get_values_to_invoke();
 
                     let execution =
                         connection_access.query_raw(sql.sql.as_str(), params.into_iter());
 
                     let stream = self
-                        .execute_with_timeout(
-                            Some(&sql.sql),
-                            &process_name,
-                            execution,
-                            sql_request_time_out,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            &self.logger,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            started,
-                            #[cfg(feature = "with-logs-and-telemetry")]
-                            telemetry_context,
-                        )
+                        .execute_with_timeout(Some(&sql.sql), execution, &ctx)
                         .await?;
 
                     return Ok(PostgresRowReadStream::new(
                         sql.sql.to_string(),
                         stream,
                         self.connected.clone(),
-                        sql_request_time_out,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        &self.logger,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        started,
-                        #[cfg(feature = "with-logs-and-telemetry")]
-                        telemetry_context,
+                        ctx.to_owned(),
                     ));
                 }
                 None => {
@@ -528,14 +424,8 @@ impl PostgresConnectionInner {
     pub async fn execute_bulk_sql<'s>(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<
-            &my_telemetry::MyTelemetryContext,
-        >,
+        ctx: crate::RequestContext,
     ) -> Result<(), MyPostgresError> {
-        let started = DateTimeAsMicroseconds::now();
-
         if std::env::var("DEBUG").is_ok() {
             if let Some(first_value) = sql_with_params.get(0) {
                 println!("SQL: {:?}", first_value.sql);
@@ -558,23 +448,10 @@ impl PostgresConnectionInner {
             transaction.commit()
         };
 
-        let result = self
-            .execute_with_timeout(
-                None,
-                &process_name,
-                execution,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                &self.logger,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                started,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await;
+        let result = self.execute_with_timeout(None, execution, &ctx).await;
 
         if let Err(err) = result {
-            self.handle_error(err, started, sql_request_time_out)?;
+            self.handle_error(err, &ctx)?;
         }
 
         Ok(())
@@ -583,8 +460,7 @@ impl PostgresConnectionInner {
     fn handle_error(
         &self,
         err: MyPostgresError,
-        started: DateTimeAsMicroseconds,
-        request_timeout: Duration,
+        ctx: &crate::RequestContext,
     ) -> Result<(), MyPostgresError> {
         match &err {
             MyPostgresError::NoConnection => {}
@@ -601,45 +477,12 @@ impl PostgresConnectionInner {
 
         let now = DateTimeAsMicroseconds::now();
 
-        if now.duration_since(started).as_positive_or_zero() > request_timeout {
+        if now.duration_since(ctx.started).as_positive_or_zero() > ctx.sql_request_time_out {
             return Err(err);
         }
 
         Ok(())
     }
-}
-
-#[cfg(feature = "with-logs-and-telemetry")]
-async fn write_fail_telemetry_and_log(
-    started: DateTimeAsMicroseconds,
-    process: String,
-    sql: Option<&str>,
-    fail: String,
-    telemetry_context: &my_telemetry::MyTelemetryContext,
-    logger: &Arc<dyn rust_extensions::Logger + Send + Sync + 'static>,
-) {
-    let ctx = if let Some(sql) = sql {
-        let mut ctx = std::collections::HashMap::new();
-        ctx.insert("sql".to_string(), sql.to_string());
-        Some(ctx)
-    } else {
-        None
-    };
-
-    logger.write_error(process.to_string(), fail.to_string(), ctx);
-
-    if !my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
-        return;
-    }
-    my_telemetry::TELEMETRY_INTERFACE
-        .write_fail(
-            telemetry_context,
-            started,
-            process,
-            fail,
-            get_sql_telemetry_tags(sql),
-        )
-        .await;
 }
 
 #[cfg(feature = "with-logs-and-telemetry")]

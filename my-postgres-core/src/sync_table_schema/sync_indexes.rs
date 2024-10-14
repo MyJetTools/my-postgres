@@ -1,14 +1,19 @@
 use std::{collections::HashMap, time::Duration};
 
+use my_logger::LogEventCtx;
+#[cfg(feature = "with-logs-and-telemetry")]
+use my_telemetry::MyTelemetryContext;
+
 use crate::{
     table_schema::{IndexSchema, TableSchema, DEFAULT_SCHEMA},
-    MyPostgresError, PostgresConnection,
+    MyPostgresError, PostgresConnection, RequestContext,
 };
 
 pub async fn sync_indexes(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<bool, MyPostgresError> {
     if table_schema.indexes.is_none() {
         #[cfg(not(feature = "with-logs-and-telemetry"))]
@@ -17,14 +22,13 @@ pub async fn sync_indexes(
             table_schema.table_name
         );
 
-        #[cfg(feature = "with-logs-and-telemetry")]
-        conn_string.get_logger().write_info(
-            "Table Schema verification".into(),
+        my_logger::LOGGER.write_info(
+            "Table Schema verification",
             format!(
                 "No Schema indexes is found for the table {}. Indexes synchronization is skipping",
                 table_schema.table_name
             ),
-            None,
+            LogEventCtx::new().add("table_name", table_schema.table_name.to_string()),
         );
 
         return Ok(false);
@@ -32,8 +36,14 @@ pub async fn sync_indexes(
 
     let table_schema_indexes = table_schema.indexes.as_ref().unwrap();
 
-    let indexes_from_db =
-        get_indexes_from_db(conn_string, table_schema.table_name, sql_timeout).await?;
+    let indexes_from_db = get_indexes_from_db(
+        conn_string,
+        table_schema.table_name,
+        sql_timeout,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        ctx,
+    )
+    .await?;
 
     let mut has_updates = false;
 
@@ -47,6 +57,8 @@ pub async fn sync_indexes(
                     index_name,
                     index_schema,
                     sql_timeout,
+                    #[cfg(feature = "with-logs-and-telemetry")]
+                    ctx,
                 )
                 .await?;
             }
@@ -58,6 +70,8 @@ pub async fn sync_indexes(
                 index_name,
                 index_schema,
                 sql_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                ctx,
             )
             .await?;
             has_updates = true;
@@ -73,27 +87,28 @@ async fn create_index(
     index_name: &str,
     index_schema: &IndexSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<(), MyPostgresError> {
     let sql = index_schema.generate_create_index_sql(&table_schema.table_name, index_name);
 
     println!("Executing sql: {}", sql);
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    conn_string.get_logger().write_warning(
+    my_logger::LOGGER.write_warning(
         super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
         format!("Executing sql: {}", sql),
-        None,
+        LogEventCtx::new()
+            .add("table_name", table_schema.table_name.to_string())
+            .add("index_name", index_name),
     );
 
-    conn_string
-        .execute_sql(
-            &sql.into(),
-            "create_new_index".into(),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await?;
+    let ctx = RequestContext::new(
+        sql_timeout,
+        "create_new_index".to_string(),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(&ctx),
+    );
+
+    conn_string.execute_sql(&sql.into(), &ctx).await?;
 
     Ok(())
 }
@@ -104,29 +119,19 @@ async fn update_index(
     index_name: &str,
     index_schema: &IndexSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<(), MyPostgresError> {
     let sql = format!("drop index {index_name};");
 
     println!("Executing sql: {}", sql);
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    conn_string.get_logger().write_warning(
+    my_logger::LOGGER.write_warning(
         super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
         format!("Executing sql: {}", sql),
-        None,
+        LogEventCtx::new()
+            .add("table_name", table_schema.table_name.to_string())
+            .add("index_name", index_name),
     );
-
-    #[cfg(not(feature = "with-logs-and-telemetry"))]
-    conn_string
-        .execute_sql(
-            &sql.into(),
-            "create_new_index".into(),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
-        .await
-        .unwrap();
 
     create_index(
         conn_string,
@@ -134,6 +139,8 @@ async fn update_index(
         index_name,
         index_schema,
         sql_timeout,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        ctx,
     )
     .await?;
 
@@ -144,6 +151,7 @@ async fn get_indexes_from_db(
     conn_string: &PostgresConnection,
     table_name: &str,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<HashMap<String, IndexSchema>, MyPostgresError> {
     let schema = DEFAULT_SCHEMA;
     // cSpell: disable
@@ -151,18 +159,22 @@ async fn get_indexes_from_db(
     "select indexname, indexdef from pg_indexes where schemaname = '{schema}' AND tablename = '{table_name}'"
 );
 
+    let ctx = RequestContext::new(
+        sql_timeout,
+        "get_indexes_from_db".to_string(),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
+
     let result = conn_string
         .execute_sql_as_vec(
             &sql.into(),
-            "get_db_fields".into(),
-            sql_timeout,
             |db_row| {
                 let index_name: String = db_row.get("indexname");
                 let index_def: String = db_row.get("indexdef");
                 (index_name, index_def)
             },
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
+            &ctx,
         )
         .await?;
     // cSpell: enable

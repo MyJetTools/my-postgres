@@ -1,11 +1,7 @@
-#[cfg(feature = "with-logs-and-telemetry")]
-use my_telemetry::MyTelemetryContext;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use tokio_postgres::Row;
 
-#[cfg(feature = "with-logs-and-telemetry")]
-use rust_extensions::Logger;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
@@ -17,8 +13,6 @@ use super::{PostgresConnectionInner, PostgresReadStream, PostgresRowReadStream};
 
 pub struct PostgresConnectionInstance {
     inner: Arc<PostgresConnectionInner>,
-    #[cfg(feature = "with-logs-and-telemetry")]
-    pub logger: Arc<dyn Logger + Send + Sync + 'static>,
     #[cfg(feature = "with-ssh")]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
     pub created: DateTimeAsMicroseconds,
@@ -30,7 +24,6 @@ impl PostgresConnectionInstance {
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
-        #[cfg(feature = "with-logs-and-telemetry")] logger: Arc<dyn Logger + Send + Sync + 'static>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
             app_name,
@@ -38,14 +31,10 @@ impl PostgresConnectionInstance {
             db_name,
             #[cfg(feature = "with-ssh")]
             ssh_config.clone(),
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger.clone(),
         ));
 
         let result = Self {
             inner,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            logger,
             created: DateTimeAsMicroseconds::now(),
             #[cfg(feature = "with-ssh")]
             ssh_config,
@@ -96,57 +85,26 @@ impl PostgresConnectionInstance {
     pub async fn execute_sql(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<u64, MyPostgresError> {
-        self.inner
-            .execute_sql(
-                sql,
-                process_name,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
+        self.inner.execute_sql(sql, ctx).await
     }
 
     pub async fn execute_bulk_sql<'s>(
         &self,
         sql_with_params: Vec<SqlData>,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: crate::RequestContext,
     ) -> Result<(), MyPostgresError> {
-        self.inner
-            .execute_bulk_sql(
-                sql_with_params,
-                process_name,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
+        self.inner.execute_bulk_sql(sql_with_params, ctx).await
     }
 
     pub async fn execute_sql_as_vec<'s, TEntity, TTransform: Fn(&Row) -> TEntity>(
         &self,
         sql: &SqlData,
-        process_name: String,
         transform: TTransform,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
-        let result_rows_set = self
-            .inner
-            .execute_sql_as_vec(
-                sql,
-                process_name,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await?;
+        let result_rows_set = self.inner.execute_sql_as_vec(sql, ctx).await?;
 
         let mut result = Vec::with_capacity(result_rows_set.len());
 
@@ -160,55 +118,26 @@ impl PostgresConnectionInstance {
     pub async fn execute_sql_as_stream<'s, TEntity: SelectEntity + Send + Sync + 'static>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: crate::RequestContext,
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
-        self.inner
-            .execute_sql_as_stream(
-                sql,
-                process_name,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
+        self.inner.execute_sql_as_stream(sql, ctx).await
     }
 
     pub async fn execute_sql_as_row_stream(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<PostgresRowReadStream, MyPostgresError> {
-        self.inner
-            .execute_sql_as_row_stream(
-                sql,
-                process_name,
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await
+        self.inner.execute_sql_as_row_stream(sql, ctx).await
     }
 
     pub async fn get_count<TCountResult: CountResult>(
         &self,
         sql: &SqlData,
-        process_name: String,
-        sql_request_time_out: Duration,
-        #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
+        ctx: &crate::RequestContext,
     ) -> Result<Option<TCountResult>, MyPostgresError> {
         let mut result = self
-            .execute_sql_as_vec(
-                sql,
-                process_name,
-                |db_row| TCountResult::from_db_row(db_row),
-                sql_request_time_out,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
+            .execute_sql_as_vec(sql, |db_row| TCountResult::from_db_row(db_row), ctx)
             .await?;
 
         if result.len() > 0 {

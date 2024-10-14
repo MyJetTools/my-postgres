@@ -12,7 +12,7 @@ use crate::{
     sql_where::SqlWhereModel,
     union::UnionModel,
     ConcurrentOperationResult, MyPostgresError, PostgresConnection, PostgresReadStream,
-    UpdateConflictType,
+    RequestContext, UpdateConflictType,
 };
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
@@ -31,14 +31,14 @@ impl PostgresConnection {
 
         let process_name = format!("insert_db_entity_if_not_exists into table {}", table_name);
 
-        self.execute_sql(
-            &sql_data,
-            process_name.as_str().into(),
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            process_name,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql(&sql_data, &ctx).await
     }
 
     pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
@@ -66,14 +66,18 @@ impl PostgresConnection {
             where_model.fill_limit_and_offset(&mut sql);
         }
 
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("SELECT COUNT(*) FROM {}...", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
         let mut result = self
             .execute_sql_as_vec(
                 &SqlData::new(sql, values),
-                format!("SELECT COUNT(*) FROM {}...", table_name),
-                sql_request_timeout,
                 |row| TResult::from_db_row(row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
+                &ctx,
             )
             .await?;
         if result.len() > 0 {
@@ -94,15 +98,15 @@ impl PostgresConnection {
 
         let sql = select_builder.to_sql_string(table_name, where_model);
 
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("query_single_row from {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
         let mut result = self
-            .execute_sql_as_vec(
-                &sql,
-                format!("Select single row from {}", table_name),
-                sql_request_timeout,
-                |row| TEntity::from(row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
             .await?;
 
         if result.len() > 0 {
@@ -130,15 +134,15 @@ impl PostgresConnection {
 
         post_processing(&mut sql.sql);
 
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("query_single_row_with_processing from {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
         let mut result = self
-            .execute_sql_as_vec(
-                &sql,
-                format!("Select single row from {}", table_name),
-                sql_request_timeout,
-                |row| TEntity::from(row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
             .await?;
 
         if result.len() > 0 {
@@ -162,15 +166,15 @@ impl PostgresConnection {
 
         let sql = select_builder.to_sql_string(table_name, where_model);
 
-        self.execute_sql_as_vec(
-            &sql,
-            format!("Select rows from {}", table_name),
+        let ctx = RequestContext::new(
             sql_request_timeout,
-            |row| TEntity::from(row),
+            format!("query_rows from {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+            .await
     }
 
     pub async fn query_rows_as_stream<
@@ -187,14 +191,14 @@ impl PostgresConnection {
 
         let sql = select_builder.to_sql_string(table_name, where_model);
 
-        self.execute_sql_as_stream(
-            &sql,
-            format!("Select rows from {}", table_name),
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("query_rows_as_stream from {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql_as_stream(&sql, ctx).await
     }
 
     pub async fn query_rows_with_processing<
@@ -215,15 +219,15 @@ impl PostgresConnection {
 
         post_processing(&mut sql.sql);
 
-        self.execute_sql_as_vec(
-            &sql,
-            format!("Select rows from {}", table_name),
+        let ctx = RequestContext::new(
             sql_request_timeout,
-            |row| TEntity::from(row),
+            format!("query_rows_with_processing from {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+            .await
     }
 
     pub async fn bulk_query_rows_with_transformation<
@@ -238,19 +242,18 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgresError> {
-        let process_name = format!("BulkQueryRows: {}", sql_builder.table_name);
         let sql = sql_builder.build_sql::<TEntity>();
 
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("BulkQueryRows: {}", sql_builder.table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            ctx,
+        );
+
         let response = {
-            self.execute_sql_as_vec(
-                &sql,
-                process_name,
-                sql_request_timeout,
-                |row| TEntity::from(row),
-                #[cfg(feature = "with-logs-and-telemetry")]
-                ctx,
-            )
-            .await?
+            self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+                .await?
         };
 
         let mut result = Vec::with_capacity(response.len());
@@ -287,16 +290,14 @@ impl PostgresConnection {
 
         let sql_data = crate::sql::build_bulk_insert_sql(entities, table_name, &used_columns);
 
-        let process_name = format!("bulk_insert_db_entities into table {}", table_name);
-
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("bulk_insert_db_entities into table {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -318,19 +319,17 @@ impl PostgresConnection {
 
         sql_data.sql.push_str(" ON CONFLICT DO NOTHING");
 
-        let process_name = format!(
-            "bulk_insert_db_entities_if_not_exists into table {}",
-            table_name
-        );
-
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!(
+                "bulk_insert_db_entities_if_not_exists into table {}",
+                table_name
+            ),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -357,26 +356,20 @@ impl PostgresConnection {
             }
         }
 
-        let process_name = format!(
-            "bulk_insert_or_update_db_entity into table {} {} entities",
-            table_name,
-            entities.len()
-        );
-
         let sql_data = crate::sql::build_bulk_insert_or_update_sql(
             table_name,
             &update_conflict_type,
             entities,
         );
 
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("bulk_insert_or_update_db_entity into table {}", table_name,),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -389,19 +382,17 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let process_name = format!("insert_or_update_db_entity into table {}", table_name);
-
         let sql_data =
             crate::sql::build_insert_or_update_sql(entity, table_name, &update_conflict_type);
 
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("insert_or_update_db_entity into table {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -415,14 +406,14 @@ impl PostgresConnection {
     ) -> Result<(), MyPostgresError> {
         let sql_data = where_model.build_delete_sql(table_name);
 
-        self.execute_sql(
-            &sql_data,
-            format!("Delete entity from {}", table_name),
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("Delete from {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -434,18 +425,16 @@ impl PostgresConnection {
         sql_request_timeout: Duration,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
-        let process_name = format!("bulk_delete from table {}", table_name);
-
         let sql_data = TEntity::build_bulk_delete_sql(entities, table_name);
 
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("bulk_delete from table {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await?;
+        );
+
+        self.execute_sql(&sql_data, &ctx).await?;
 
         Ok(())
     }
@@ -458,16 +447,15 @@ impl PostgresConnection {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let sql_data = crate::sql::build_update_sql(entity, table_name);
-        let process_name = format!("update_db_entity into table {}", table_name);
 
-        self.execute_sql(
-            &sql_data,
-            process_name,
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("update_db_entity into table {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql(&sql_data, &ctx).await
     }
 
     pub async fn bulk_query<
@@ -492,15 +480,14 @@ impl PostgresConnection {
 
         let sql_data = SqlData::new(sql, values);
 
-        let mut result_stream = self
-            .execute_sql_as_row_stream(
-                &sql_data,
-                "Bulk query with union".to_string(),
-                sql_request_timeout,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await?;
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("Bulk query with union {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
+        let mut result_stream = self.execute_sql_as_row_stream(&sql_data, &ctx).await?;
 
         let mut result: Vec<UnionModel<TEntity, TWhereModel>> = Vec::new();
         for where_model in where_models {
@@ -543,15 +530,14 @@ impl PostgresConnection {
 
         let sql_data = SqlData::new(sql, values);
 
-        let mut result_stream = self
-            .execute_sql_as_row_stream(
-                &sql_data,
-                "Bulk query with union".to_string(),
-                sql_request_timeout,
-                #[cfg(feature = "with-logs-and-telemetry")]
-                telemetry_context,
-            )
-            .await?;
+        let ctx = RequestContext::new(
+            sql_request_timeout,
+            format!("bulk_query_with_transformation {}", table_name),
+            #[cfg(feature = "with-logs-and-telemetry")]
+            telemetry_context,
+        );
+
+        let mut result_stream = self.execute_sql_as_row_stream(&sql_data, &ctx).await?;
 
         let mut result: Vec<UnionModel<TOut, TWhereModel>> = Vec::new();
         for where_model in where_models {
@@ -579,16 +565,14 @@ impl PostgresConnection {
     ) -> Result<u64, MyPostgresError> {
         let sql = crate::sql::build_insert_sql(entity, table_name, &mut UsedColumns::as_none());
 
-        let process_name: String = format!("insert_db_entity into table {}", table_name);
-
-        self.execute_sql(
-            &sql,
-            process_name.as_str().into(),
+        let ctx = RequestContext::new(
             sql_request_timeout,
+            format!("insert_db_entity into table {}", table_name),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
-        )
-        .await
+        );
+
+        self.execute_sql(&sql, &ctx).await
     }
 
     pub async fn concurrent_insert_or_update_single_entity<

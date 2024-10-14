@@ -37,8 +37,11 @@ pub use group_by_fields::*;
 pub mod union;
 pub mod utils;
 
+mod postgres_telemetry;
 #[cfg(feature = "with-ssh")]
 mod ssh;
+
+pub use postgres_telemetry::*;
 
 pub extern crate tokio_postgres;
 

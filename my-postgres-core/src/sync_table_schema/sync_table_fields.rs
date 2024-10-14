@@ -1,21 +1,39 @@
 use std::{collections::HashMap, time::Duration};
 
+use my_logger::LogEventCtx;
+#[cfg(feature = "with-logs-and-telemetry")]
+use my_telemetry::MyTelemetryContext;
 use rust_extensions::StrOrString;
 
 use crate::{
     table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
-    ColumnName, MyPostgresError, PostgresConnection,
+    ColumnName, MyPostgresError, PostgresConnection, RequestContext,
 };
 
 pub async fn sync_table_fields(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) -> Result<bool, MyPostgresError> {
-    let db_fields = get_db_fields(conn_string, table_schema.table_name, sql_timeout).await?;
+    let db_fields = get_db_fields(
+        conn_string,
+        table_schema.table_name,
+        sql_timeout,
+        #[cfg(feature = "with-logs-and-telemetry")]
+        my_telemetry,
+    )
+    .await?;
 
     if db_fields.is_none() {
-        create_table(conn_string, table_schema, sql_timeout).await;
+        create_table(
+            conn_string,
+            table_schema,
+            sql_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            my_telemetry,
+        )
+        .await;
         return Ok(true);
     }
 
@@ -29,30 +47,20 @@ pub async fn sync_table_fields(
             &table_schema.table_name,
             schema_difference.to_update.as_slice(),
             sql_timeout,
+            #[cfg(feature = "with-logs-and-telemetry")]
+            my_telemetry,
         )
         .await
         {
-            #[cfg(not(feature = "with-logs-and-telemetry"))]
-            {
-                println!("Reason: {}", err.err);
-                println!("---------------------");
-                println!("Failed to update column {}. {}", err.column_name, err.dif);
-            }
-
-            #[cfg(feature = "with-logs-and-telemetry")]
-            {
-                let mut ctx = HashMap::new();
-
-                ctx.insert("difference".to_string(), err.dif);
-                ctx.insert("column".to_string(), err.column_name.to_string());
-                ctx.insert("err".to_string(), err.err);
-
-                conn_string.get_logger().write_warning(
-                    super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-                    format!("Can not update column {}", err.column_name),
-                    Some(ctx),
-                );
-            }
+            my_logger::LOGGER.write_warning(
+                super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+                format!("Failed to update column {}", err.column_name),
+                LogEventCtx::new()
+                    .add("table_name", table_schema.table_name)
+                    .add("difference", err.dif)
+                    .add("column", err.column_name)
+                    .add("err", err.err),
+            );
 
             tokio::time::sleep(Duration::from_secs(10)).await;
 
@@ -62,7 +70,15 @@ pub async fn sync_table_fields(
 
     if schema_difference.to_add.len() > 0 {
         for column_name in &schema_difference.to_add {
-            add_column_to_table(conn_string, table_schema, column_name, sql_timeout).await?;
+            add_column_to_table(
+                conn_string,
+                table_schema,
+                column_name,
+                sql_timeout,
+                #[cfg(feature = "with-logs-and-telemetry")]
+                my_telemetry,
+            )
+            .await?;
         }
 
         return Ok(true);
@@ -75,38 +91,36 @@ async fn create_table(
     conn_string: &PostgresConnection,
     table_schema: &TableSchema,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) {
     let create_table_sql = table_schema.generate_create_table_script();
-    #[cfg(not(feature = "with-logs-and-telemetry"))]
-    println!("Table not found. Creating Table");
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    {
-        let mut ctx = HashMap::new();
+    let mut log_ctx = LogEventCtx::new()
+        .add("table_name", table_schema.table_name.to_string())
+        .add("sql", create_table_sql.to_string());
 
-        ctx.insert("TableName".to_string(), table_schema.table_name.to_string());
-
-        if let Some((primary_key_name, _)) = &table_schema.primary_key {
-            ctx.insert("primaryKeyName".to_string(), primary_key_name.to_string());
-        }
-
-        ctx.insert("Sql".to_string(), create_table_sql.to_string());
-
-        conn_string.get_logger().write_warning(
-            super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-            format!("Creating table: {}", table_schema.table_name),
-            Some(ctx),
-        );
+    if let Some((primary_key_name, _)) = &table_schema.primary_key {
+        log_ctx = log_ctx.add("primaryKeyName".to_string(), primary_key_name.to_string());
     }
 
+    my_logger::LOGGER.write_warning(
+        super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+        format!(
+            "Table not found. Creating table: {}",
+            table_schema.table_name
+        ),
+        log_ctx,
+    );
+
+    let ctx = RequestContext::new(
+        sql_timeout,
+        "create_table".to_string(),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(my_telemetry),
+    );
+
     conn_string
-        .execute_sql(
-            &create_table_sql.into(),
-            "create_table".into(),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
+        .execute_sql(&create_table_sql.into(), &ctx)
         .await
         .unwrap();
 }
@@ -115,6 +129,7 @@ async fn get_db_fields(
     conn_string: &PostgresConnection,
     table_name: &str,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<Option<HashMap<String, TableColumn>>, MyPostgresError> {
     let sql = format!(
         r#"SELECT column_name, column_default, is_nullable, data_type
@@ -124,32 +139,16 @@ async fn get_db_fields(
     ORDER BY ordinal_position"#
     );
 
-    #[cfg(not(feature = "with-logs-and-telemetry"))]
-    let result = conn_string
-        .execute_sql_as_vec(&sql.into(), "get_db_fields".into(), sql_timeout, |db_row| {
-            let name: String = db_row.get("column_name");
+    let ctx = RequestContext::new(
+        sql_timeout,
+        "get_db_fields".to_string(),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(ctx),
+    );
 
-            let sql_type = match get_sql_type(db_row) {
-                Ok(result) => result,
-                Err(err) => {
-                    panic!("Can not get sql type for column {}. Reason: {}", name, err);
-                }
-            };
-            TableColumn {
-                name: name.into(),
-                sql_type,
-                is_nullable: get_is_nullable(db_row),
-                default: get_column_default(&db_row),
-            }
-        })
-        .await?;
-
-    #[cfg(feature = "with-logs-and-telemetry")]
     let result = conn_string
         .execute_sql_as_vec(
             &sql.into(),
-            "get_db_fields".into(),
-            sql_timeout,
             |db_row| {
                 let name: String = db_row.get("column_name");
                 let sql_type = match get_sql_type(db_row) {
@@ -165,7 +164,7 @@ async fn get_db_fields(
                     default: get_column_default(&db_row),
                 }
             },
-            None,
+            &ctx,
         )
         .await?;
 
@@ -186,35 +185,30 @@ async fn add_column_to_table(
     table_schema: &TableSchema,
     column_name: &ColumnName,
     sql_timeout: Duration,
+    #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) -> Result<(), MyPostgresError> {
     let add_column_sql = table_schema.generate_add_column_sql(column_name);
 
-    #[cfg(not(feature = "with-logs-and-telemetry"))]
-    println!(
-        "Adding column by execution sql: {}",
-        add_column_sql.as_str()
+    my_logger::LOGGER.write_warning(
+        super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
+        format!(
+            "Adding column by execution sql: {}",
+            add_column_sql.as_str()
+        ),
+        LogEventCtx::new()
+            .add("table_name", table_schema.table_name.to_string())
+            .add("column_name", column_name.to_string()),
     );
 
-    #[cfg(feature = "with-logs-and-telemetry")]
-    {
-        conn_string.get_logger().write_warning(
-            super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
-            format!(
-                "Adding column by execution sql: {}",
-                add_column_sql.as_str()
-            ),
-            None,
-        );
-    }
+    let ctx = RequestContext::new(
+        sql_timeout,
+        "add_column_to_table".to_string(),
+        #[cfg(feature = "with-logs-and-telemetry")]
+        Some(my_telemetry),
+    );
 
     conn_string
-        .execute_sql(
-            &add_column_sql.into(),
-            "add_column_to_table".into(),
-            sql_timeout,
-            #[cfg(feature = "with-logs-and-telemetry")]
-            None,
-        )
+        .execute_sql(&add_column_sql.into(), &ctx)
         .await?;
 
     Ok(())
