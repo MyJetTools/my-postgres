@@ -358,7 +358,9 @@ impl MyPostgres {
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         if entities.len() == 0 {
-            panic!("Attempt to bulk_insert_or_update_db_entity 0 entities");
+            return Err(MyPostgresError::Other(
+                "Attempt to bulk_insert_or_update_db_entity 0 entities".to_string(),
+            ));
         }
 
         self.connection

@@ -349,7 +349,7 @@ impl PostgresConnection {
                 let key = entity.get_primary_key_as_single_string();
 
                 if has_entities.contains(&key) {
-                    panic!("Duplicated entity in bulk_insert_or_update_db_entity for table: {}. PrimaryKey: {}", table_name, key);
+                    return Err(MyPostgresError::Other(format!("Duplicated entity in bulk_insert_or_update_db_entity for table: {}. PrimaryKey: {}", table_name, key)));
                 }
 
                 has_entities.insert(key);
