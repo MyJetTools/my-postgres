@@ -32,8 +32,6 @@ pub async fn start_connection_loop(
 
         #[cfg(feature = "with-ssh")]
         let postgres_host = if let Some(ssh_config) = &ssh_config {
-            let postgres_host = conn_string.get_host_endpoint();
-
             let ssh_cred_type = match ssh_config.credentials.as_ref() {
                 my_ssh::SshCredentials::SshAgent { .. } => "SshAgent",
                 my_ssh::SshCredentials::UserNameAndPassword { .. } => "UserNameAndPassword",
@@ -42,14 +40,15 @@ pub async fn start_connection_loop(
 
             let (ssh_host, ssh_port) = ssh_config.credentials.get_host_port();
             format!(
-                "[{}]ssh:{}:{}->{}",
+                "[{}]ssh:{}:{}->{}:{}",
                 ssh_cred_type,
                 ssh_host,
                 ssh_port,
-                postgres_host.get_host_port().as_str()
+                conn_string.get_host(),
+                conn_string.get_port()
             )
         } else {
-            format!("{:?}", conn_string.get_host_endpoint())
+            format!("{}:{}", conn_string.get_host(), conn_string.get_port())
         };
 
         #[cfg(not(feature = "with-ssh"))]

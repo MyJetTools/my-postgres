@@ -1,4 +1,4 @@
-use crate::{PostgresConnectionString, POSTGRES_DEFAULT_PORT};
+use crate::PostgresConnectionString;
 
 use super::PostgresSshConfig;
 
@@ -8,14 +8,12 @@ pub async fn start_ssh_tunnel_and_get_connection_string(
 ) {
     let (host, port) = ssh_config.credentials.get_host_port();
 
-    let postgres_endpoint = connection_string.get_host_endpoint();
-
     let ssh_tunnel_key = format!(
         "{}:{}->{}:{}",
         host,
         port,
-        postgres_endpoint.host,
-        postgres_endpoint.port.unwrap_or(POSTGRES_DEFAULT_PORT)
+        connection_string.get_host(),
+        connection_string.get_port()
     );
 
     {
@@ -30,18 +28,14 @@ pub async fn start_ssh_tunnel_and_get_connection_string(
 
     let ssh_session = ssh_config.get_ssh_session().await;
 
-    let get_host_endpoint = connection_string.get_host_endpoint();
-
     let (listen_host, listen_port) =
-        crate::ssh::generate_unix_socket_file(ssh_config.credentials.as_ref(), get_host_endpoint);
+        crate::ssh::generate_unix_socket_file(ssh_config.credentials.as_ref());
 
     let result = ssh_session
         .start_port_forward(
             format!("{}:{}", listen_host, listen_port),
-            get_host_endpoint.host.to_string(),
-            get_host_endpoint
-                .port
-                .unwrap_or(crate::POSTGRES_DEFAULT_PORT),
+            connection_string.get_host().to_string(),
+            connection_string.get_port(),
         )
         .await;
 

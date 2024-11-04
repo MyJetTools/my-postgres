@@ -35,10 +35,7 @@ lazy_static::lazy_static! {
     pub static ref PORT_ALLOCATOR: PortAllocator = PortAllocator::new(33000, 34000);
 }
 
-pub fn generate_unix_socket_file(
-    _ssh_credentials: &SshCredentials,
-    _remote_host: rust_extensions::url_utils::HostEndpoint,
-) -> (&'static str, u16) {
+pub fn generate_unix_socket_file(_ssh_credentials: &SshCredentials) -> (&'static str, u16) {
     let port = PORT_ALLOCATOR.get_next_port();
     return ("127.0.0.1", port);
     /*
