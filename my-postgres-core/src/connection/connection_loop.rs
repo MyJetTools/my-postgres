@@ -53,7 +53,7 @@ pub async fn start_connection_loop(
         };
 
         #[cfg(not(feature = "with-ssh"))]
-        let postgres_host = format!("{:?}", conn_string.get_host_endpoint());
+        let postgres_host = format!("{}:{}", conn_string.get_host(), conn_string.get_port());
 
         #[cfg(feature = "with-ssh")]
         if let Some(ssh_config) = &ssh_config {

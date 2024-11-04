@@ -1,5 +1,3 @@
-use rust_extensions::url_utils::HostEndpoint;
-
 use crate::POSTGRES_DEFAULT_PORT;
 
 const PREFIX: &str = "postgresql://";
@@ -63,6 +61,10 @@ impl PostgresConnectionString {
         self.ssl_require
     }
 
+    pub fn get_port(&self) -> u16 {
+        self.port
+    }
+
     pub fn get_host(&self) -> &str {
         match &self.host {
             ValueWithOverride::Value(position) => self.get_field_value(position),
@@ -76,14 +78,6 @@ impl PostgresConnectionString {
 
     pub fn set_port(&mut self, port: u16) {
         self.port = port;
-    }
-
-    pub fn get_host_endpoint(&self) -> HostEndpoint {
-        HostEndpoint {
-            scheme: None,
-            host: self.get_host(),
-            port: Some(self.port),
-        }
     }
 
     fn parse_space_separated(conn_string: Vec<u8>) -> Self {
