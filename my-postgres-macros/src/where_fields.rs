@@ -16,9 +16,9 @@ impl<'s> WhereFields<'s> {
         let mut offset = None;
         let mut other_fields = Vec::new();
         for struct_prop in src_fields.get_fields() {
-            if struct_prop.attrs.has_attr("limit") {
+            if struct_prop.attrs.has_attr("limit") || (struct_prop.name == "limit" && struct_prop.ty.is_usize()) {
                 limit = Some(struct_prop);
-            } else if struct_prop.attrs.has_attr("offset") {
+            } else if struct_prop.attrs.has_attr("offset")|| (struct_prop.name == "offset" && struct_prop.ty.is_usize()) {
                 offset = Some(struct_prop);
             } else {
                 other_fields.push(struct_prop);

@@ -5,6 +5,9 @@ pub struct WhereRawModel {
     pub field_1: String,
     pub field_2: bool,
     pub field_3: Vec<i32>,
+
+    pub limit: usize,
+    pub offset: usize,
 }
 
 #[cfg(test)]
@@ -19,6 +22,8 @@ mod tests {
             field_1: "test".to_string(),
             field_2: true,
             field_3: vec![1, 2, 3],
+            limit: 10,
+            offset: 5,
         };
 
         let mut params = my_postgres::sql::SqlValues::new();
@@ -38,6 +43,8 @@ mod tests {
             field_1: "test".to_string(),
             field_2: true,
             field_3: vec![],
+            limit: 10,
+            offset: 5,
         };
 
         let mut params = my_postgres::sql::SqlValues::new();
@@ -54,6 +61,8 @@ mod tests {
             field_1: "test".to_string(),
             field_2: true,
             field_3: vec![1],
+            limit: 10,
+            offset: 5,
         };
 
         let mut params = my_postgres::sql::SqlValues::new();
