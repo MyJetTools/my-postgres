@@ -1,6 +1,6 @@
 [package]
 name = "my-postgres-core"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,7 +17,7 @@ rust-extensions = { tag = "0.1.4", git = "https://github.com/MyJetTools/rust-ext
     "objects-pool",
     "with-tokio",
 ] }
-my-telemetry = { tag = "1.1.1", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
+my-telemetry = { tag = "1.2.0", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
 my-ssh = { tag = "0.1.1", git = "https://github.com/MyJetTools/my-ssh.git", optional = true }
 
 
