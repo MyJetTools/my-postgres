@@ -33,10 +33,12 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
 
 
             pub fn from_str(src: &str)->Self{
-                let (name, model) = my_postgres::utils::get_case_and_model(src);
-                match name {
+                let first_line_reader = src.into();
+                let (name, model) = my_postgres::utils::get_case_and_model(&first_line_reader);
+                let name = name.as_str().unwrap();
+                match name.as_str() {
                     #fn_from_str
-                  _ => panic!("Invalid value {}", name)
+                  _ => panic!("Invalid value {}", name.as_str())
                 }
             }
 
@@ -103,7 +105,7 @@ fn generate_fn_from_str(enum_cases: &[EnumCase]) -> Result<proc_macro2::TokenStr
         let model = case.model.as_ref().unwrap().get_name_ident();
 
         result.extend(quote! {
-            #case_value => Self::#case_ident(#model::from_str(model)),
+            #case_value => Self::#case_ident(#model::from_str(model.as_raw_str().unwrap())),
         });
     }
     Ok(result)

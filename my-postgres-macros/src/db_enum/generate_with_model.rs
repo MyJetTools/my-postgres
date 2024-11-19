@@ -30,11 +30,13 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
   
 
-            pub fn from_db_value(value: &str)->Self{
-                let (case, model) = my_postgres::utils::get_case_and_model(value);
-                match case{
+            pub fn from_db_value(src: &str)->Self{
+                let first_line_reader = src.into();
+                let (case, model) = my_postgres::utils::get_case_and_model(&first_line_reader);
+                let name = case.as_str().unwrap();
+                match name.as_str(){
                   #(#from_db_value)*
-                  _ => panic!("Invalid value {}", value)
+                  _ => panic!("Invalid value {}", name.as_str())
                 }
             }
 
@@ -118,7 +120,7 @@ fn fn_from_db_value(enum_cases: &[EnumCase]) -> Result<Vec<TokenStream>, syn::Er
         };
         
         let no = no.to_string();
-        result.push(quote! (#no => Self::#name_ident(#model::from_str(model)),));
+        result.push(quote! (#no => Self::#name_ident(#model::from_str(model.as_raw_str().unwrap())),));
     }
 
     Ok(result)
