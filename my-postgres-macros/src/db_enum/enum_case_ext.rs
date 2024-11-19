@@ -1,4 +1,4 @@
-use rust_extensions::StrOrString;
+use types_reader::rust_extensions::StrOrString;
 use types_reader::EnumCase;
 
 use crate::attributes::EnumCaseAttribute;

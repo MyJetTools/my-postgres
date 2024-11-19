@@ -17,11 +17,11 @@ rust-extensions = { tag = "0.1.5", git = "https://github.com/MyJetTools/rust-ext
     "objects-pool",
     "with-tokio",
 ] }
-my-telemetry = { tag = "1.2.0", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
-my-ssh = { tag = "0.1.1", git = "https://github.com/MyJetTools/my-ssh.git", optional = true }
+my-telemetry = { tag = "1.2.1", optional = true, git = "https://github.com/MyJetTools/my-telemetry.git" }
+my-ssh = { tag = "0.1.2", git = "https://github.com/MyJetTools/my-ssh.git", optional = true }
 
 
-my-logger = { tag = "1.1.0", git = "https://github.com/MyJetTools/my-logger.git" }
+my-logger = { tag = "1.2.1", git = "https://github.com/MyJetTools/my-logger.git" }
 
 tokio = { version = "*", features = ["full"] }
 tokio-postgres = { version = "*", features = ["with-chrono-0_4"] }

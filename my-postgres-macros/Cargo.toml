@@ -12,9 +12,8 @@ debug-table-schema = []
 proc-macro = true
 
 [dependencies]
-types-reader = { tag = "0.5.0", git = "https://github.com/MyJetTools/types-reader.git" }
+types-reader = { tag = "0.5.1", git = "https://github.com/MyJetTools/types-reader.git" }
 
-rust-extensions = { tag = "0.1.5", git = "https://github.com/MyJetTools/rust-extensions.git" }
 
 syn = { version = "*", features = ["extra-traits"] }
 quote = "*"

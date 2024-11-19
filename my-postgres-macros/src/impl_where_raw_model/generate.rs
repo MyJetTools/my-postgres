@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
+use types_reader::rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
 use types_reader::{StructureSchema, TokensObject, TypeName};
 
 use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
