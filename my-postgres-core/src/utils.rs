@@ -10,7 +10,7 @@ pub fn compile_enum_with_model(case: &str, volume: &str) -> String {
 }
 
 pub fn get_case_and_model<'s>(
-    first_line_reader: &'s my_json::json_reader::JsonFirstLineIteratorFromSlice<'s>,
+    first_line_reader: &'s my_json::json_reader::JsonFirstLineIterator<'s>,
 ) -> (JsonValueRef<'s>, JsonValueRef<'s>) {
     let mut case = None;
     let mut model = None;
