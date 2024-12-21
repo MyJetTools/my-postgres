@@ -6,7 +6,7 @@ pub fn compile_enum_with_model(case: &str, volume: &str) -> String {
     json_writer.write("case", case);
     json_writer.write("model", RawJsonObject::AsStr(volume));
 
-    String::from_utf8(json_writer.build()).unwrap()
+    json_writer.build()
 }
 
 pub fn get_case_and_model<'s>(
