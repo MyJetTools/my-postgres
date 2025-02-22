@@ -48,7 +48,7 @@ mod tests {
         let result = select_builder.to_sql_string("Test", NoneWhereModel::new());
 
         assert_eq!(
-            "SELECT id,value #>> '{}' as \"value_at_adjusted\" FROM Test",
+            "SELECT id,value #>> '{}' as \"value.transformed\" FROM Test",
             result.sql
         );
     }
