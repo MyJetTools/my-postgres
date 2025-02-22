@@ -46,7 +46,7 @@ async fn start_reading(
     use crate::connection::get_sql_telemetry_tags;
 
     pin_mut!(stream);
-
+    #[cfg(feature = "with-logs-and-telemetry")]
     let mut read_ok_rows = 0;
 
     loop {
@@ -65,7 +65,11 @@ async fn start_reading(
 
         match read_result.unwrap() {
             Ok(row) => {
-                read_ok_rows += 1;
+                #[cfg(feature = "with-logs-and-telemetry")]
+                {
+                    read_ok_rows += 1;
+                }
+
                 if row.is_none() {
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx.write_success(

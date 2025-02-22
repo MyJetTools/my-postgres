@@ -500,7 +500,7 @@ pub enum ConnectionStringFormat<'s> {
 }
 
 impl<'s> ConnectionStringFormat<'s> {
-    pub fn parse_and_detect(conn_string: &'s str) -> ConnectionStringFormat {
+    pub fn parse_and_detect(conn_string: &'s str) -> ConnectionStringFormat<'s> {
         if conn_string.trim().starts_with(PREFIX) {
             return ConnectionStringFormat::AsUrl(conn_string);
         }

@@ -1,7 +1,7 @@
 
 use proc_macro2::TokenStream;
 
-use types_reader::{ macros::{MacrosParameters, MacrosEnum}, StructureSchema};
+use types_reader::{ macros::MacrosEnum, StructureSchema};
 
 use crate::{postgres_struct_ext::PostgresStructPropertyExt,  postgres_struct_schema::PostgresStructSchema};
 #[derive(MacrosEnum)]
@@ -12,12 +12,7 @@ pub enum GenerateType{
     Update,
 }
 
-#[derive(MacrosParameters)]
-pub struct GenerateAdditionalUpdateModelAttributeParams {
-    #[default]
-    pub name: String,
-    pub param_type: GenerateType,
-}
+
 
 
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {

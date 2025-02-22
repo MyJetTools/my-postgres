@@ -344,7 +344,7 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
                 sql.push_str("(extract(EPOCH FROM ");
                 sql.push_str(field_name.db_column_name);
                 sql.push_str(") * 1000000)::bigint as \"");
-                sql.push_str(field_name.db_column_name);
+                crate::utils::fill_adjusted_column_name(field_name.db_column_name, sql);
                 sql.push('"');
             }
             SelectFieldValue::DateTimeAsBigint(field_name) => {

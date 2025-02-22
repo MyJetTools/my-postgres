@@ -23,13 +23,13 @@ pub struct DbIndexField<'s> {
 }
 
 pub trait PostgresStructSchema<'s> {
-    fn get_fields(&'s self) -> Vec<&'s StructProperty>;
+    fn get_fields(&'s self) -> Vec<&'s StructProperty<'s>>;
 
     fn get_name(&'s self) -> &'s TypeName;
 
     fn get_select_properties_to_generate(
         &'s self,
-    ) -> Result<BTreeMap<String, Vec<&'s StructProperty>>, syn::Error> {
+    ) -> Result<BTreeMap<String, Vec<&'s StructProperty<'s>>>, syn::Error> {
         let mut result = BTreeMap::new();
 
         for prop in self.get_fields() {
@@ -174,7 +174,7 @@ pub trait PostgresStructSchema<'s> {
 }
 
 impl<'s> PostgresStructSchema<'s> for StructureSchema<'s> {
-    fn get_fields(&'s self) -> Vec<&'s StructProperty> {
+    fn get_fields(&'s self) -> Vec<&'s StructProperty<'s>> {
         let all = self.get_all();
         let mut result = Vec::with_capacity(all.len());
 

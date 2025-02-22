@@ -35,6 +35,11 @@ pub fn get_case_and_model<'s>(
     (case.unwrap(), model.unwrap())
 }
 
+pub fn fill_adjusted_column_name(column_name: &str, out: &mut String) {
+    out.push_str(column_name);
+    out.push_str("_at_adjusted");
+}
+
 /*
 pub struct CaseAndModelValue {
     case: JsonKeyValue,

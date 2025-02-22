@@ -10,17 +10,17 @@ pub struct SqlWithParams<'s> {
 }
 
 pub trait WithSqlParams<'s> {
-    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams;
+    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams<'s>;
 }
 
 impl<'s> WithSqlParams<'s> for String {
-    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams {
+    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams<'s> {
         SqlWithParams { sql: self, params }
     }
 }
 
 impl<'s> WithSqlParams<'s> for &'s str {
-    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams {
+    fn inject_sql_params_data(&'s self, params: SqlValues) -> SqlWithParams<'s> {
         SqlWithParams { sql: self, params }
     }
 }

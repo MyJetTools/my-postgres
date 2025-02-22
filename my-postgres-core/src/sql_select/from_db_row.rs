@@ -249,7 +249,9 @@ impl<'s> FromDbRow<'s, DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> DateTimeAsMicroseconds {
-        let unix_microseconds: i64 = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+        let unix_microseconds: i64 = row.get(db_column_name.as_str());
         DateTimeAsMicroseconds::new(unix_microseconds)
     }
 
@@ -258,7 +260,9 @@ impl<'s> FromDbRow<'s, DateTimeAsMicroseconds> for DateTimeAsMicroseconds {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<DateTimeAsMicroseconds> {
-        let unix_microseconds: Option<i64> = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+        let unix_microseconds: Option<i64> = row.get(db_column_name.as_str());
         let unix_microseconds = unix_microseconds?;
         Some(DateTimeAsMicroseconds::new(unix_microseconds))
     }
