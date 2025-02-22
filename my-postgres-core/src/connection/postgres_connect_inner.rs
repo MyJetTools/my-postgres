@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, StopWatch};
 use tokio::{sync::RwLock, time::error::Elapsed};
 use tokio_postgres::Row;
 
@@ -294,6 +294,11 @@ impl PostgresConnectionInner {
     ) -> Result<Vec<Row>, MyPostgresError> {
         let mut start_connection = false;
 
+        let is_debug = std::env::var("DEBUG").is_ok();
+
+        let mut sw = StopWatch::new();
+        sw.start();
+
         loop {
             if start_connection {
                 self.start_connection().await;
@@ -305,8 +310,8 @@ impl PostgresConnectionInner {
 
             match connection_access {
                 Some(connection_access) => {
-                    if std::env::var("DEBUG").is_ok() {
-                        println!("SQL: {}", &sql.sql);
+                    if is_debug {
+                        println!("Executing SQL: {}", &sql.sql);
                     }
 
                     let params = sql.values.get_values_to_invoke();
@@ -318,6 +323,14 @@ impl PostgresConnectionInner {
 
                     match result {
                         Ok(result) => {
+                            if is_debug {
+                                sw.pause();
+                                println!(
+                                    "SQL: {} is executed in {}",
+                                    &sql.sql,
+                                    sw.duration_as_string()
+                                );
+                            }
                             return Ok(result);
                         }
                         Err(err) => {
