@@ -337,7 +337,7 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
             SelectFieldValue::Json(field_name) => {
                 sql.push_str(field_name.db_column_name);
                 sql.push_str(" #>> '{}' as \"");
-                sql.push_str(field_name.field_name);
+                crate::utils::fill_adjusted_column_name(field_name.db_column_name, sql);
                 sql.push('"');
             }
             SelectFieldValue::DateTimeAsTimestamp(field_name) => {

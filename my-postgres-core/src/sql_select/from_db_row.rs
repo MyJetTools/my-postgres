@@ -142,7 +142,9 @@ impl<'s, T: DeserializeOwned> FromDbRow<'s, Vec<T>> for Vec<T> {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Vec<T> {
-        let value: String = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+        let value: String = row.get(db_column_name.as_str());
         serde_json::from_str(&value).unwrap()
     }
 
@@ -151,7 +153,10 @@ impl<'s, T: DeserializeOwned> FromDbRow<'s, Vec<T>> for Vec<T> {
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<Vec<T>> {
-        let value: Option<String> = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+
+        let value: Option<String> = row.get(db_column_name.as_str());
 
         let value = value.as_ref()?;
         let result = serde_json::from_str(value).unwrap();
@@ -167,7 +172,10 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> HashMap<TKey, TValue> {
-        let value: String = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+
+        let value: String = row.get(db_column_name.as_str());
         serde_json::from_str(&value).unwrap()
     }
 
@@ -176,7 +184,10 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<HashMap<TKey, TValue>> {
-        let value: Option<String> = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+
+        let value: Option<String> = row.get(db_column_name.as_str());
         let value = value.as_ref()?;
         let result = serde_json::from_str(value).unwrap();
         Some(result)
@@ -191,7 +202,10 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash + Ord, TValue: DeserializeOwned>
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> BTreeMap<TKey, TValue> {
-        let value: String = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+
+        let value: String = row.get(db_column_name.as_str());
         serde_json::from_str(&value).unwrap()
     }
 
@@ -200,7 +214,10 @@ impl<'s, TKey: DeserializeOwned + Eq + Hash + Ord, TValue: DeserializeOwned>
         column_name: DbColumnName,
         _metadata: &Option<SqlValueMetadata>,
     ) -> Option<BTreeMap<TKey, TValue>> {
-        let value: Option<String> = row.get(column_name.db_column_name);
+        let mut db_column_name = String::new();
+        crate::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+
+        let value: Option<String> = row.get(db_column_name.as_str());
         let value = value.as_ref()?;
         let result = serde_json::from_str(value).unwrap();
         Some(result)
