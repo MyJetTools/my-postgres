@@ -142,7 +142,7 @@ mod tests {
         let sql = select_builder.to_sql_string::<TestWhereModel>("table_name", None);
 
         assert_eq!(
-            "SELECT client_id,key,value #>> '{}' as \"value\" FROM table_name",
+            "SELECT client_id,key,value #>> '{}' as \"value_at_adjusted\" FROM table_name",
             sql.sql
         );
         assert_eq!(sql.values.len(), 0);
@@ -157,7 +157,7 @@ mod tests {
         let sql = select_builder.to_sql_string("table_name", Some(&where_model));
 
         assert_eq!(
-            "SELECT client_id,key,value #>> '{}' as \"value\" FROM table_name WHERE a=6",
+            "SELECT client_id,key,value #>> '{}' as \"value_at_adjusted\" FROM table_name WHERE a=6",
             sql.sql
         );
         assert_eq!(sql.values.len(), 0);
