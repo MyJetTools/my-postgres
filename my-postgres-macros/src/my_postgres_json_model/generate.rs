@@ -27,13 +27,22 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
         &type_name,
         || {
             quote::quote! {
-                let str_value: String = row.get(column_name.db_column_name);
+
+                let mut db_column_name = String::new();
+                my_postgres::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+                let str_value: String = row.get(db_column_name.as_str());
+
                 Self::from_str(str_value.as_str())
             }
         },
         || {
             quote::quote! {
-                let str_value: Option<String> = row.get(column_name.db_column_name);
+
+                let mut db_column_name = String::new();
+                my_postgres::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
+                let str_value: String = row.get(db_column_name.as_str());
+
+                let str_value: Option<String> = row.get(db_column_name.as_str());
                 let str_value = str_value.as_ref()?;
 
                 let result = Self::from_str(str_value);
