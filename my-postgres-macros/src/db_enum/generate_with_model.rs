@@ -17,6 +17,10 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
     let update_value_provider_fn_body = super::utils::render_update_value_provider_fn_body_as_json();
     let db_field_type = crate::render_impl::get_column_type_as_parameter();
+
+    let fn_body_from_db_row = crate::consts::render_fn_from_db_row_with_transformation();
+
+    let fn_body_from_db_row_opt = crate::consts::render_fn_from_db_row_opt_with_transformation();
     
     let result = quote! {
 
@@ -30,7 +34,7 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
   
 
-            pub fn from_db_value(src: &str)->Self{
+            pub fn from_str(src: &str)->Self{
                 let first_line_reader = src.into();
                 let (case, model) = my_postgres::utils::get_case_and_model(&first_line_reader);
                 let name = case.as_str().unwrap();
@@ -60,13 +64,11 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
         impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
             fn from_db_row(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
-                let value: String = row.get(column_name.db_column_name);
-                Self::from_db_value(value.as_str())
+                #fn_body_from_db_row
             }
 
             fn from_db_row_opt(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
-                let value: Option<String> = row.get(column_name.db_column_name);
-                Self::from_db_value(value?.as_str()).into()
+                #fn_body_from_db_row_opt
             }
         }
 

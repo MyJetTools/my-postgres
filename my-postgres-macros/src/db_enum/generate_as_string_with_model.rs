@@ -20,6 +20,12 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
     let db_field_type = crate::render_impl:: get_column_type_as_parameter();
 
 
+    let fn_body_from_db_row = crate::consts::render_fn_from_db_row_with_transformation();
+
+    let fn_body_from_db_row_opt = crate::consts::render_fn_from_db_row_opt_with_transformation();
+
+
+
     let result = quote! {
 
         impl #enum_name{
@@ -49,15 +55,11 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
 
             impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
                 fn from_db_row(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Self{
-                    let value: String = row.get(column_name.db_column_name);
-                    Self::from_str(value.as_str())
+                    #fn_body_from_db_row
                 }
 
                 fn from_db_row_opt(row: &'s my_postgres::DbRow, column_name: #db_field_type, metadata: &Option<my_postgres::SqlValueMetadata>) -> Option<Self>{
-                    let value: Option<String> = row.get(column_name.db_column_name);
-                    let value = value?;
-
-                    Some(Self::from_str(value.as_str()))
+                    #fn_body_from_db_row_opt
                 }
             }
 
