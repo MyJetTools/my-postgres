@@ -24,8 +24,6 @@ pub fn render_fn_from_db_row_opt_with_transformation() -> proc_macro2::TokenStre
 
         let mut db_column_name = String::new();
         my_postgres::utils::fill_adjusted_column_name(column_name.db_column_name, &mut db_column_name);
-        let str_value: String = row.get(db_column_name.as_str());
-
         let str_value: Option<String> = row.get(db_column_name.as_str());
         let str_value = str_value.as_ref()?;
 
