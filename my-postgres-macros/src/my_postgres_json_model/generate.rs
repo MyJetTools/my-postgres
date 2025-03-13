@@ -5,9 +5,16 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
     let type_name: TypeName = ast.try_into()?;
 
     let type_impl = type_name.render_implement(|| {
+        let type_name = type_name.get_name_ident().to_string();
         quote::quote! {
             pub fn from_str(src:&str)->Self{
-                serde_json::from_str(src).unwrap()
+                let result: Result<Self, _> = serde_json::from_str(src);
+
+                if let Err(err) = &result{
+                    panic!("Error parsing type '{}' from json '{}'. Err: {}", #type_name, src, err);
+                }
+
+                result.unwrap()
             }
 
             pub fn to_string(&self)->String{

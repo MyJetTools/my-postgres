@@ -27,3 +27,5 @@ mod where_model_with_ignore_if_none;
 mod where_model_with_str;
 mod where_model_with_timestamp;
 mod where_model_with_vec;
+
+mod test_select_field_as_json;
