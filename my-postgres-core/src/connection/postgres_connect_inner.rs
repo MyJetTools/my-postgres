@@ -249,7 +249,7 @@ impl PostgresConnectionInner {
         ctx: &crate::RequestContext,
     ) -> Result<u64, MyPostgresError> {
         let mut start_connection = false;
-        let is_debug = false;
+        let is_debug = std::env::var("DEBUG").is_ok();
         let mut sw = StopWatch::new();
         sw.start();
         loop {
