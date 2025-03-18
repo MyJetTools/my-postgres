@@ -115,6 +115,7 @@ async fn create_table(
     let ctx = RequestContext::new(
         sql_timeout,
         "create_table".to_string(),
+        crate::is_debug(table_schema.table_name, "create_table"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(my_telemetry),
     );
@@ -142,6 +143,7 @@ async fn get_db_fields(
     let ctx = RequestContext::new(
         sql_timeout,
         "get_db_fields".to_string(),
+        crate::is_debug(table_name, "get_db_fields"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );
@@ -203,6 +205,7 @@ async fn add_column_to_table(
     let ctx = RequestContext::new(
         sql_timeout,
         "add_column_to_table".to_string(),
+        crate::is_debug(table_schema.table_name, "add_column_to_table"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(my_telemetry),
     );

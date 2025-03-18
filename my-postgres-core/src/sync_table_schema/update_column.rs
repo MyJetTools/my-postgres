@@ -129,6 +129,7 @@ async fn try_to_update_is_nullable(
     let ctx = RequestContext::new(
         sql_timeout,
         format!("ALTER TABLE {} ", table_name),
+        crate::is_debug(table_name, "ALTER TABLE"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );
@@ -187,6 +188,7 @@ async fn try_to_update_column_type(
             column_name.name.as_str(),
             table_name
         ),
+        crate::is_debug(table_name, "ALTER TABLE"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );
@@ -251,6 +253,7 @@ async fn try_to_update_default(
     let ctx = RequestContext::new(
         sql_timeout,
         format!("Updating default for table {} ", table_name),
+        crate::is_debug(table_name, "ALTER TABLE"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(my_telemetry),
     );

@@ -104,6 +104,7 @@ async fn create_index(
     let ctx = RequestContext::new(
         sql_timeout,
         "create_new_index".to_string(),
+        crate::is_debug(table_schema.table_name.as_ref(), "create_index"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(&ctx),
     );
@@ -162,6 +163,7 @@ async fn get_indexes_from_db(
     let ctx = RequestContext::new(
         sql_timeout,
         "get_indexes_from_db".to_string(),
+        crate::is_debug(table_name, "get_indexes_from_db"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );

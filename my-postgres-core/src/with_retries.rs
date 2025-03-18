@@ -20,6 +20,7 @@ pub struct SqlOperationWithRetries {
     delay: Duration,
     retries_amount: usize,
     sql_request_timeout: Duration,
+    is_debug: bool,
 }
 
 impl SqlOperationWithRetries {
@@ -34,7 +35,13 @@ impl SqlOperationWithRetries {
             delay,
             retries_amount,
             sql_request_timeout,
+            is_debug: false,
         }
+    }
+
+    pub fn debug(mut self) -> Self {
+        self.is_debug = true;
+        self
     }
 
     pub async fn insert_db_entity_if_not_exists<TEntity: SqlInsertModel>(
@@ -54,6 +61,7 @@ impl SqlOperationWithRetries {
                     entity,
                     table_name,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -86,6 +94,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_models.clone(),
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -121,6 +130,7 @@ impl SqlOperationWithRetries {
                     where_models.clone(),
                     &transformation,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -150,6 +160,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -179,6 +190,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -214,6 +226,7 @@ impl SqlOperationWithRetries {
                     where_model,
                     &post_processing,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -239,6 +252,7 @@ impl SqlOperationWithRetries {
         let ctx = RequestContext::new(
             self.sql_request_timeout,
             "execute_sql with retires".to_string(),
+            self.is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -269,6 +283,7 @@ impl SqlOperationWithRetries {
         let ctx = RequestContext::new(
             self.sql_request_timeout,
             "execute_sql_as_vec with retires".to_string(),
+            self.is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -306,6 +321,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -338,6 +354,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -373,6 +390,7 @@ impl SqlOperationWithRetries {
                     where_model,
                     &post_processing,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -407,6 +425,7 @@ impl SqlOperationWithRetries {
                     sql_builder,
                     &transform,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     ctx,
                 )
@@ -436,6 +455,7 @@ impl SqlOperationWithRetries {
                     entities,
                     table_name,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -465,6 +485,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     entities,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -496,6 +517,7 @@ impl SqlOperationWithRetries {
                     &update_conflict_type,
                     entities,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -527,6 +549,7 @@ impl SqlOperationWithRetries {
                     &update_conflict_type,
                     entity,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -572,6 +595,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     where_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -601,6 +625,7 @@ impl SqlOperationWithRetries {
                     entity,
                     table_name,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -631,6 +656,7 @@ impl SqlOperationWithRetries {
                     table_name,
                     entities,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -668,6 +694,7 @@ impl SqlOperationWithRetries {
                     &crate_new_model,
                     &update_model,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -697,6 +724,7 @@ impl SqlOperationWithRetries {
                     entity,
                     table_name,
                     self.sql_request_timeout,
+                    self.is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )

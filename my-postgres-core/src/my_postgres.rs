@@ -63,6 +63,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "get_count"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -80,6 +81,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "query_single_row"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -103,6 +105,7 @@ impl MyPostgres {
                 where_model,
                 &post_processing,
                 self.sql_request_timeout,
+                is_debug(table_name, "query_single_row_with_processing"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -117,6 +120,7 @@ impl MyPostgres {
         let ctx = crate::RequestContext::new(
             self.sql_request_timeout,
             "execute_sql".to_string(),
+            is_debug(sql.sql.as_str(), "execute_sql"),
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -148,6 +152,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "query_rows_as_stream"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -168,6 +173,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "query_rows"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -191,6 +197,7 @@ impl MyPostgres {
                 where_model,
                 &post_processing,
                 self.sql_request_timeout,
+                is_debug(table_name, "query_rows_with_processing"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -213,6 +220,10 @@ impl MyPostgres {
                 sql_builder,
                 &transform,
                 self.sql_request_timeout,
+                is_debug(
+                    sql_builder.table_name,
+                    "bulk_query_rows_with_transformation",
+                ),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -230,6 +241,7 @@ impl MyPostgres {
                 entity,
                 table_name,
                 self.sql_request_timeout,
+                is_debug(table_name, "insert_db_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -247,6 +259,7 @@ impl MyPostgres {
                 entity,
                 table_name,
                 self.sql_request_timeout,
+                is_debug(table_name, "insert_db_entity_if_not_exists"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -267,6 +280,7 @@ impl MyPostgres {
                 entities,
                 table_name,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_insert_db_entities"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -284,6 +298,7 @@ impl MyPostgres {
                 table_name,
                 entities,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_insert_db_entities_if_not_exists"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -301,6 +316,7 @@ impl MyPostgres {
                 entity,
                 table_name,
                 self.sql_request_timeout,
+                is_debug(table_name, "update_db_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -321,6 +337,7 @@ impl MyPostgres {
                 table_name,
                 where_models,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_query"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -344,6 +361,7 @@ impl MyPostgres {
                 where_models,
                 &transformation,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_query_with_transformation"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -369,6 +387,7 @@ impl MyPostgres {
                 &update_conflict_type,
                 entities,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_insert_or_update_db_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -388,6 +407,7 @@ impl MyPostgres {
                 &update_conflict_type,
                 entity,
                 self.sql_request_timeout,
+                is_debug(table_name, "insert_or_update_db_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -406,6 +426,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "delete_db_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -423,6 +444,7 @@ impl MyPostgres {
                 table_name,
                 where_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "delete"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -441,6 +463,7 @@ impl MyPostgres {
                 table_name,
                 entities,
                 self.sql_request_timeout,
+                is_debug(table_name, "bulk_delete"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )
@@ -466,6 +489,7 @@ impl MyPostgres {
                 &crate_new_model,
                 &update_model,
                 self.sql_request_timeout,
+                is_debug(table_name, "concurrent_insert_or_update_single_entity"),
                 #[cfg(feature = "with-logs-and-telemetry")]
                 telemetry_context,
             )

@@ -12,12 +12,14 @@ pub struct RequestContext {
     pub started: DateTimeAsMicroseconds,
     pub process_name: Arc<String>,
     pub sql_request_time_out: Duration,
+    pub is_debug: bool,
 }
 
 impl RequestContext {
     pub fn new(
         sql_request_time_out: Duration,
         process_name: String,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Self {
         Self {
@@ -26,6 +28,7 @@ impl RequestContext {
             telemetry_context: telemetry_context.cloned(),
             started: DateTimeAsMicroseconds::now(),
             process_name: Arc::new(process_name),
+            is_debug,
         }
     }
 

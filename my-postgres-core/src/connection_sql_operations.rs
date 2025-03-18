@@ -23,6 +23,7 @@ impl PostgresConnection {
         entity: &TEntity,
         table_name: &str,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let mut sql_data =
@@ -34,6 +35,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             process_name,
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -46,6 +48,7 @@ impl PostgresConnection {
         table_name: &str,
         where_model: Option<&TWhereModel>,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TResult>, MyPostgresError> {
         let mut sql = String::new();
@@ -69,6 +72,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("SELECT COUNT(*) FROM {}...", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -92,6 +96,7 @@ impl PostgresConnection {
         table_name: &str,
         where_model: Option<&TWhereModel>,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
@@ -101,6 +106,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("query_single_row from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -126,6 +132,7 @@ impl PostgresConnection {
         where_model: Option<&TWhereModel>,
         post_processing: &TPostProcessing,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Option<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
@@ -137,6 +144,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("query_single_row_with_processing from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -160,6 +168,7 @@ impl PostgresConnection {
         table_name: &str,
         where_model: Option<&TWhereModel>,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
@@ -169,6 +178,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("query_rows from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -185,6 +195,7 @@ impl PostgresConnection {
         table_name: &str,
         where_model: Option<&TWhereModel>,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<PostgresReadStream<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
@@ -194,6 +205,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("query_rows_as_stream from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -211,6 +223,7 @@ impl PostgresConnection {
         where_model: Option<&TWhereModel>,
         post_processing: &TPostProcessing,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {
         let select_builder = SelectBuilder::from_select_model::<TEntity>();
@@ -222,6 +235,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("query_rows_with_processing from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -240,6 +254,7 @@ impl PostgresConnection {
         sql_builder: &BulkSelectBuilder<TIn>,
         transform: &TTransform,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] ctx: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TOut>, MyPostgresError> {
         let sql = sql_builder.build_sql::<TEntity>();
@@ -247,6 +262,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("BulkQueryRows: {}", sql_builder.table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             ctx,
         );
@@ -280,6 +296,7 @@ impl PostgresConnection {
         entities: &[TEntity],
         table_name: &str,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         if entities.len() == 0 {
@@ -293,6 +310,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("bulk_insert_db_entities into table {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -307,6 +325,7 @@ impl PostgresConnection {
         table_name: &str,
         entities: &[TEntity],
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         if entities.len() == 0 {
@@ -325,6 +344,7 @@ impl PostgresConnection {
                 "bulk_insert_db_entities_if_not_exists into table {}",
                 table_name
             ),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -340,6 +360,7 @@ impl PostgresConnection {
         update_conflict_type: &UpdateConflictType<'s>,
         entities: &[TEntity],
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         {
@@ -365,6 +386,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("bulk_insert_or_update_db_entity into table {}", table_name,),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -380,6 +402,7 @@ impl PostgresConnection {
         update_conflict_type: &UpdateConflictType<'s>,
         entity: &TEntity,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let sql_data =
@@ -388,6 +411,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("insert_or_update_db_entity into table {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -402,6 +426,7 @@ impl PostgresConnection {
         table_name: &str,
         where_model: &TWhereModel,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let sql_data = where_model.build_delete_sql(table_name);
@@ -409,6 +434,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("Delete from {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -423,6 +449,7 @@ impl PostgresConnection {
         table_name: &str,
         entities: &[TEntity],
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<(), MyPostgresError> {
         let sql_data = TEntity::build_bulk_delete_sql(entities, table_name);
@@ -430,6 +457,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("bulk_delete from table {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -444,6 +472,7 @@ impl PostgresConnection {
         entity: &TEntity,
         table_name: &str,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let sql_data = crate::sql::build_update_sql(entity, table_name);
@@ -451,6 +480,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("update_db_entity into table {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -466,6 +496,7 @@ impl PostgresConnection {
         table_name: &str,
         where_models: Vec<TWhereModel>,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<UnionModel<TEntity, TWhereModel>>, MyPostgresError> {
         let mut sql = String::new();
@@ -483,6 +514,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("Bulk query with union {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -516,6 +548,7 @@ impl PostgresConnection {
         where_models: Vec<TWhereModel>,
         transformation: &impl Fn(TEntity) -> TOut,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<UnionModel<TOut, TWhereModel>>, MyPostgresError> {
         let mut sql = String::new();
@@ -533,6 +566,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("bulk_query_with_transformation {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -561,6 +595,7 @@ impl PostgresConnection {
         entity: &TEntity,
         table_name: &str,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
         let sql = crate::sql::build_insert_sql(entity, table_name, &mut UsedColumns::as_none());
@@ -568,6 +603,7 @@ impl PostgresConnection {
         let ctx = RequestContext::new(
             sql_request_timeout,
             format!("insert_db_entity into table {}", table_name),
+            is_debug,
             #[cfg(feature = "with-logs-and-telemetry")]
             telemetry_context,
         );
@@ -586,6 +622,7 @@ impl PostgresConnection {
         crate_new_model: &impl Fn() -> Option<TModel>,
         update_model: &impl Fn(&mut TModel) -> bool,
         sql_request_timeout: Duration,
+        is_debug: bool,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<ConcurrentOperationResult<TModel>, MyPostgresError> {
         loop {
@@ -594,6 +631,7 @@ impl PostgresConnection {
                     table_name,
                     Some(where_model),
                     sql_request_timeout,
+                    is_debug,
                     #[cfg(feature = "with-logs-and-telemetry")]
                     telemetry_context,
                 )
@@ -607,6 +645,7 @@ impl PostgresConnection {
                                 found_model,
                                 table_name,
                                 sql_request_timeout,
+                                is_debug,
                                 #[cfg(feature = "with-logs-and-telemetry")]
                                 telemetry_context,
                             )
@@ -632,6 +671,7 @@ impl PostgresConnection {
                                     new_model_to_save,
                                     table_name,
                                     sql_request_timeout,
+                                    is_debug,
                                     #[cfg(feature = "with-logs-and-telemetry")]
                                     telemetry_context,
                                 )

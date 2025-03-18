@@ -72,6 +72,7 @@ async fn check_if_db_exists_int(
     let req_ctx = RequestContext::new(
         sql_timeout,
         format!("checking_if_db_exists {}", db_name),
+        crate::is_debug("pg_database", "SELECT"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );
@@ -99,6 +100,7 @@ async fn check_if_db_exists_int(
     let req_ctx = RequestContext::new(
         sql_timeout,
         format!("creating_db_{}", db_name),
+        crate::is_debug("pg_database", "SELECT"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(ctx),
     );

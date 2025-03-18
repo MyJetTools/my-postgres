@@ -46,3 +46,25 @@ pub use postgres_telemetry::*;
 pub extern crate tokio_postgres;
 
 const POSTGRES_DEFAULT_PORT: u16 = 5432;
+
+fn is_debug(table_name: &str, operation: &str) -> bool {
+    if let Ok(debug_value) = std::env::var("DEBUG_SQL") {
+        if debug_value.eq_ignore_ascii_case("true") {
+            return true;
+        }
+
+        if debug_value == "1" {
+            return true;
+        }
+
+        if debug_value == table_name {
+            return true;
+        }
+
+        if debug_value == operation {
+            return true;
+        }
+    }
+
+    false
+}

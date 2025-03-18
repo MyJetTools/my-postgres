@@ -94,6 +94,7 @@ async fn update_primary_key(
         let ctx = RequestContext::new(
             sql_timeout,
             "update_primary_key".to_string(),
+            crate::is_debug(table_name, "update_primary_key"),
             #[cfg(feature = "with-logs-and-telemetry")]
             Some(my_telemetry),
         );
@@ -126,6 +127,7 @@ async fn get_primary_key_fields_from_db(
     let ctx = RequestContext::new(
         sql_timeout,
         "get_primary_key_fields_from_db".to_string(),
+        crate::is_debug(table_name, "get_primary_key_fields_from_db"),
         #[cfg(feature = "with-logs-and-telemetry")]
         Some(my_telemetry),
     );

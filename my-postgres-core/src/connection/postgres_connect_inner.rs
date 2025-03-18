@@ -249,7 +249,6 @@ impl PostgresConnectionInner {
         ctx: &crate::RequestContext,
     ) -> Result<u64, MyPostgresError> {
         let mut start_connection = false;
-        let is_debug = std::env::var("DEBUG").is_ok();
         let mut sw = StopWatch::new();
         sw.start();
         loop {
@@ -266,7 +265,7 @@ impl PostgresConnectionInner {
 
                     let execution = connection_access.execute(&sql.sql, params.as_slice());
 
-                    if is_debug {
+                    if ctx.is_debug {
                         println!("Executing SQL: {}", &sql.sql);
                     }
 
@@ -276,7 +275,7 @@ impl PostgresConnectionInner {
 
                     match result {
                         Ok(result) => {
-                            if is_debug {
+                            if ctx.is_debug {
                                 sw.pause();
                                 println!(
                                     "SQL: {} executed in {}",
