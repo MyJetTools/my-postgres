@@ -1,6 +1,7 @@
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
 
+use crate::is_debug;
 use rust_extensions::StrOrString;
 use std::{sync::Arc, time::Duration};
 
