@@ -123,7 +123,7 @@ async fn create_and_start_no_tls_connection(
                     Ok(_) => {
                         my_logger::LOGGER.write_debug(
                             "Postgres background".to_string(),
-                            format!("Exist connection loop with no error"),
+                            format!("Exist connection loop gracefully"),
                             ctx_spawned,
                         );
                     }
