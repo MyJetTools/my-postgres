@@ -17,7 +17,7 @@ pub async fn sync_schema(
     loop {
         println!("--------------------------------------------------");
         println!("Syncing table schema: {}", table_schema.table_name);
-        if std::env::var("DEBUG").is_ok() {
+        if std::env::var("DEBUG_SQL").is_ok() {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
 

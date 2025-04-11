@@ -304,7 +304,7 @@ impl PostgresConnectionInner {
     ) -> Result<Vec<Row>, MyPostgresError> {
         let mut start_connection = false;
 
-        let is_debug = std::env::var("DEBUG").is_ok();
+        let is_debug = std::env::var("DEBUG_SQL").is_ok();
 
         let mut sw = StopWatch::new();
         sw.start();
@@ -373,7 +373,7 @@ impl PostgresConnectionInner {
 
             match connection_access {
                 Some(connection_access) => {
-                    if std::env::var("DEBUG").is_ok() {
+                    if std::env::var("DEBUG_SQL").is_ok() {
                         println!("SQL: {}", &sql.sql);
                     }
 
@@ -417,7 +417,7 @@ impl PostgresConnectionInner {
 
             match connection_access {
                 Some(connection_access) => {
-                    if std::env::var("DEBUG").is_ok() {
+                    if std::env::var("DEBUG_SQL").is_ok() {
                         println!("SQL: {}", &sql.sql);
                     }
 
@@ -449,7 +449,7 @@ impl PostgresConnectionInner {
         sql_with_params: Vec<SqlData>,
         ctx: crate::RequestContext,
     ) -> Result<(), MyPostgresError> {
-        if std::env::var("DEBUG").is_ok() {
+        if std::env::var("DEBUG_SQL").is_ok() {
             if let Some(first_value) = sql_with_params.get(0) {
                 println!("SQL: {:?}", first_value.sql);
             }

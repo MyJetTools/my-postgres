@@ -90,7 +90,7 @@ pub async fn start_connection_loop(
         inner.disconnect();
     }
 
-    if std::env::var("DEBUG").is_ok() {
+    if std::env::var("DEBUG_SQL").is_ok() {
         println!("Postgres Connection loop is stopped");
     }
 }
