@@ -78,8 +78,8 @@ impl SqlOperationWithRetries {
     }
 
     pub async fn bulk_query<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel + Clone,
+        TEntity: SelectEntity,
+        TWhereModel: SqlWhereModel + Clone + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -111,9 +111,9 @@ impl SqlOperationWithRetries {
     }
 
     pub async fn bulk_query_with_transformation<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TOut: Send + Sync + 'static,
-        TWhereModel: SqlWhereModel + Clone,
+        TEntity: SelectEntity,
+        TOut,
+        TWhereModel: SqlWhereModel + Clone + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -146,7 +146,7 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
+    pub async fn get_count<TWhereModel: SqlWhereModel + std::fmt::Debug, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: Option<&TWhereModel>,
@@ -176,7 +176,10 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn query_single_row<TEntity: SelectEntity, TWhereModel: SqlWhereModel>(
+    pub async fn query_single_row<
+        TEntity: SelectEntity,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         where_model: Option<&TWhereModel>,
@@ -208,7 +211,7 @@ impl SqlOperationWithRetries {
 
     pub async fn query_single_row_with_processing<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
         TPostProcessing: Fn(&mut String),
     >(
         &self,
@@ -306,7 +309,7 @@ impl SqlOperationWithRetries {
 
     pub async fn query_rows_as_stream<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -339,7 +342,7 @@ impl SqlOperationWithRetries {
 
     pub async fn query_rows<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -372,7 +375,7 @@ impl SqlOperationWithRetries {
 
     pub async fn query_rows_with_processing<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
         TPostProcessing: Fn(&mut String),
     >(
         &self,
@@ -407,7 +410,7 @@ impl SqlOperationWithRetries {
     }
 
     pub async fn bulk_query_rows_with_transformation<
-        TIn: SqlWhereModel + Send + Sync + 'static,
+        TIn: SqlWhereModel + Send + Sync + 'static + 'static + std::fmt::Debug,
         TOut,
         TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
@@ -441,7 +444,7 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn bulk_insert_db_entities<TEntity: SqlInsertModel>(
+    pub async fn bulk_insert_db_entities<TEntity: SqlInsertModel + std::fmt::Debug>(
         &self,
         entities: &[TEntity],
         table_name: &str,
@@ -471,7 +474,9 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: SqlInsertModel>(
+    pub async fn bulk_insert_db_entities_if_not_exists<
+        TEntity: SqlInsertModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         entities: &[TEntity],
@@ -501,7 +506,10 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn bulk_insert_or_update_db_entity<'s, TEntity: SqlInsertModel + SqlUpdateModel>(
+    pub async fn bulk_insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel + SqlUpdateModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         update_conflict_type: UpdateConflictType<'s>,
@@ -533,7 +541,10 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn insert_or_update_db_entity<'s, TEntity: SqlInsertModel + SqlUpdateModel>(
+    pub async fn insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel + SqlUpdateModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         update_conflict_type: UpdateConflictType<'s>,
@@ -566,7 +577,7 @@ impl SqlOperationWithRetries {
     }
 
     #[deprecated(note = "Please use delete instead")]
-    pub async fn delete_db_entity<TWhereModel: SqlWhereModel>(
+    pub async fn delete_db_entity<TWhereModel: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         where_model: &TWhereModel,
@@ -581,7 +592,7 @@ impl SqlOperationWithRetries {
         .await
     }
 
-    pub async fn delete<TWhereModel: SqlWhereModel>(
+    pub async fn delete<TWhereModel: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         where_model: &TWhereModel,
@@ -611,7 +622,7 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel + SqlWhereModel>(
+    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel + SqlWhereModel + std::fmt::Debug>(
         &self,
         entity: &TEntity,
         table_name: &str,
@@ -641,7 +652,7 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn bulk_delete<TEntity: SqlWhereModel>(
+    pub async fn bulk_delete<TEntity: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         entities: &[TEntity],
@@ -674,8 +685,8 @@ impl SqlOperationWithRetries {
 
     pub async fn concurrent_insert_or_update_single_entity<
         's,
-        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel,
-        TWhereModel: SqlWhereModel,
+        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel + std::fmt::Debug,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -710,7 +721,7 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn insert_db_entity<TEntity: SqlInsertModel>(
+    pub async fn insert_db_entity<TEntity: SqlInsertModel + std::fmt::Debug>(
         &self,
         entity: &TEntity,
         table_name: &str,

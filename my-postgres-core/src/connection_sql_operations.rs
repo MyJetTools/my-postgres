@@ -43,7 +43,7 @@ impl PostgresConnection {
         self.execute_sql(&sql_data, &ctx).await
     }
 
-    pub async fn get_count<TWhereModel: SqlWhereModel, TResult: CountResult>(
+    pub async fn get_count<TWhereModel: SqlWhereModel + std::fmt::Debug, TResult: CountResult>(
         &self,
         table_name: &str,
         where_model: Option<&TWhereModel>,
@@ -77,21 +77,35 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        let mut result = self
+        let result = self
             .execute_sql_as_vec(
                 &SqlData::new(sql, values),
                 |row| TResult::from_db_row(row),
                 &ctx,
             )
-            .await?;
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
+            .await;
+
+        match result {
+            Ok(mut result) => {
+                if result.len() > 0 {
+                    Ok(Some(result.remove(0)))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(err) => {
+                if is_debug {
+                    println!("Error getting count with Where model: {:?}", where_model);
+                }
+                Err(err)
+            }
         }
     }
 
-    pub async fn query_single_row<TEntity: SelectEntity, TWhereModel: SqlWhereModel>(
+    pub async fn query_single_row<
+        TEntity: SelectEntity,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         where_model: Option<&TWhereModel>,
@@ -111,20 +125,33 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        let mut result = self
+        let result = self
             .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
-            .await?;
+            .await;
 
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
+        match result {
+            Ok(mut result) => {
+                if result.len() > 0 {
+                    Ok(Some(result.remove(0)))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(err) => {
+                if is_debug {
+                    println!(
+                        "Error getting single row with Where model: {:?}",
+                        where_model
+                    );
+                }
+                Err(err)
+            }
         }
     }
 
     pub async fn query_single_row_with_processing<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
         TPostProcessing: Fn(&mut String),
     >(
         &self,
@@ -149,20 +176,29 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        let mut result = self
+        let result = self
             .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
-            .await?;
+            .await;
 
-        if result.len() > 0 {
-            Ok(Some(result.remove(0)))
-        } else {
-            Ok(None)
+        match result {
+            Ok(mut result) => {
+                return Ok(result.pop());
+            }
+            Err(err) => {
+                if is_debug {
+                    println!(
+                        "Error getting single row with Where model: {:?}",
+                        where_model
+                    );
+                }
+                return Err(err);
+            }
         }
     }
 
     pub async fn query_rows<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -183,13 +219,22 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
-            .await
+        let result = self
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+            .await;
+
+        if result.is_err() {
+            if is_debug {
+                println!("Error getting rows with Where model: {:?}", where_model);
+            }
+        }
+
+        result
     }
 
     pub async fn query_rows_as_stream<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -210,12 +255,23 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql_as_stream(&sql, ctx).await
+        let result = self.execute_sql_as_stream(&sql, ctx).await;
+
+        if result.is_err() {
+            if is_debug {
+                println!(
+                    "Error getting rows as stream with Where model: {:?}",
+                    where_model
+                );
+            }
+        }
+
+        result
     }
 
     pub async fn query_rows_with_processing<
         TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
         TPostProcessing: Fn(&mut String),
     >(
         &self,
@@ -240,12 +296,21 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
-            .await
+        let result = self
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+            .await;
+
+        if result.is_err() {
+            if is_debug {
+                println!("Error getting rows with Where model: {:?}", where_model);
+            }
+        }
+
+        result
     }
 
     pub async fn bulk_query_rows_with_transformation<
-        TIn: SqlWhereModel + Send + Sync + 'static,
+        TIn: SqlWhereModel + Send + Sync + 'static + std::fmt::Debug,
         TOut,
         TEntity: SelectEntity + BulkSelectEntity + Send + Sync + 'static,
         TTransform: Fn(&TIn, Option<TEntity>) -> TOut,
@@ -267,9 +332,21 @@ impl PostgresConnection {
             ctx,
         );
 
-        let response = {
-            self.execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
-                .await?
+        let response = self
+            .execute_sql_as_vec(&sql, |row| TEntity::from(row), &ctx)
+            .await;
+
+        let response = match response {
+            Ok(result) => result,
+            Err(err) => {
+                if is_debug {
+                    println!(
+                        "Error getting rows with Where model: {:?}",
+                        sql_builder.where_models
+                    );
+                }
+                return Err(err);
+            }
         };
 
         let mut result = Vec::with_capacity(response.len());
@@ -291,7 +368,7 @@ impl PostgresConnection {
         Ok(result)
     }
 
-    pub async fn bulk_insert_db_entities<TEntity: SqlInsertModel>(
+    pub async fn bulk_insert_db_entities<TEntity: SqlInsertModel + std::fmt::Debug>(
         &self,
         entities: &[TEntity],
         table_name: &str,
@@ -315,12 +392,22 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!("Error inserting entities: {:?}. Err: {:?}", entities, err);
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn bulk_insert_db_entities_if_not_exists<TEntity: SqlInsertModel>(
+    pub async fn bulk_insert_db_entities_if_not_exists<
+        TEntity: SqlInsertModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         entities: &[TEntity],
@@ -349,12 +436,26 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!(
+                    "Error inserting if not exists entities: {:?}. Err: {:?}",
+                    entities, err
+                );
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn bulk_insert_or_update_db_entity<'s, TEntity: SqlInsertModel + SqlUpdateModel>(
+    pub async fn bulk_insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel + SqlUpdateModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         update_conflict_type: &UpdateConflictType<'s>,
@@ -391,12 +492,26 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!(
+                    "Error inserting or updating entities: {:?}. Err: {:?}",
+                    entities, err
+                );
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn insert_or_update_db_entity<'s, TEntity: SqlInsertModel + SqlUpdateModel>(
+    pub async fn insert_or_update_db_entity<
+        's,
+        TEntity: SqlInsertModel + SqlUpdateModel + std::fmt::Debug,
+    >(
         &self,
         table_name: &str,
         update_conflict_type: &UpdateConflictType<'s>,
@@ -416,12 +531,23 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!(
+                    "Error inserting or updating entity: {:?}. Err: {:?}",
+                    entity, err
+                );
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn delete<TWhereModel: SqlWhereModel>(
+    pub async fn delete<TWhereModel: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         where_model: &TWhereModel,
@@ -439,12 +565,20 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!("Error deleting entity: {:?}. Err: {:?}", where_model, err);
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn bulk_delete<TEntity: SqlWhereModel>(
+    pub async fn bulk_delete<TEntity: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         entities: &[TEntity],
@@ -462,12 +596,23 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await?;
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if let Err(err) = result {
+            if is_debug {
+                println!(
+                    "Error bulk deleting entities: {:?}. Err: {:?}",
+                    entities, err
+                );
+            }
+
+            return Err(err);
+        }
 
         Ok(())
     }
 
-    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel + SqlWhereModel>(
+    pub async fn update_db_entity<'s, TEntity: SqlUpdateModel + SqlWhereModel + std::fmt::Debug>(
         &self,
         entity: &TEntity,
         table_name: &str,
@@ -485,13 +630,18 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql_data, &ctx).await
+        let result = self.execute_sql(&sql_data, &ctx).await;
+
+        if result.is_err() {
+            if is_debug {
+                println!("Error updating entity: {:?}", entity);
+            }
+        }
+
+        result
     }
 
-    pub async fn bulk_query<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
-    >(
+    pub async fn bulk_query<TEntity: SelectEntity, TWhereModel: SqlWhereModel + std::fmt::Debug>(
         &self,
         table_name: &str,
         where_models: Vec<TWhereModel>,
@@ -519,7 +669,15 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        let mut result_stream = self.execute_sql_as_row_stream(&sql_data, &ctx).await?;
+        let result_stream = self.execute_sql_as_row_stream(&sql_data, &ctx).await;
+
+        if result_stream.is_err() {
+            if is_debug {
+                println!("Error executing Bulk query: {:?}", sql_data.sql);
+            }
+        }
+
+        let mut result_stream = result_stream?;
 
         let mut result: Vec<UnionModel<TEntity, TWhereModel>> = Vec::new();
         for where_model in where_models {
@@ -539,9 +697,9 @@ impl PostgresConnection {
     }
 
     pub async fn bulk_query_with_transformation<
-        TEntity: SelectEntity + Send + Sync + 'static,
-        TOut: Send + Sync + 'static,
-        TWhereModel: SqlWhereModel,
+        TEntity: SelectEntity,
+        TOut,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
@@ -590,7 +748,7 @@ impl PostgresConnection {
         Ok(result)
     }
 
-    pub async fn insert_db_entity<TEntity: SqlInsertModel>(
+    pub async fn insert_db_entity<TEntity: SqlInsertModel + std::fmt::Debug>(
         &self,
         entity: &TEntity,
         table_name: &str,
@@ -608,13 +766,21 @@ impl PostgresConnection {
             telemetry_context,
         );
 
-        self.execute_sql(&sql, &ctx).await
+        let result = self.execute_sql(&sql, &ctx).await;
+
+        if result.is_err() {
+            if is_debug {
+                println!("Error inserting entity: {:?}. Err: {:?}", entity, result);
+            }
+        }
+
+        result
     }
 
     pub async fn concurrent_insert_or_update_single_entity<
         's,
-        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel,
-        TWhereModel: SqlWhereModel,
+        TModel: SelectEntity + SqlInsertModel + SqlUpdateModel + SqlWhereModel + std::fmt::Debug,
+        TWhereModel: SqlWhereModel + std::fmt::Debug,
     >(
         &self,
         table_name: &str,
