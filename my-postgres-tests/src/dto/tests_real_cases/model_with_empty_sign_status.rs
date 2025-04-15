@@ -1,4 +1,4 @@
-use my_postgres::{macros::WhereDbModel, tokio_postgres::types::IsNull};
+use my_postgres::{macros::WhereDbModel, IsNull};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 #[derive(WhereDbModel)]
@@ -29,7 +29,7 @@ pub struct WhereByClientIdWithDateRangeAndPaginationModel {
 
 #[cfg(test)]
 mod tests {
-    use my_postgres::{sql::SqlValues, sql_where::SqlWhereModel, tokio_postgres::types::IsNull};
+    use my_postgres::{sql::SqlValues, sql_where::SqlWhereModel, IsNull};
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::WhereByClientIdWithDateRangeAndPaginationModel;

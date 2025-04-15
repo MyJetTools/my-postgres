@@ -366,6 +366,33 @@ impl SqlWhereValueProvider for tokio_postgres::types::IsNull {
     }
 }
 
+impl SqlWhereValueProvider for crate::IsNull {
+    fn fill_where_value(
+        &self,
+        full_where_condition: Option<RenderFullWhereCondition>,
+        sql: &mut String,
+        _params: &mut crate::sql::SqlValues,
+        metadata: &Option<SqlValueMetadata>,
+    ) -> bool {
+        if let Some(full_where_condition) = full_where_condition {
+            full_where_condition.render_param_name(sql, " IS ", metadata);
+        }
+
+        match self {
+            crate::IsNull::Yes => {
+                sql.push_str("NULL");
+            }
+            crate::IsNull::No => {
+                sql.push_str("NOT NULL");
+            }
+        }
+        true
+    }
+    fn render_value(&self) -> bool {
+        true
+    }
+}
+
 impl<T: SqlWhereValueProvider> SqlWhereValueProvider for Vec<T> {
     fn fill_where_value(
         &self,
