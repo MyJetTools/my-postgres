@@ -2,6 +2,7 @@ use crate::sql::SqlValues;
 
 use super::SqlWhereModel;
 
+#[derive(Debug, Clone)]
 pub struct NoneWhereModel;
 
 impl NoneWhereModel {
