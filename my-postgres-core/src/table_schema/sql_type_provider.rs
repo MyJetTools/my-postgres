@@ -132,7 +132,7 @@ impl SqlTypeProvider for bool {
 
 impl SqlTypeProvider for DateTimeAsMicroseconds {
     fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
-        if let Some(metadata) = metadata {
+        if let Some(metadata) = &metadata {
             if let Some(sql_type) = metadata.sql_type {
                 if sql_type == "timestamp" {
                     return TableColumnType::Timestamp;
@@ -144,6 +144,6 @@ impl SqlTypeProvider for DateTimeAsMicroseconds {
             }
         }
 
-        panic!("Sql type is not set")
+        panic!("Sql type is not set: {:?}", metadata)
     }
 }
