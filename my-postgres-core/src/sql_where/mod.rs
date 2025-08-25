@@ -4,3 +4,4 @@ mod none_where_model;
 pub use none_where_model::*;
 mod raw_where_model;
 pub use raw_where_model::*;
+pub mod str_where_model;
