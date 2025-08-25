@@ -2,6 +2,7 @@ use crate::sql::SqlValues;
 
 use super::SqlWhereModel;
 
+#[derive(Debug)]
 pub struct StaticLineWhereModel<'s> {
     data: &'s str,
     limit: Option<usize>,
