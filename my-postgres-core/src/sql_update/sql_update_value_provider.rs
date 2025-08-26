@@ -20,8 +20,15 @@ impl SqlUpdateValueProvider for String {
     fn get_update_value(
         &self,
         params: &mut SqlValues,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
+        if let Some(metadata) = metadata {
+            if metadata.is_json_or_jsonb() {
+                let index = params.push(self.into());
+                return SqlUpdateValue::Json(index);
+            }
+        }
+
         let index = params.push(self.into());
         SqlUpdateValue::Index(index)
     }
@@ -31,8 +38,14 @@ impl<'s> SqlUpdateValueProvider for &'s str {
     fn get_update_value(
         &self,
         params: &mut SqlValues,
-        _metadata: &Option<SqlValueMetadata>,
+        metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
+        if let Some(metadata) = metadata {
+            if metadata.is_json_or_jsonb() {
+                let index = params.push((*self).into());
+                return SqlUpdateValue::Json(index);
+            }
+        }
         let index = params.push((*self).into());
         SqlUpdateValue::Index(index)
     }

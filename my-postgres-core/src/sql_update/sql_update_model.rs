@@ -7,7 +7,7 @@ use super::SqlUpdateModelValue;
 
 pub trait SqlUpdateModel {
     fn get_column_name(no: usize) -> ColumnName;
-    fn get_field_value(&self, no: usize) -> SqlUpdateModelValue;
+    fn get_field_value<'s>(&'s self, no: usize) -> SqlUpdateModelValue<'s>;
     fn get_fields_amount() -> usize;
 
     fn get_primary_key_as_single_string(&self) -> String;
