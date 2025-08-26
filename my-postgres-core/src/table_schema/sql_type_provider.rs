@@ -95,13 +95,19 @@ impl SqlTypeProvider for f64 {
 }
 
 impl SqlTypeProvider for String {
-    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+    fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        if let Some(result) = TableColumnType::from_sql_metadata(&metadata) {
+            return result;
+        }
         TableColumnType::Text
     }
 }
 
 impl SqlTypeProvider for Option<String> {
-    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+    fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        if let Some(result) = TableColumnType::from_sql_metadata(&metadata) {
+            return result;
+        }
         TableColumnType::Text
     }
 }

@@ -1,3 +1,5 @@
+use crate::SqlValueMetadata;
+
 #[derive(Debug, Clone)]
 pub enum TableColumnType {
     Text,
@@ -13,6 +15,31 @@ pub enum TableColumnType {
 }
 
 impl TableColumnType {
+    pub fn from_sql_metadata(sql_metadata: &Option<SqlValueMetadata>) -> Option<Self> {
+        let sql_metadata = sql_metadata.as_ref()?;
+        let sql_type = sql_metadata.sql_type.as_ref()?;
+
+        if sql_type.starts_with("timestamp") {
+            return Some(TableColumnType::Timestamp);
+        }
+
+        if sql_type.starts_with("double") {
+            return Some(TableColumnType::Double);
+        }
+
+        match *sql_type {
+            "text" => Some(TableColumnType::Text),
+            "smallint" => Some(TableColumnType::SmallInt),
+            "bigint" => Some(TableColumnType::BigInt),
+            "boolean" => Some(TableColumnType::Boolean),
+            "real" => Some(TableColumnType::Real),
+            "integer" => Some(TableColumnType::Integer),
+            "json" => Some(TableColumnType::Json),
+            "jsonb" => Some(TableColumnType::Jsonb),
+            _ => None,
+        }
+    }
+
     pub fn as_number(&self) -> i32 {
         match self {
             TableColumnType::Text => 0,

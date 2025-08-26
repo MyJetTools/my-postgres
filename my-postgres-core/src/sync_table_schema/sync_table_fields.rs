@@ -5,10 +5,7 @@ use my_logger::LogEventCtx;
 use my_telemetry::MyTelemetryContext;
 use rust_extensions::StrOrString;
 
-use crate::{
-    table_schema::{SchemaDifference, TableColumn, TableColumnType, TableSchema, DEFAULT_SCHEMA},
-    ColumnName, MyPostgresError, PostgresConnection, RequestContext,
-};
+use crate::{table_schema::*, ColumnName, MyPostgresError, PostgresConnection, RequestContext};
 
 pub async fn sync_table_fields(
     conn_string: &PostgresConnection,
