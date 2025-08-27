@@ -467,7 +467,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             }
             PropertyType::Bool => {
                 self.must_not_have_sql_type_attr()?;
-                quote::quote!(my_postgres::table_schema::TableColumnType::Text)
+                quote::quote!(my_postgres::table_schema::TableColumnType::Boolean)
             }
             PropertyType::DateTime => {
                 match self.get_sql_type_attr_value(&[SqlType::Timestamp, SqlType::Bigint])? {
