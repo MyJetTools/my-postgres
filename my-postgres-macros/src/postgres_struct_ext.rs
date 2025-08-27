@@ -449,8 +449,21 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
                 quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
             }
             PropertyType::String => {
-                self.must_not_have_sql_type_attr()?;
-                quote::quote!(my_postgres::table_schema::TableColumnType::Text)
+                if let Some(sql_type) = self.try_get_sql_type_attr_value(&["json", "jsonb"])? {
+                    match sql_type {
+                        "json" => {
+                            quote::quote!(my_postgres::table_schema::TableColumnType::Json)
+                        }
+                        "jsonb" => {
+                            quote::quote!(my_postgres::table_schema::TableColumnType::Jsonb)
+                        }
+                        _ => {
+                            panic!("Unsupported sql_type: {}", sql_type);
+                        }
+                    }
+                } else {
+                    quote::quote!(my_postgres::table_schema::TableColumnType::Text)
+                }
             }
             PropertyType::Bool => {
                 self.must_not_have_sql_type_attr()?;
