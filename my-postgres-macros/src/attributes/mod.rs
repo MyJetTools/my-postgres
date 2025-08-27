@@ -18,7 +18,6 @@ mod enum_case;
 pub use enum_case::*;
 mod default_value;
 pub use default_value::*;
-mod json;
 mod line_no;
 pub use line_no::*;
 mod db_index;
