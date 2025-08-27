@@ -31,6 +31,9 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
 
     let fn_fill_select_type = crate::consts::render_fn_fill_select_part_as_field();
 
+    let json_type = crate::consts::get_default_json_sql_type();
+
+
     let result = quote! {
 
         impl #enum_name{
@@ -51,7 +54,7 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
             }
 
             fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
-                my_postgres::table_schema::TableColumnType::Jsonb
+                #json_type
             }
 
             #fn_fill_select_type

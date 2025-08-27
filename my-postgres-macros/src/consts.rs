@@ -31,3 +31,7 @@ pub fn render_fn_from_db_row_opt_with_transformation() -> proc_macro2::TokenStre
         Some(result)
     }
 }
+
+pub fn get_default_json_sql_type() -> proc_macro2::TokenStream {
+    quote::quote! {my_postgres::table_schema::TableColumnType::Jsonb}
+}

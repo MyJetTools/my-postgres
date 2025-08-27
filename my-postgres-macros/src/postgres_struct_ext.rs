@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use proc_macro2::TokenStream;
-use types_reader::{AnyValueAsStr, MacrosAttribute, PropertyType, StructProperty};
+
+use types_reader::*;
 
 use crate::{attributes::*, e_tag::ETagData};
 
@@ -84,8 +85,9 @@ pub trait PostgresStructPropertyExt<'s> {
     fn must_not_have_sql_type_attr(&self) -> Result<(), syn::Error>;
     fn try_get_sql_type_attr_value(
         &self,
-        expected: &[&'static str],
-    ) -> Result<Option<&str>, syn::Error>;
+        expected: &[SqlType],
+    ) -> Result<Option<SqlType>, syn::Error>;
+
     fn get_sql_type_attr_value(&self, expected: &[SqlType]) -> Result<SqlType, syn::Error>;
 
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
@@ -362,32 +364,30 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
     fn try_get_sql_type_attr_value(
         &self,
-        expected: &[&'static str],
-    ) -> Result<Option<&str>, syn::Error> {
-        let sql_type = self
-            .attrs
-            .try_get_single_or_named_param("sql_type", "name")?;
+        expected: &[SqlType],
+    ) -> Result<Option<SqlType>, syn::Error> {
+        let result: Option<SqlTypeAttribute> = self.try_get_attribute()?;
 
-        let Some(sql_type) = sql_type else {
+        let Some(result) = result else {
             return Ok(None);
         };
 
-        let as_str = sql_type.as_str()?;
-
         if expected.is_empty() {
-            return Ok(Some(as_str));
+            return Ok(Some(result.name));
         }
 
         for exp in expected {
-            if *exp == as_str {
-                return Ok(Some(as_str));
+            if result.name.as_str() == exp.as_str() {
+                return Ok(Some(result.name));
             }
         }
 
-        Err(sql_type.throw_error(&format!(
+        let expected: Vec<&str> = expected.iter().map(|itm| itm.as_str()).collect();
+
+        self.throw_error(&format!(
             "sql_type attribute should have one of the following values: {:?}",
             expected
-        )))
+        ))
     }
 
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -447,16 +447,18 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
                 quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
             }
             PropertyType::String => {
-                if let Some(sql_type) = self.try_get_sql_type_attr_value(&["json", "jsonb"])? {
+                if let Some(sql_type) =
+                    self.try_get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?
+                {
                     match sql_type {
-                        "json" => {
+                        SqlType::Json => {
                             quote::quote!(my_postgres::table_schema::TableColumnType::Json)
                         }
-                        "jsonb" => {
+                        SqlType::JsonB => {
                             quote::quote!(my_postgres::table_schema::TableColumnType::Jsonb)
                         }
                         _ => {
-                            panic!("Unsupported sql_type: {}", sql_type);
+                            panic!("Unsupported sql_type: {}", sql_type.as_str());
                         }
                     }
                 } else {
@@ -483,16 +485,22 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             PropertyType::OptionOf(_) => {
                 panic!("OptionOf should be unwrapped before");
             }
-            PropertyType::VecOf(_property_type) => {
-                get_json_or_json_b(self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?)
-            }
+            PropertyType::VecOf(_property_type) => sql_type_to_token_stream(
+                self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?,
+            ),
             PropertyType::Struct(name, _type_path) => {
                 let tp_as_token = TokenStream::from_str(name).unwrap();
-                quote::quote! (#tp_as_token::get_sql_type())
+                if let Some(sql_type) =
+                    self.try_get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?
+                {
+                    sql_type_to_token_stream(sql_type)
+                } else {
+                    quote::quote! (#tp_as_token::get_sql_type())
+                }
             }
-            PropertyType::HashMap(_property_type, _property_type1) => {
-                get_json_or_json_b(self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?)
-            }
+            PropertyType::HashMap(_property_type, _property_type1) => sql_type_to_token_stream(
+                self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?,
+            ),
             PropertyType::RefTo { .. } => {
                 panic!("RefTo is not supported for sql");
             }
@@ -506,16 +514,19 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
     }
 }
 
-fn get_json_or_json_b(value: SqlType) -> proc_macro2::TokenStream {
+fn sql_type_to_token_stream(value: SqlType) -> proc_macro2::TokenStream {
     match value {
         SqlType::Json => {
-            quote::quote!(my_postgres::table_schema::TableColumnType::Timestamp)
+            quote::quote!(my_postgres::table_schema::TableColumnType::Json)
         }
         SqlType::JsonB => {
+            quote::quote!(my_postgres::table_schema::TableColumnType::Jsonb)
+        }
+        SqlType::Bigint => {
             quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
         }
-        _ => {
-            panic!("sql_type attribute must be 'timestamp' or 'bigint'");
+        SqlType::Timestamp => {
+            quote::quote!(my_postgres::table_schema::TableColumnType::Timestamp)
         }
     }
 }

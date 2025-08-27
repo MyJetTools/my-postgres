@@ -25,6 +25,7 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
     let fn_body_from_db_row_opt = crate::consts::render_fn_from_db_row_opt_with_transformation();
 
 
+       let json_type = crate::consts::get_default_json_sql_type();
 
     let result = quote! {
 
@@ -53,7 +54,7 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
             }
 
             fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
-                my_postgres::table_schema::TableColumnType::Jsonb
+                #json_type
             }
         }
 
