@@ -90,14 +90,14 @@ impl SqlTypeProvider for f32 {
 
 impl SqlTypeProvider for f64 {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
-        TableColumnType::Double
+        TableColumnType::DoublePrecision
     }
 }
 
 impl SqlTypeProvider for String {
     fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
-        if let Some(result) = TableColumnType::from_sql_metadata(&metadata) {
-            return result;
+        if let Some(result) = &metadata {
+            return result.sql_type;
         }
         TableColumnType::Text
     }
@@ -105,8 +105,8 @@ impl SqlTypeProvider for String {
 
 impl SqlTypeProvider for Option<String> {
     fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
-        if let Some(result) = TableColumnType::from_sql_metadata(&metadata) {
-            return result;
+        if let Some(result) = &metadata {
+            return result.sql_type;
         }
         TableColumnType::Text
     }
@@ -139,15 +139,7 @@ impl SqlTypeProvider for bool {
 impl SqlTypeProvider for DateTimeAsMicroseconds {
     fn get_sql_type(metadata: Option<SqlValueMetadata>) -> TableColumnType {
         if let Some(metadata) = &metadata {
-            if let Some(sql_type) = metadata.sql_type {
-                if sql_type == "timestamp" {
-                    return TableColumnType::Timestamp;
-                }
-
-                if sql_type == "bigint" {
-                    return TableColumnType::BigInt;
-                }
-            }
+            return metadata.sql_type;
         }
 
         panic!("Sql type is not set: {:?}", metadata)

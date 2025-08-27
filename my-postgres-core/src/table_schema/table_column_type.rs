@@ -1,13 +1,11 @@
-use crate::SqlValueMetadata;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum TableColumnType {
     Text,
     SmallInt,
     BigInt,
     Boolean,
     Real,
-    Double,
+    DoublePrecision,
     Integer,
     Json,
     Timestamp,
@@ -15,31 +13,20 @@ pub enum TableColumnType {
 }
 
 impl TableColumnType {
-    pub fn from_sql_metadata(sql_metadata: &Option<SqlValueMetadata>) -> Option<Self> {
-        let sql_metadata = sql_metadata.as_ref()?;
-        let sql_type = sql_metadata.sql_type.as_ref()?;
-
-        if sql_type.starts_with("timestamp") {
-            return Some(TableColumnType::Timestamp);
-        }
-
-        if sql_type.starts_with("double") {
-            return Some(TableColumnType::Double);
-        }
-
-        match *sql_type {
-            "text" => Some(TableColumnType::Text),
-            "smallint" => Some(TableColumnType::SmallInt),
-            "bigint" => Some(TableColumnType::BigInt),
-            "boolean" => Some(TableColumnType::Boolean),
-            "real" => Some(TableColumnType::Real),
-            "integer" => Some(TableColumnType::Integer),
-            "json" => Some(TableColumnType::Json),
-            "jsonb" => Some(TableColumnType::Jsonb),
-            _ => None,
+    pub fn is_string(&self) -> bool {
+        match self {
+            TableColumnType::Text => true,
+            _ => false,
         }
     }
 
+    pub fn is_json_or_jsonb(&self) -> bool {
+        match self {
+            TableColumnType::Json => true,
+            TableColumnType::Jsonb => true,
+            _ => false,
+        }
+    }
     pub fn as_number(&self) -> i32 {
         match self {
             TableColumnType::Text => 0,
@@ -47,7 +34,7 @@ impl TableColumnType {
             TableColumnType::BigInt => 2,
             TableColumnType::Boolean => 3,
             TableColumnType::Real => 4,
-            TableColumnType::Double => 5,
+            TableColumnType::DoublePrecision => 5,
             TableColumnType::Integer => 6,
             TableColumnType::Json => 7,
             TableColumnType::Timestamp => 8,
@@ -61,13 +48,20 @@ impl TableColumnType {
         self_one == other_one
     }
 
-    pub fn from_db_string(src: &str) -> Option<Self> {
+    pub fn from_db_string(src: &str) -> Self {
+        match Self::try_from_db_string(src) {
+            Some(v) => v,
+            None => panic!("Unsupported db type string: {}", src),
+        }
+    }
+
+    pub fn try_from_db_string(src: &str) -> Option<Self> {
         if src.starts_with("timestamp") {
             return Some(TableColumnType::Timestamp);
         }
 
         if src.starts_with("double") {
-            return Some(TableColumnType::Double);
+            return Some(TableColumnType::DoublePrecision);
         }
 
         match src {
@@ -85,14 +79,14 @@ impl TableColumnType {
         }
     }
 
-    pub fn to_db_type(&self) -> &'static str {
+    pub fn as_db_type_str(&self) -> &'static str {
         match self {
             TableColumnType::Text => "text",
             TableColumnType::SmallInt => "smallint",
             TableColumnType::BigInt => "bigint",
             TableColumnType::Boolean => "boolean",
             TableColumnType::Real => "real",
-            TableColumnType::Double => "double precision",
+            TableColumnType::DoublePrecision => "double precision",
             TableColumnType::Integer => "integer",
             TableColumnType::Json => "json",
             TableColumnType::Jsonb => "jsonb",

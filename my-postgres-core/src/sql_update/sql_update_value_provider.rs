@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::{
     sql::{SqlUpdateValue, SqlValues},
+    table_schema::TableColumnType,
     SqlValueMetadata,
 };
 
@@ -23,7 +24,7 @@ impl SqlUpdateValueProvider for String {
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         if let Some(metadata) = metadata {
-            if metadata.is_json_or_jsonb() {
+            if metadata.sql_type.is_json_or_jsonb() {
                 let index = params.push(self.into());
                 return SqlUpdateValue::Json(index);
             }
@@ -41,7 +42,7 @@ impl<'s> SqlUpdateValueProvider for &'s str {
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         if let Some(metadata) = metadata {
-            if metadata.is_json_or_jsonb() {
+            if metadata.sql_type.is_json_or_jsonb() {
                 let index = params.push((*self).into());
                 return SqlUpdateValue::Json(index);
             }
@@ -58,18 +59,19 @@ impl SqlUpdateValueProvider for DateTimeAsMicroseconds {
         metadata: &Option<SqlValueMetadata>,
     ) -> SqlUpdateValue {
         if let Some(metadata) = &metadata {
-            if let Some(sql_type) = metadata.sql_type {
-                if sql_type == "bigint" {
+            match metadata.sql_type {
+                TableColumnType::BigInt => {
                     return SqlUpdateValue::NonStringValue(
                         self.unix_microseconds.to_string().into(),
                     );
                 }
-
-                if sql_type == "timestamp" {
+                TableColumnType::Timestamp => {
                     return SqlUpdateValue::StringValue(self.to_rfc3339().into());
                 }
 
-                panic!("Unknown sql type: {}", sql_type);
+                _ => {
+                    panic!("Unsupported sql type {:?} for DateTime", metadata.sql_type)
+                }
             }
         }
 

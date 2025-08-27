@@ -87,7 +87,7 @@ impl TableColumn {
             TableColumnType::Real => {
                 return Some(default_value.to_string());
             }
-            TableColumnType::Double => {
+            TableColumnType::DoublePrecision => {
                 return Some(default_value.to_string());
             }
             TableColumnType::Integer => {

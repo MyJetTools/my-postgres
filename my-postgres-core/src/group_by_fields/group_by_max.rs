@@ -21,18 +21,19 @@ impl<'s, T: GroupByFieldType + Send + Sync + 'static> SelectValueProvider for Gr
         metadata: &Option<SqlValueMetadata>,
     ) {
         let sql_type = if let Some(metadata) = metadata {
-            if let Some(sql_type) = metadata.sql_type {
-                sql_type
-            } else {
-                T::DB_SQL_TYPE
-            }
+            metadata.sql_type
         } else {
             T::DB_SQL_TYPE
         };
 
         sql.push(crate::sql::SelectFieldValue::GroupByField {
             column_name,
-            statement: format!("MAX({})::{}", column_name.db_column_name, sql_type).into(),
+            statement: format!(
+                "MAX({})::{}",
+                column_name.db_column_name,
+                sql_type.as_db_type_str()
+            )
+            .into(),
         });
     }
 }

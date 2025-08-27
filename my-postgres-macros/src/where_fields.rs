@@ -90,7 +90,7 @@ impl<'s> WhereFields<'s> {
     }
 
 
-    pub fn get_fields_with_programmatically_understanding_has_condition(&self)->Vec<&StructProperty>{
+    pub fn get_fields_with_programmatically_understanding_has_condition(&'s self)->Vec<&'s StructProperty<'s>>{
         let mut result = Vec::new();
         for itm in &self.where_fields{
             if itm.ty.is_option() && itm.has_ignore_if_none_attr(){

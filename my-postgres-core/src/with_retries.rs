@@ -245,8 +245,8 @@ impl SqlOperationWithRetries {
         }
     }
 
-    pub async fn execute_sql<ToSql: ToSqlString>(
-        &self,
+    pub async fn execute_sql<'s, ToSql: ToSqlString<'s>>(
+        &'s self,
         sql: SqlData,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<u64, MyPostgresError> {
@@ -274,10 +274,11 @@ impl SqlOperationWithRetries {
     }
 
     pub async fn execute_sql_as_vec<
-        ToSql: ToSqlString,
+        's,
+        ToSql: ToSqlString<'s>,
         TEntity: SelectEntity + Send + Sync + 'static,
     >(
-        &self,
+        &'s self,
         sql: SqlData,
         #[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>,
     ) -> Result<Vec<TEntity>, MyPostgresError> {

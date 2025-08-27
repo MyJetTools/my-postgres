@@ -29,5 +29,4 @@ mod where_model_with_timestamp;
 mod where_model_with_vec;
 
 mod test_array_as_jsonb;
-mod test_select_field_as_json;
-pub use test_array_as_jsonb::*;
+pub mod test_select_field_as_json;

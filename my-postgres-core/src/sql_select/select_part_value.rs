@@ -4,6 +4,7 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{
     sql::{SelectBuilder, SelectFieldValue},
+    table_schema::TableColumnType,
     DbColumnName, SqlValueMetadata,
 };
 
@@ -28,9 +29,21 @@ impl SelectValueProvider for String {
                 column_name,
                 cast_to: DB_TYPE_TEXT,
             });
-        } else {
-            sql.push(SelectFieldValue::create_as_field(column_name, metadata));
+
+            return;
         }
+
+        if let Some(meta_data) = metadata {
+            if !meta_data.sql_type.is_string() {
+                sql.push(SelectFieldValue::FieldWithCast {
+                    column_name,
+                    cast_to: "text",
+                });
+                return;
+            }
+        }
+
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
     }
 }
 
@@ -208,19 +221,21 @@ impl SelectValueProvider for DateTimeAsMicroseconds {
         metadata: &Option<SqlValueMetadata>,
     ) {
         if let Some(metadata) = metadata {
-            if let Some(sql_type) = metadata.sql_type {
-                if sql_type == "timestamp" {
+            match metadata.sql_type {
+                TableColumnType::Timestamp => {
                     sql.push(SelectFieldValue::DateTimeAsTimestamp(column_name));
                     return;
                 }
-
-                if sql_type == "bigint" {
+                TableColumnType::BigInt => {
                     sql.push(SelectFieldValue::DateTimeAsBigint(column_name));
-
                     return;
                 }
-
-                panic!("Field: {:?}. Unknown sql_type: {}", column_name, sql_type);
+                _ => {
+                    panic!(
+                        "Field: {:?}. Unsupported sql_type: {:?} for DateTimeAsMicroseconds",
+                        column_name, metadata.sql_type
+                    );
+                }
             }
         }
 

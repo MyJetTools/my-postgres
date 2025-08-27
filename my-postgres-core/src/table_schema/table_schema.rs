@@ -46,7 +46,7 @@ impl TableSchema {
             result.push_str("  ");
             column.name.push_name(&mut result);
             result.push_str(" ");
-            result.push_str(column.sql_type.to_db_type());
+            result.push_str(column.sql_type.as_db_type_str());
 
             if let Some(default) = column.get_default() {
                 result.push_str(" default ");
@@ -97,7 +97,7 @@ impl TableSchema {
             let schema = DEFAULT_SCHEMA;
             let table_name = self.table_name;
             let column_name = column.name.to_string();
-            let column_type = column.sql_type.to_db_type();
+            let column_type = column.sql_type.as_db_type_str();
             let default = if let Some(default) = column.get_default() {
                 format!("default {}", default.as_str())
             } else {

@@ -36,10 +36,13 @@ pub async fn update_column(
                 ),
                 LogEventCtx::new()
                     .add("table", table_name.to_string())
-                    .add("db_type", difference.db.sql_type.to_db_type().to_string())
+                    .add(
+                        "db_type",
+                        difference.db.sql_type.as_db_type_str().to_string(),
+                    )
                     .add(
                         "required_type",
-                        difference.required.sql_type.to_db_type().to_string(),
+                        difference.required.sql_type.as_db_type_str().to_string(),
                     ),
             );
 
@@ -173,7 +176,7 @@ async fn try_to_update_column_type(
     sql_timeout: Duration,
     #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
 ) -> Result<(), UpdateColumnError> {
-    let db_type = required_type.to_db_type();
+    let db_type = required_type.as_db_type_str();
 
     let sql = format!(
         r#"alter table {DEFAULT_SCHEMA}.{table_name}
@@ -200,8 +203,8 @@ async fn try_to_update_column_type(
                 column_name: column_name.to_string(),
                 dif: format!(
                     "Type update: '{}' -> '{}'",
-                    now_type.to_db_type(),
-                    required_type.to_db_type()
+                    now_type.as_db_type_str(),
+                    required_type.as_db_type_str()
                 ),
                 err: format!("Failed to execute {}. Reason: {:?}", sql, err),
             });

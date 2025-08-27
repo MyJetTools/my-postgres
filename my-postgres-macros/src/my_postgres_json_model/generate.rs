@@ -47,12 +47,7 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
     let sql_type_provider_iml = crate::render_impl::impl_sql_type_provider(&type_name, || {
         quote::quote! {
             if let Some(meta_data) = &meta_data{
-                if let Some(sql_type) = meta_data.sql_type{
-                    if sql_type == "jsonb"{
-                        return my_postgres::table_schema::TableColumnType::Jsonb;
-                    }
-
-                }
+                return meta_data.sql_type;
             }
 
             my_postgres::table_schema::TableColumnType::Json

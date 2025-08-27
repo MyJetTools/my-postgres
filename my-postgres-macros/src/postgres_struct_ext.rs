@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use types_reader::{MacrosAttribute, PropertyType, StructProperty};
+use types_reader::{AnyValueAsStr, MacrosAttribute, PropertyType, StructProperty};
 
 use crate::{attributes::*, e_tag::ETagData};
 
@@ -26,7 +26,7 @@ impl<'s> DbColumnName<'s> {
     }
 }
 
-impl DbColumnName<'_> {
+impl<'s> DbColumnName<'s> {
     pub fn as_str(&self) -> &str {
         if let Some(attr) = &self.attr {
             return attr.name;
@@ -39,7 +39,7 @@ impl DbColumnName<'_> {
         self.as_str().to_string()
     }
 
-    pub fn get_overridden_column_name(&self) -> DbColumnNameAttribute {
+    pub fn get_overridden_column_name(&'s self) -> DbColumnNameAttribute<'s> {
         if let Some(attr) = &self.attr {
             return DbColumnNameAttribute { name: attr.name };
         }
@@ -58,7 +58,7 @@ pub enum DefaultValue {
 pub trait PostgresStructPropertyExt<'s> {
     fn is_primary_key(&self) -> bool;
 
-    fn get_db_column_name(&self) -> Result<DbColumnName, syn::Error>;
+    fn get_db_column_name(&'s self) -> Result<DbColumnName<'s>, syn::Error>;
 
     fn has_ignore_attr(&self) -> bool;
     fn has_ignore_if_none_attr(&self) -> bool;
@@ -73,11 +73,18 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_e_tag(&'s self) -> Result<Option<ETagData<'s>>, syn::Error>;
 
-    fn get_ty(&self) -> &PropertyType;
+    fn get_ty(&'s self) -> &'s PropertyType<'s>;
 
     fn get_field_name_ident(&self) -> &syn::Ident;
 
     fn get_default_value(&self) -> Result<Option<DefaultValue>, syn::Error>;
+
+    fn must_not_have_sql_type_attr(&self) -> Result<(), syn::Error>;
+    fn try_get_sql_type_attr_value(
+        &self,
+        expected: &[&'static str],
+    ) -> Result<Option<&str>, syn::Error>;
+    fn get_sql_type_attr_value(&self, expected: &[&'static str]) -> Result<&str, syn::Error>;
 
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error>;
 
@@ -91,7 +98,10 @@ pub trait PostgresStructPropertyExt<'s> {
         override_db_column_name: Option<DbColumnNameAttribute>,
     ) -> Result<(), syn::Error>;
 
-    fn render_field_value(&self, is_update: bool) -> Result<proc_macro2::TokenStream, syn::Error> {
+    fn render_field_value(
+        &'s self,
+        is_update: bool,
+    ) -> Result<proc_macro2::TokenStream, syn::Error> {
         match &self.get_ty() {
             types_reader::PropertyType::OptionOf(_) => return self.fill_option_of_value(is_update),
             types_reader::PropertyType::Struct(..) => return self.get_value(is_update),
@@ -183,7 +193,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         self.get_field_name_ident()
     }
 
-    fn get_ty(&self) -> &PropertyType {
+    fn get_ty(&'s self) -> &'s PropertyType<'s> {
         &self.ty
     }
 
@@ -204,7 +214,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         self.attrs.has_attr(PrimaryKeyAttribute::NAME)
     }
 
-    fn get_db_column_name(&self) -> Result<DbColumnName, syn::Error> {
+    fn get_db_column_name(&'s self) -> Result<DbColumnName<'s>, syn::Error> {
         let attr: Option<DbColumnNameAttribute> = self.try_get_attribute()?;
 
         let result = DbColumnName {
@@ -259,12 +269,7 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             return Ok(quote::quote!(None));
         }
 
-        let sql_type = if let Some(sql_type) = sql_type {
-            let sql_type = sql_type.name.as_str();
-            quote::quote!(Some(#sql_type))
-        } else {
-            quote::quote!(None)
-        };
+        let sql_type = self.get_sql_type_as_token_stream()?;
 
         let operator = if let Some(operator) = operator {
             let operator = operator.op.get_metadata_operator();
@@ -324,6 +329,69 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
         Ok(())
     }
 
+    fn must_not_have_sql_type_attr(&self) -> Result<(), syn::Error> {
+        let sql_type = self.attrs.try_get_attr("sql_type");
+
+        if let Some(sql_type) = sql_type {
+            return Err(
+                sql_type.throw_error_at_param_token("This field must not have sql_type attribute")
+            );
+        }
+
+        Ok(())
+    }
+
+    fn get_sql_type_attr_value(&self, expected: &[&'static str]) -> Result<&str, syn::Error> {
+        let sql_type = self.attrs.get_single_or_named_param("sql_type", "name")?;
+
+        let as_str = sql_type.as_str()?;
+
+        if expected.is_empty() {
+            return Ok(as_str);
+        }
+
+        for exp in expected {
+            if *exp == as_str {
+                return Ok(as_str);
+            }
+        }
+
+        Err(sql_type.throw_error(&format!(
+            "sql_type attribute should have one of the following values: {:?}",
+            expected
+        )))
+    }
+
+    fn try_get_sql_type_attr_value(
+        &self,
+        expected: &[&'static str],
+    ) -> Result<Option<&str>, syn::Error> {
+        let sql_type = self
+            .attrs
+            .try_get_single_or_named_param("sql_type", "name")?;
+
+        let Some(sql_type) = sql_type else {
+            return Ok(None);
+        };
+
+        let as_str = sql_type.as_str()?;
+
+        if expected.is_empty() {
+            return Ok(Some(as_str));
+        }
+
+        for exp in expected {
+            if *exp == as_str {
+                return Ok(Some(as_str));
+            }
+        }
+
+        Err(sql_type.throw_error(&format!(
+            "sql_type attribute should have one of the following values: {:?}",
+            expected
+        )))
+    }
+
     fn get_sql_type_as_token_stream(&self) -> Result<proc_macro2::TokenStream, syn::Error> {
         let ty = if let PropertyType::OptionOf(ty) = &self.ty {
             ty.as_ref()
@@ -331,10 +399,113 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             &self.ty
         };
 
-        let ty_token = ty.get_token_stream_with_generics();
+        let result = match ty {
+            PropertyType::U8 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::SmallInt)
+            }
+            PropertyType::I8 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::SmallInt)
+            }
+            PropertyType::U16 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::SmallInt)
+            }
+            PropertyType::I16 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::SmallInt)
+            }
+            PropertyType::U32 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::Integer)
+            }
+            PropertyType::I32 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::Integer)
+            }
+            PropertyType::U64 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
+            }
+            PropertyType::I64 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
+            }
+            PropertyType::F32 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::Real)
+            }
+            PropertyType::F64 => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::DoublePrecision)
+            }
+            PropertyType::USize => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
+            }
+            PropertyType::ISize => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
+            }
+            PropertyType::String => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::Text)
+            }
+            PropertyType::Bool => {
+                self.must_not_have_sql_type_attr()?;
+                quote::quote!(my_postgres::table_schema::TableColumnType::Text)
+            }
+            PropertyType::DateTime => {
+                match self.get_sql_type_attr_value(&["timestamp", "bigint"])? {
+                    "timestamp" => {
+                        quote::quote!(my_postgres::table_schema::TableColumnType::Timestamp)
+                    }
+                    "bigint" => quote::quote!(my_postgres::table_schema::TableColumnType::BigInt),
+                    _ => {
+                        panic!("DateTime type should have sql_type attribute set with 'timestamp' value or 'bigint'");
+                    }
+                }
+            }
+            PropertyType::OptionOf(_) => {
+                panic!("OptionOf should be unwrapped before");
+            }
+            PropertyType::VecOf(_property_type) => {
+                get_json_or_json_b(self.try_get_sql_type_attr_value(&["json", "jsonb"])?)
+            }
+            PropertyType::Struct(_, _type_path) => {
+                get_json_or_json_b(self.try_get_sql_type_attr_value(&["json", "jsonb"])?)
+            }
+            PropertyType::HashMap(_property_type, _property_type1) => {
+                get_json_or_json_b(self.try_get_sql_type_attr_value(&["json", "jsonb"])?)
+            }
+            PropertyType::RefTo { .. } => {
+                panic!("RefTo is not supported for sql");
+            }
+        };
 
-        let meta_data = self.get_field_metadata()?;
+        //let ty_token = ty.get_token_stream_with_generics();
 
-        Ok(quote::quote! {#ty_token:: get_sql_type(#meta_data)})
+        //let meta_data = self.get_field_metadata()?;
+
+        Ok(result)
+    }
+}
+
+fn get_json_or_json_b(value: Option<&str>) -> proc_macro2::TokenStream {
+    if let Some(value) = value {
+        match value {
+            "json" => {
+                quote::quote!(my_postgres::table_schema::TableColumnType::Timestamp)
+            }
+            "jsonb" => {
+                quote::quote!(my_postgres::table_schema::TableColumnType::BigInt)
+            }
+            _ => {
+                panic!("DateTime type should have sql_type attribute set with 'timestamp' value or 'bigint'");
+            }
+        }
+    } else {
+        quote::quote!(my_postgres::table_schema::TableColumnType::Jsonb)
     }
 }

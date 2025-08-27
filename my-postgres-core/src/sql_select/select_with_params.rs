@@ -25,8 +25,8 @@ impl<'s> WithSqlParams<'s> for &'s str {
     }
 }
 
-impl<'s> ToSqlString for SqlWithParams<'s> {
-    fn as_sql(&self) -> (StrOrString, Option<&SqlValues>) {
+impl<'s> ToSqlString<'s> for SqlWithParams<'s> {
+    fn as_sql(&'s self) -> (StrOrString<'s>, Option<&'s SqlValues>) {
         (StrOrString::create_as_str(self.sql), Some(&self.params))
     }
 }

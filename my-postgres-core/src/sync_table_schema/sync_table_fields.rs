@@ -216,7 +216,7 @@ async fn add_column_to_table(
 
 fn get_sql_type(db_row: &tokio_postgres::Row) -> Result<TableColumnType, String> {
     let column_type: String = db_row.get("data_type");
-    match TableColumnType::from_db_string(&column_type) {
+    match TableColumnType::try_from_db_string(&column_type) {
         Some(result) => Ok(result),
         None => {
             return Err(format!("Unknown column type: {}", column_type));

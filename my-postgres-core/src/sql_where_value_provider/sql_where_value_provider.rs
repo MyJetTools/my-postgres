@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::SqlValueMetadata;
+use crate::{table_schema::TableColumnType, SqlValueMetadata};
 
 use super::RenderFullWhereCondition;
 
@@ -78,21 +78,22 @@ impl SqlWhereValueProvider for DateTimeAsMicroseconds {
         }
 
         if let Some(metadata) = &metadata {
-            if let Some(sql_type) = metadata.sql_type {
-                if sql_type == "bigint" {
+            match metadata.sql_type {
+                TableColumnType::BigInt => {
                     sql.push_str(self.unix_microseconds.to_string().as_str());
 
                     return true;
                 }
-
-                if sql_type == "timestamp" {
+                TableColumnType::Timestamp => {
                     sql.push('\'');
                     sql.push_str(self.to_rfc3339().as_str());
                     sql.push('\'');
                     return true;
                 }
 
-                panic!("Unknown sql type: {}", sql_type);
+                _ => {
+                    panic!("Unknown sql type: {:?}", metadata.sql_type);
+                }
             }
         }
 
