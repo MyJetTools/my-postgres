@@ -8,6 +8,8 @@ pub enum SqlType {
     Timestamp,
     #[value("jsonb")]
     JsonB,
+    #[value("json")]
+    Json,
 }
 
 #[attribute_name("sql_type")]

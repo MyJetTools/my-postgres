@@ -48,6 +48,10 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
                #select_part
             }
 
+            fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
+                my_postgres::table_schema::TableColumnType::Jsonb
+            }
+
         }
 
         impl my_postgres::sql_update::SqlUpdateValueProvider for #enum_name{

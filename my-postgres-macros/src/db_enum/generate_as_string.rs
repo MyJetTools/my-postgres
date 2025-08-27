@@ -50,6 +50,10 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
                 }
             }
 
+            fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
+                my_postgres::table_schema::TableColumnType::Jsonb
+            }
+
             #fn_fill_select_type
         }
 
@@ -77,14 +81,6 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
                 let result: Option<String> = row.get(column_name.db_column_name);
                 let result = result?;
                 Some(Self::from_str(result.as_str()))
-            }
-        }
-
-        impl my_postgres::table_schema::SqlTypeProvider for #enum_name {
-            fn get_sql_type(
-                _metadata: Option<my_postgres::SqlValueMetadata>,
-            ) -> my_postgres::table_schema::TableColumnType {
-                my_postgres::table_schema::TableColumnType::Text
             }
         }
 

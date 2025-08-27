@@ -55,6 +55,19 @@ impl EnumType {
             EnumType::I64 => quote!(i32).into(),
         }
     }
+
+    pub fn get_sql_type_enum_case(&self)->proc_macro2::TokenStream{
+        match self{
+            EnumType::U8 => quote!(my_postgres::table_schema::TableColumnType::SmallInt).into(),
+            EnumType::I8 => quote!(my_postgres::table_schema::TableColumnType::SmallInt).into(),
+            EnumType::U16 => quote!(my_postgres::table_schema::TableColumnType::SmallInt).into(),
+            EnumType::I16 => quote!(my_postgres::table_schema::TableColumnType::SmallInt).into(),
+            EnumType::U32 => quote!(my_postgres::table_schema::TableColumnType::Integer).into(),
+            EnumType::I32 => quote!(my_postgres::table_schema::TableColumnType::Integer).into(),
+            EnumType::U64 => quote!(my_postgres::table_schema::TableColumnType::BigInt).into(),
+            EnumType::I64 => quote!(my_postgres::table_schema::TableColumnType::BigInt).into(),
+        }
+    }
 }
 
 pub fn generate(
@@ -84,6 +97,8 @@ pub fn generate(
     let to_typed_number = fn_to_typed_number(enum_cases.as_slice())?;
 
     let sql_db_type = enum_type.get_compliant_with_db_type();
+
+    let sql_type_enum_case = enum_type.get_sql_type_enum_case();
 
     let from_db_result = if type_name.to_string() == sql_db_type.to_string() {
         quote! {
@@ -141,6 +156,10 @@ pub fn generate(
                 }
             }
 
+            fn get_sql_type() -> my_postgres::table_schema::TableColumnType {        
+                 #sql_type_enum_case
+            }
+
             #fn_fill_select_type
 
         }
@@ -169,18 +188,6 @@ pub fn generate(
                 Some(#from_db_result)
             }
         }
-
-        impl my_postgres::table_schema::SqlTypeProvider for #enum_name {
-            fn get_sql_type(
-                _metadata: Option<my_postgres::SqlValueMetadata>,
-            ) -> my_postgres::table_schema::TableColumnType {
-                use my_postgres::table_schema::*;
-                #type_name::get_sql_type(None)
-            }
-        }
-
-
-
 
     }
     .into();

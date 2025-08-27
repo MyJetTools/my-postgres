@@ -51,6 +51,10 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
             pub fn fill_select_part(sql: &mut my_postgres::sql::SelectBuilder, column_name: #db_field_type,  metadata: &Option<my_postgres::SqlValueMetadata>) {
                 #select_part
             }
+
+            fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
+                my_postgres::table_schema::TableColumnType::Jsonb
+            }
         }
 
             impl<'s> my_postgres::sql_select::FromDbRow<'s, #enum_name> for #enum_name{
@@ -73,15 +77,6 @@ pub fn generate_as_string_with_model(ast: &syn::DeriveInput) -> Result<proc_macr
                 }
 
             }
-
-            impl my_postgres::table_schema::SqlTypeProvider for #enum_name {
-                fn get_sql_type(
-                    _metadata: Option<my_postgres::SqlValueMetadata>,
-                ) -> my_postgres::table_schema::TableColumnType {
-                    my_postgres::table_schema::TableColumnType::Jsonb
-                }
-            }
-
     
     }
     .into();

@@ -20,6 +20,10 @@ pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::
             pub fn to_string(&self)->String{
                 serde_json::to_string(self).unwrap()
             }
+
+            fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
+                my_postgres::table_schema::TableColumnType::Jsonb
+            }
         }
     });
 

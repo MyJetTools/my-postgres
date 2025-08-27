@@ -20,6 +20,7 @@ pub struct DiscountCodeDto {
     pub date_ends: DateTimeAsMicroseconds,
     #[sql_type("timestamp")]
     pub date_starts: DateTimeAsMicroseconds,
+    #[sql_type("json")]
     pub trading_package_ids: Vec<String>,
     pub usage_limit: Option<i32>,
     pub usage_count: i32,
