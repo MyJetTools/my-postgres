@@ -28,7 +28,31 @@ my-postgres = { tag = "xxx", git = "https://github.com/MyJetTools/my-postgres.gi
 ```
 whether to use TLS or not is detected by **sslmode=require** in the connection string
 
+### SSH Connection
 
+For the sake of optimization - the SSH feature is not included by default.
+
+If you are planning to use connections with SSH tunneling, please add a feature
+
+```toml
+[dependencies]
+my-postgres = { tag = "xxx", git = "https://github.com/MyJetTools/my-postgres.git", features = [
+    "with-ssh",
+] }
+```
+
+It is possible to connect to a PostgreSQL database through an SSH tunnel by adding the `ssh` parameter to the connection string. The format is `ssh=user@sshhost:22` where:
+- `user` is the SSH username
+- `sshhost` is the SSH server hostname or IP address
+- `22` is the SSH port (default is 22)
+
+Example connection string with SSH tunneling:
+
+```
+host=xxx port=5432 dbname=xxx user=xxx password=xxx ssh=user@sshhost:22
+```
+
+The SSH tunnel will be established automatically, and the connection to PostgreSQL will be routed through it.
 
 ### Application name
 

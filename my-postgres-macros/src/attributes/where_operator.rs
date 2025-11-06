@@ -18,6 +18,8 @@ pub enum WhereOperator {
     NotEqual2,
     #[value("like")]
     Like,
+    #[value("not")]
+    Not,
 }
 
 impl WhereOperator {
@@ -31,6 +33,7 @@ impl WhereOperator {
             Self::NotEqual => "!=",
             Self::NotEqual2 => "<>",
             Self::Like => " like ",
+            Self::Not => " not ",
         }
     }
 }

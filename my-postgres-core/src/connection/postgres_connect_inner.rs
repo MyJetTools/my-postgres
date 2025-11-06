@@ -477,11 +477,45 @@ impl PostgresConnectionInner {
         Ok(())
     }
 
+    fn is_non_retryable_postgres_error(err: &tokio_postgres::Error) -> bool {
+        if let Some(state) = err.code() {
+            let code = state.code();
+            if code == "42P01" // undefined_table (relation does not exist)
+                || code == "3D000" // invalid_catalog_name (database does not exist)
+                || code == "28P01" // invalid_authorization_specification (invalid password)
+                || code == "42704" // undefined_object (object does not exist)
+                || code == "42601" // syntax_error (SQL syntax error)
+                || code == "42501" // insufficient_privilege (permission denied)
+                || code == "42703" // undefined_column (column does not exist)
+                || code == "42883" // undefined_function (function does not exist)
+                || code == "23502" // not_null_violation (NOT NULL constraint violation)
+                || code == "23503" // foreign_key_violation (foreign key constraint violation)
+                || code == "23505" // unique_violation (unique constraint violation)
+                || code == "22001" // string_data_right_truncation (string too long for column)
+                || code == "22003" // numeric_value_out_of_range (numeric value out of range)
+                || code == "22007" // invalid_datetime_format (invalid date/time format)
+                || code == "22008" // datetime_field_overflow (date/time field out of range)
+                || code == "22012"
+            // division_by_zero (division by zero)
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     fn handle_error(
         &self,
         err: MyPostgresError,
         ctx: &crate::RequestContext,
     ) -> Result<(), MyPostgresError> {
+        // Check if this is a non-retryable PostgresError and return immediately
+        if let MyPostgresError::PostgresError(ref postgres_err) = &err {
+            if Self::is_non_retryable_postgres_error(postgres_err) {
+                return Err(err);
+            }
+        }
+
         match &err {
             MyPostgresError::NoConnection => {}
             MyPostgresError::SingleRowRequestReturnedMultipleRows(_) => {}
