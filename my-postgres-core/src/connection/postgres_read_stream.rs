@@ -36,6 +36,19 @@ impl<TEntity: SelectEntity + Send + Sync + 'static> PostgresReadStream<TEntity> 
             None => Ok(None),
         }
     }
+
+    pub async fn to_vec<TOut>(
+        mut self,
+        convert: impl Fn(TEntity) -> TOut,
+    ) -> Result<Vec<TOut>, MyPostgresError> {
+        let mut result = Vec::new();
+
+        while let Some(item) = self.get_next().await? {
+            result.push(convert(item));
+        }
+
+        Ok(result)
+    }
 }
 
 async fn start_reading<TEntity: SelectEntity + Send + Sync + 'static>(
