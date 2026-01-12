@@ -24,7 +24,7 @@ my-postgres = { tag = "xxx", git = "https://github.com/MyJetTools/my-postgres.gi
     # opt-in flags; pick what you need
     "with-tls",          # enables TLS (openssl + postgres-openssl in core)
     "with-ssh",          # enables SSH tunneling support
-    "with-telemetry",    # enables my-telemetry + logging hooks
+    "with-logs-and-telemetry",    # enables my-telemetry + logging hooks
     "macros",            # pulls in proc-macros for derives
 ] }
 ```
@@ -106,7 +106,7 @@ let db1 = my_postgres::MyPostgres::from_connection_string(conn.clone()).build().
 let db2 = my_postgres::MyPostgres::from_connection_string(conn).build().await;
 
 // pool of N connections
-let pool = PostgresConnection::new_as_multiple_connections(application_name, postgres_settings, 3);
+let pool = PostgresConnection::new_as_multiple_connections(application_name, postgres_settings, 3).await;
 let pool = Arc::new(pool);
 let db = my_postgres::MyPostgres::from_connection_string(pool).build().await;
 ```
@@ -258,7 +258,8 @@ my_postgres.concurrent_insert_or_update_single_entity(
         itm.date = DateTimeAsMicroseconds::now();
         true
     },
-);
+)
+.await?;
 ```
 
 ### Other attributes (wiki)
@@ -505,7 +506,7 @@ let rows = postgres.query_rows("information_schema.tables", Some(&where_model)).
 ```
 
 ## Telemetry and logging
-- Enable `with-telemetry` to integrate `my-telemetry` and `my-logger` for request spans/metrics.
+- Enable `with-logs-and-telemetry` to integrate `my-telemetry` and `my-logger` for request spans/metrics.
 - Debug SQL prints can be toggled via `DEBUG_SQL=true|1|<table>|<operation>`.
 
 ## Links
