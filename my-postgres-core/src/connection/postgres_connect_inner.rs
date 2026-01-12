@@ -452,29 +452,64 @@ impl PostgresConnectionInner {
             }
         }
 
-        let mut connection_access = self.inner.write().await;
+        let mut start_connection = false;
 
-        let connection_access = connection_access.get_connection_mut()?;
+        loop {
+            if start_connection {
+                self.start_connection().await;
+            }
 
-        let execution = {
+            let mut connection_access = self.inner.write().await;
+
+            let connection_access = match connection_access.get_connection_mut() {
+                Ok(connection) => connection,
+                Err(err) => {
+                    self.handle_error(err, &ctx)?;
+                    start_connection = true;
+                    continue;
+                }
+            };
+
             let builder = connection_access.build_transaction();
-            let transaction = builder.start().await?;
+
+            let transaction = match builder.start().await {
+                Ok(transaction) => transaction,
+                Err(err) => {
+                    self.handle_error(err.into(), &ctx)?;
+                    start_connection = true;
+                    continue;
+                }
+            };
+
+            let mut need_retry = false;
 
             for sql_data in &sql_with_params {
-                transaction
+                if let Err(err) = transaction
                     .execute(&sql_data.sql, &sql_data.values.get_values_to_invoke())
-                    .await?;
+                    .await
+                {
+                    self.handle_error(err.into(), &ctx)?;
+                    start_connection = true;
+                    need_retry = true;
+                    break;
+                }
             }
-            transaction.commit()
-        };
 
-        let result = self.execute_with_timeout(None, execution, &ctx).await;
+            if need_retry {
+                continue;
+            }
 
-        if let Err(err) = result {
-            self.handle_error(err, &ctx)?;
+            match self
+                .execute_with_timeout(None, transaction.commit(), &ctx)
+                .await
+            {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    self.handle_error(err, &ctx)?;
+                    start_connection = true;
+                }
+            }
         }
-
-        Ok(())
     }
 
     fn is_non_retryable_postgres_error(err: &tokio_postgres::Error) -> bool {
@@ -485,12 +520,18 @@ impl PostgresConnectionInner {
                 || code == "28P01" // invalid_authorization_specification (invalid password)
                 || code == "42704" // undefined_object (object does not exist)
                 || code == "42601" // syntax_error (SQL syntax error)
+                || code == "42804" // datatype_mismatch
+                || code == "42846" // cannot_coerce
+                || code == "22P02" // invalid_text_representation (e.g. bad uuid/number)
+                || code == "22018" // invalid_character_value_for_cast
                 || code == "42501" // insufficient_privilege (permission denied)
                 || code == "42703" // undefined_column (column does not exist)
                 || code == "42883" // undefined_function (function does not exist)
                 || code == "23502" // not_null_violation (NOT NULL constraint violation)
                 || code == "23503" // foreign_key_violation (foreign key constraint violation)
                 || code == "23505" // unique_violation (unique constraint violation)
+                || code == "23514" // check_violation
+                || code == "23P01" // exclusion_violation
                 || code == "22001" // string_data_right_truncation (string too long for column)
                 || code == "22003" // numeric_value_out_of_range (numeric value out of range)
                 || code == "22007" // invalid_datetime_format (invalid date/time format)
