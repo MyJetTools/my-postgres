@@ -1,7 +1,11 @@
 use quote::quote;
 use types_reader::EnumCase;
 
+use crate::consts::SqlTypeToRender;
+
 use super::enum_case_ext::EnumCaseExt;
+
+
 
 pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
     let enum_name = &ast.ident;
@@ -31,7 +35,7 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
 
     let fn_fill_select_type = crate::consts::render_fn_fill_select_part_as_field();
 
-    let json_type = crate::consts::get_default_json_sql_type();
+    let sql_type = SqlTypeToRender::Text.to_token_stream();
 
 
     let result = quote! {
@@ -54,7 +58,7 @@ pub fn generate_as_string(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStr
             }
 
             fn get_sql_type() -> my_postgres::table_schema::TableColumnType {
-                #json_type
+                #sql_type
             }
 
             #fn_fill_select_type

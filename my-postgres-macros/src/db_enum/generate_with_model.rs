@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use types_reader::EnumCase;
 
+use crate::consts::*;
+
 use super::enum_case_ext::EnumCaseExt;
 
 pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::Error> {
@@ -22,7 +24,8 @@ pub fn generate_with_model(ast: &syn::DeriveInput) -> Result<TokenStream, syn::E
 
     let fn_body_from_db_row_opt = crate::consts::render_fn_from_db_row_opt_with_transformation();
     
-    let json_type = crate::consts::get_default_json_sql_type();
+ let json_type = SqlTypeToRender::JsonB.to_token_stream();
+ 
     let result = quote! {
 
         impl #enum_name{

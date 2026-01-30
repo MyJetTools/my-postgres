@@ -32,6 +32,20 @@ pub fn render_fn_from_db_row_opt_with_transformation() -> proc_macro2::TokenStre
     }
 }
 
-pub fn get_default_json_sql_type() -> proc_macro2::TokenStream {
-    quote::quote! {my_postgres::table_schema::TableColumnType::Jsonb}
+pub enum SqlTypeToRender {
+    Text,
+    JsonB,
+}
+
+impl SqlTypeToRender {
+    pub fn to_token_stream(&self) -> proc_macro2::TokenStream {
+        match self {
+            SqlTypeToRender::Text => {
+                quote::quote! {my_postgres::table_schema::TableColumnType::Text}
+            }
+            SqlTypeToRender::JsonB => {
+                quote::quote! {my_postgres::table_schema::TableColumnType::Jsonb}
+            }
+        }
+    }
 }

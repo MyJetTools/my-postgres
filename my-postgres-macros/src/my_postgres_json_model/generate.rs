@@ -1,12 +1,15 @@
 use quote::quote;
 use types_reader::TypeName;
 
+use crate::consts::SqlTypeToRender;
+
 pub fn generate(ast: &syn::DeriveInput) -> Result<proc_macro::TokenStream, syn::Error> {
     let type_name: TypeName = ast.try_into()?;
 
     let type_impl = type_name.render_implement(|| {
         let type_name = type_name.get_name_ident().to_string();
-        let json_type = crate::consts::get_default_json_sql_type();
+        let json_type = SqlTypeToRender::JsonB.to_token_stream();
+
         quote::quote! {
             pub fn from_str(src:&str)->Self{
                 let result: Result<Self, _> = serde_json::from_str(src);
