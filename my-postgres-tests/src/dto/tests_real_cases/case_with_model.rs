@@ -58,7 +58,7 @@ pub enum TradingPlatformDto {
     MetaTrader5,
 }
 
-#[derive(DbEnumAsI32, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(DbEnumAsI32, Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash, Debug)]
 pub enum BrokerDto {
     #[enum_case(0)]
     Welltrade,

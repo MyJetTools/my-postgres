@@ -32,6 +32,7 @@ pub fn generate_update_models<'s>(
         }
 
         result.push(quote::quote! {
+            #[derive(Debug)]
             pub struct #struct_name{
                 #(#fields)*
             }
