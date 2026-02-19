@@ -1,4 +1,8 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use tokio_postgres::RowStream;
 
@@ -45,6 +49,36 @@ impl<TEntity: SelectEntity + Send + Sync + 'static> PostgresReadStream<TEntity> 
 
         while let Some(item) = self.get_next().await? {
             result.push(convert(item));
+        }
+
+        Ok(result)
+    }
+
+    pub async fn to_hash_map<TKey: std::cmp::Eq + Hash, TValue>(
+        mut self,
+        get_key: impl Fn(&TEntity) -> TKey,
+        get_value: impl Fn(TEntity) -> TValue,
+    ) -> Result<HashMap<TKey, TValue>, MyPostgresError> {
+        let mut result = HashMap::new();
+
+        while let Some(item) = self.get_next().await? {
+            let key = get_key(&item);
+            result.insert(key, get_value(item));
+        }
+
+        Ok(result)
+    }
+
+    pub async fn to_btree_map<TKey: Ord, TValue>(
+        mut self,
+        get_key: impl Fn(&TEntity) -> TKey,
+        get_value: impl Fn(TEntity) -> TValue,
+    ) -> Result<BTreeMap<TKey, TValue>, MyPostgresError> {
+        let mut result = BTreeMap::new();
+
+        while let Some(item) = self.get_next().await? {
+            let key = get_key(&item);
+            result.insert(key, get_value(item));
         }
 
         Ok(result)
