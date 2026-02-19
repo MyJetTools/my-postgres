@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     hash::Hash,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -69,6 +69,19 @@ impl<TEntity: SelectEntity + Send + Sync + 'static> PostgresReadStream<TEntity> 
         Ok(result)
     }
 
+    pub async fn to_hash_set<TValue: std::cmp::Eq + Hash>(
+        mut self,
+        get_value: impl Fn(TEntity) -> TValue,
+    ) -> Result<HashSet<TValue>, MyPostgresError> {
+        let mut result = HashSet::new();
+
+        while let Some(item) = self.get_next().await? {
+            result.insert(get_value(item));
+        }
+
+        Ok(result)
+    }
+
     pub async fn to_btree_map<TKey: Ord, TValue>(
         mut self,
         get_key: impl Fn(&TEntity) -> TKey,
@@ -79,6 +92,19 @@ impl<TEntity: SelectEntity + Send + Sync + 'static> PostgresReadStream<TEntity> 
         while let Some(item) = self.get_next().await? {
             let key = get_key(&item);
             result.insert(key, get_value(item));
+        }
+
+        Ok(result)
+    }
+
+    pub async fn to_btree_set<TValue: std::cmp::Ord>(
+        mut self,
+        get_value: impl Fn(TEntity) -> TValue,
+    ) -> Result<BTreeSet<TValue>, MyPostgresError> {
+        let mut result = BTreeSet::new();
+
+        while let Some(item) = self.get_next().await? {
+            result.insert(get_value(item));
         }
 
         Ok(result)
