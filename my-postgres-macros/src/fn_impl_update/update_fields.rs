@@ -18,7 +18,7 @@ impl<'s> UpdateFields<'s> {
         let mut where_fields = Vec::with_capacity(fields.len());
 
         for field in fields {
-            if field.is_primary_key() {
+            if field.is_primary_key() || field.is_where_property() {
                 where_fields.push(field)
             } else {
                 update_fields.push(field)

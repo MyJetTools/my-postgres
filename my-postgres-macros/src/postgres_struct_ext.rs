@@ -61,6 +61,8 @@ pub enum DefaultValue {
 pub trait PostgresStructPropertyExt<'s> {
     fn is_primary_key(&self) -> bool;
 
+    fn is_where_property(&self) -> bool;
+
     fn get_db_column_name(&'s self) -> Result<DbColumnName<'s>, syn::Error>;
 
     fn has_ignore_attr(&self) -> bool;
@@ -216,6 +218,10 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
     fn is_primary_key(&self) -> bool {
         self.attrs.has_attr(PrimaryKeyAttribute::NAME)
+    }
+
+    fn is_where_property(&self) -> bool {
+        self.attrs.has_attr("where_property")
     }
 
     fn get_db_column_name(&'s self) -> Result<DbColumnName<'s>, syn::Error> {

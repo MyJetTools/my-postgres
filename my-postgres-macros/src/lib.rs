@@ -112,6 +112,7 @@ pub fn postgres_insert_model(input: TokenStream) -> TokenStream {
     attributes(
         db_column_name,
         primary_key,
+        where_property,
         ignore,
         sql_type,
         e_tag,
