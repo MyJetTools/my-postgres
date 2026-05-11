@@ -39,15 +39,13 @@ impl RequestContext {
         tags: Option<Vec<my_telemetry::TelemetryEventTag>>,
     ) {
         if let Some(ctx) = self.telemetry_context.as_ref() {
-            my_telemetry::TELEMETRY_INTERFACE
-                .write_success(
-                    ctx,
-                    self.started,
-                    self.process_name.to_string(),
-                    ok_message,
-                    tags,
-                )
-                .await;
+            my_telemetry::TELEMETRY_INTERFACE.write_success(
+                ctx,
+                self.started,
+                self.process_name.to_string(),
+                ok_message,
+                tags,
+            );
         }
     }
 
@@ -62,15 +60,13 @@ impl RequestContext {
         #[cfg(feature = "with-logs-and-telemetry")]
         if my_telemetry::TELEMETRY_INTERFACE.is_telemetry_set_up() {
             if let Some(ctx) = self.telemetry_context.as_ref() {
-                my_telemetry::TELEMETRY_INTERFACE
-                    .write_fail(
-                        ctx,
-                        self.started,
-                        self.process_name.to_string(),
-                        fail_message.to_string(),
-                        tags,
-                    )
-                    .await;
+                my_telemetry::TELEMETRY_INTERFACE.write_fail(
+                    ctx,
+                    self.started,
+                    self.process_name.to_string(),
+                    fail_message.to_string(),
+                    tags,
+                );
             }
         }
 
