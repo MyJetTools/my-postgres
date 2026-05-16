@@ -19,7 +19,7 @@ impl PostgresConnection {
     pub async fn new_as_single_connection(
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
 
@@ -30,7 +30,7 @@ impl PostgresConnection {
             app_name.to_string(),
             conn_string.get_db_name().to_string(),
             postgres_settings,
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             conn_string.get_ssh_config(ssh_config_builder),
         )
         .await;
@@ -38,7 +38,7 @@ impl PostgresConnection {
         Self::Single(connection)
     }
 
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub fn get_ssh_config(&self) -> Option<crate::ssh::PostgresSshConfig> {
         match self {
             PostgresConnection::Single(connection) => connection.ssh_config.clone(),
@@ -50,7 +50,7 @@ impl PostgresConnection {
         app_name: impl Into<StrOrString<'static>>,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
-        #[cfg(feature = "with-ssh")] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,
     ) -> Self {
         let app_name: StrOrString<'static> = app_name.into();
         let conn_string = postgres_settings.get_connection_string().await;
@@ -61,7 +61,7 @@ impl PostgresConnection {
             conn_string.get_db_name().to_string(),
             postgres_settings,
             max_pool_size,
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             conn_string.get_ssh_config(ssh_config_builder),
         ))
     }

@@ -179,7 +179,7 @@ impl PostgresConnectionString {
         }
     }
 
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub fn get_ssh_config(
         &self,
         ssh_config_builder: Option<crate::ssh::SshConfigBuilder>,

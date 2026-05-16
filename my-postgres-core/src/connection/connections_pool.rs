@@ -10,7 +10,7 @@ struct MyPostgresFactory {
     app_name: StrOrString<'static>,
     db_name: String,
     postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
 }
 
@@ -19,13 +19,13 @@ impl MyPostgresFactory {
         app_name: StrOrString<'static>,
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     ) -> Self {
         Self {
             postgres_settings,
             app_name,
             db_name,
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh_config,
         }
     }
@@ -40,7 +40,7 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
             self.app_name.as_str().to_string(),
             self.db_name.clone(),
             self.postgres_settings.clone(),
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             self.ssh_config.clone(),
         )
         .await
@@ -49,7 +49,7 @@ impl rust_extensions::objects_pool::ObjectsPoolFactory<PostgresConnectionInstanc
 
 pub struct ConnectionsPool {
     connections: ObjectsPool<PostgresConnectionInstance, MyPostgresFactory>,
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
 }
 
@@ -59,10 +59,10 @@ impl ConnectionsPool {
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         max_pool_size: usize,
-        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     ) -> Self {
         Self {
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh_config: ssh_config.clone(),
             connections: ObjectsPool::new(
                 max_pool_size,
@@ -70,7 +70,7 @@ impl ConnectionsPool {
                     app_name.clone(),
                     db_name,
                     postgres_settings.clone(),
-                    #[cfg(feature = "with-ssh")]
+                    #[cfg(all(unix, feature = "with-ssh"))]
                     ssh_config,
                 )),
             ),

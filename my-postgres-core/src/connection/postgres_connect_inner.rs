@@ -52,13 +52,13 @@ impl PostgresConnectionSingleThreaded {
 
     pub fn start_connection(
         &mut self,
-        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     ) -> bool {
         if let Some(to_start) = self.to_start.take() {
             tokio::spawn(super::connection_loop::start_connection_loop(
                 to_start,
                 self.db_name.clone(),
-                #[cfg(feature = "with-ssh")]
+                #[cfg(all(unix, feature = "with-ssh"))]
                 ssh_config,
             ));
             return true;
@@ -81,7 +81,7 @@ pub struct PostgresConnectionInner {
     pub app_name: String,
     pub postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
     pub to_be_disposable: AtomicBool,
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     ssh_config: Option<crate::ssh::PostgresSshConfig>,
 }
 
@@ -90,7 +90,7 @@ impl PostgresConnectionInner {
         app_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
         db_name: String,
-        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     ) -> Self {
         Self {
             app_name,
@@ -99,7 +99,7 @@ impl PostgresConnectionInner {
             connected: Arc::new(AtomicBool::new(false)),
 
             to_be_disposable: AtomicBool::new(false),
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh_config,
         }
     }
@@ -228,7 +228,7 @@ impl PostgresConnectionInner {
         let started = {
             let mut write_access = self.inner.write().await;
             write_access.start_connection(
-                #[cfg(feature = "with-ssh")]
+                #[cfg(all(unix, feature = "with-ssh"))]
                 self.ssh_config.clone(),
             )
         };

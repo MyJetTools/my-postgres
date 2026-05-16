@@ -17,7 +17,7 @@ pub enum MyPostgresBuilder {
         table_schema_data: Vec<TableSchema>,
         sql_request_timeout: Duration,
         sql_db_sync_timeout: Duration,
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         ssh: crate::ssh::SshConfigBuilder,
     },
     AsSharedConnection {
@@ -41,7 +41,7 @@ impl MyPostgresBuilder {
             table_schema_data: Vec::new(),
             sql_request_timeout: Duration::from_secs(5),
             sql_db_sync_timeout: Duration::from_secs(60),
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh: crate::ssh::SshConfigBuilder::new(),
         }
     }
@@ -84,7 +84,7 @@ impl MyPostgresBuilder {
         self
     }
 
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub fn with_ssh_sessions(mut self, my_ssh_sessions: Arc<my_ssh::SshSessionsPool>) -> Self {
         match &mut self {
             MyPostgresBuilder::AsSettings { ssh, .. } => {
@@ -97,7 +97,7 @@ impl MyPostgresBuilder {
         self
     }
 
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub fn with_ssh_private_key(
         mut self,
         private_key_content: String,
@@ -163,20 +163,20 @@ impl MyPostgresBuilder {
                 sql_request_timeout,
                 sql_db_sync_timeout,
 
-                #[cfg(feature = "with-ssh")]
+                #[cfg(all(unix, feature = "with-ssh"))]
                 ssh,
             } => {
                 let conn_string = postgres_settings.get_connection_string().await;
 
                 let conn_string = PostgresConnectionString::from_str(&conn_string);
 
-                #[cfg(feature = "with-ssh")]
+                #[cfg(all(unix, feature = "with-ssh"))]
                 let ssh_config = conn_string.get_ssh_config(Some(ssh));
                 let connection = PostgresConnectionInstance::new(
                     app_name,
                     conn_string.get_db_name().to_string(),
                     postgres_settings,
-                    #[cfg(feature = "with-ssh")]
+                    #[cfg(all(unix, feature = "with-ssh"))]
                     ssh_config.clone(),
                 )
                 .await;
@@ -189,7 +189,7 @@ impl MyPostgresBuilder {
                     super::sync_table_schema::check_if_db_exists(
                         &connection,
                         sql_db_sync_timeout,
-                        #[cfg(feature = "with-ssh")]
+                        #[cfg(all(unix, feature = "with-ssh"))]
                         ssh_config,
                         #[cfg(feature = "with-logs-and-telemetry")]
                         &tracker.my_telemetry,
@@ -222,7 +222,7 @@ impl MyPostgresBuilder {
                     super::sync_table_schema::check_if_db_exists(
                         &connection,
                         sql_db_sync_timeout,
-                        #[cfg(feature = "with-ssh")]
+                        #[cfg(all(unix, feature = "with-ssh"))]
                         connection.get_ssh_config(),
                         #[cfg(feature = "with-logs-and-telemetry")]
                         &tracker.my_telemetry,

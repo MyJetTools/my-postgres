@@ -13,7 +13,7 @@ use super::{PostgresConnectionInner, PostgresReadStream, PostgresRowReadStream};
 
 pub struct PostgresConnectionInstance {
     inner: Arc<PostgresConnectionInner>,
-    #[cfg(feature = "with-ssh")]
+    #[cfg(all(unix, feature = "with-ssh"))]
     pub ssh_config: Option<crate::ssh::PostgresSshConfig>,
     pub created: DateTimeAsMicroseconds,
 }
@@ -23,20 +23,20 @@ impl PostgresConnectionInstance {
         app_name: String,
         db_name: String,
         postgres_settings: Arc<dyn PostgresSettings + Sync + Send + 'static>,
-        #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+        #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     ) -> Self {
         let inner = Arc::new(PostgresConnectionInner::new(
             app_name,
             postgres_settings,
             db_name,
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh_config.clone(),
         ));
 
         let result = Self {
             inner,
             created: DateTimeAsMicroseconds::now(),
-            #[cfg(feature = "with-ssh")]
+            #[cfg(all(unix, feature = "with-ssh"))]
             ssh_config,
         };
 

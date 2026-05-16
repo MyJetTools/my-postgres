@@ -15,7 +15,7 @@ use super::postgres_connect_inner::PostgresConnectionInner;
 pub async fn start_connection_loop(
     inner: Arc<PostgresConnectionInner>,
     db_name: String,
-    #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
 ) {
     loop {
         if inner.is_to_be_disposable() {
@@ -24,13 +24,13 @@ pub async fn start_connection_loop(
 
         let conn_string = inner.postgres_settings.get_connection_string().await;
 
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         let mut conn_string = PostgresConnectionString::from_str(conn_string.as_str());
 
-        #[cfg(not(feature = "with-ssh"))]
+        #[cfg(not(all(unix, feature = "with-ssh")))]
         let conn_string = PostgresConnectionString::from_str(conn_string.as_str());
 
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         let postgres_host = if let Some(ssh_config) = &ssh_config {
             let ssh_cred_type = match ssh_config.credentials.as_ref() {
                 my_ssh::SshCredentials::SshAgent { .. } => "SshAgent",
@@ -51,10 +51,10 @@ pub async fn start_connection_loop(
             format!("{}:{}", conn_string.get_host(), conn_string.get_port())
         };
 
-        #[cfg(not(feature = "with-ssh"))]
+        #[cfg(not(all(unix, feature = "with-ssh")))]
         let postgres_host = format!("{}:{}", conn_string.get_host(), conn_string.get_port());
 
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         if let Some(ssh_config) = &ssh_config {
             crate::ssh::start_ssh_tunnel_and_get_connection_string(&mut conn_string, ssh_config)
                 .await;

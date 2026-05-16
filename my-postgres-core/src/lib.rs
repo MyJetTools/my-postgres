@@ -42,7 +42,7 @@ pub mod union;
 pub mod utils;
 
 mod postgres_telemetry;
-#[cfg(feature = "with-ssh")]
+#[cfg(all(unix, feature = "with-ssh"))]
 mod ssh;
 
 pub use postgres_telemetry::*;

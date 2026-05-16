@@ -14,7 +14,7 @@ const TECH_DB_NAME: &str = "postgres";
 pub async fn check_if_db_exists(
     connection: &PostgresConnection,
     sql_timeout: Duration,
-    #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
     #[cfg(feature = "with-logs-and-telemetry")] my_telemetry: &MyTelemetryContext,
 ) {
     if let Err(error) = check_if_db_exists_int(
@@ -22,7 +22,7 @@ pub async fn check_if_db_exists(
         sql_timeout,
         #[cfg(feature = "with-logs-and-telemetry")]
         my_telemetry,
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         ssh_config,
     )
     .await
@@ -46,7 +46,7 @@ async fn check_if_db_exists_int(
     connection: &PostgresConnection,
     sql_timeout: Duration,
     #[cfg(feature = "with-logs-and-telemetry")] ctx: &MyTelemetryContext,
-    #[cfg(feature = "with-ssh")] ssh_config: Option<crate::ssh::PostgresSshConfig>,
+    #[cfg(all(unix, feature = "with-ssh"))] ssh_config: Option<crate::ssh::PostgresSshConfig>,
 ) -> Result<(), MyPostgresError> {
     let (app_name, connection_string) = connection.get_connection_string().await;
 
@@ -59,7 +59,7 @@ async fn check_if_db_exists_int(
         app_name.into(),
         TECH_DB_NAME.to_string(),
         std::sync::Arc::new(tech_conn_string),
-        #[cfg(feature = "with-ssh")]
+        #[cfg(all(unix, feature = "with-ssh"))]
         ssh_config,
     )
     .await;
