@@ -32,6 +32,40 @@ my-postgres = { tag = "xxx", git = "https://github.com/MyJetTools/my-postgres.gi
 - SSH tunneling is enabled when the connection string contains `ssh=user@host:port`.
 - Keep TLS/SSH features disabled unless needed for lean builds.
 
+## ⚠️ Doc comments on DTO fields break the derives
+
+Do **NOT** put `///` doc comments on fields of a struct that derives any of
+`SelectDbEntity`, `InsertDbEntity`, `UpdateDbEntity`, `TableSchema`, `WhereDbModel`.
+The derive will panic at compile time with:
+
+```
+error: proc-macro derive panicked
+  --> ...your_file.rs:N:M
+   = help: message: Somehow we got Punct here: =
+```
+
+### Why
+
+`///` is desugared by the compiler into `#[doc = "..."]`. The shared
+attribute parser used by these derives (`types-reader-core::attributes::extract_attr_name_and_content`,
+in `types-reader-core/src/attributes.rs` around lines 209-210) expects every
+field attribute to be either `#[name]` or `#[name(group)]` and has no branch
+for the `#[name = literal]` form. It hits the `=` token and panics. The error
+points at the `#[derive(...)]` line and gives no hint that the cause is a doc
+comment several lines below — easy to spend an hour on.
+
+### Where to put field documentation instead
+
+- Module-level or struct-level doc comments are fine.
+- Put per-field notes in a non-doc `//` comment, in a README, or in repo method
+  doc comments that reference the fields by name.
+
+### What's safe
+
+- `//` line comments anywhere — they are not attributes.
+- `///` on the **struct itself**, on `impl` blocks, on `fn`s, on the module.
+- `///` on fields of a struct that does **not** derive any my-postgres macro.
+
 ## Connection strings
 - TLS example: `host=xxx port=5432 dbname=xxx user=xxx password=xxx sslmode=require`
 - Non-TLS: `host=xxx port=5432 dbname=xxx user=xxx password=xxx`
@@ -152,8 +186,8 @@ pub struct MinMaxKeySelectDto {
 - Uses `tokio_postgres` under the hood; `DateTimeAsMicroseconds` for datetime fields. Attribute reference: `my-postgres-macros/src/attributes`.
 - Insert: `#[derive(InsertDbEntity)]` on a DTO; call `insert_db_entity(&dto, TABLE)` (optionally with telemetry). Generates `INSERT INTO ... VALUES ($1, $2, ...)`.
 - Update: mark keys with `#[primary_key]`; call `update_db_entity(&dto, TABLE)` to generate `UPDATE ... SET ... WHERE ...`.
-- Insert or update: derive both `InsertDbEntity` and `UpdateDbEntity`; call `insert_or_update_db_entity(&dto, TABLE, PK_NAME)` to emit `ON CONFLICT ON CONSTRAINT {PK_NAME} DO UPDATE`.
-- Insert if not exists: `insert_db_entity_if_not_exists(&dto, TABLE, PK_NAME)` -> `ON CONFLICT DO NOTHING`.
+- Insert or update: derive both `InsertDbEntity` and `UpdateDbEntity`; call `insert_or_update_db_entity(TABLE, UpdateConflictType::OnPrimaryKeyConstraint(PK_NAME.into()), &dto, ctx?)` to emit `ON CONFLICT ON CONSTRAINT {PK_NAME} DO UPDATE`. `ctx?` is `None` without telemetry, or `Some(&MyTelemetryContext)` with `with-logs-and-telemetry` enabled.
+- Insert if not exists: `insert_db_entity_if_not_exists(&dto, TABLE, ctx?)` -> `ON CONFLICT DO NOTHING`. The `ON CONFLICT DO NOTHING` clause is hardcoded by the impl — no `UpdateConflictType`/constraint name is taken. `ctx?` is `None` without telemetry, or `Some(&MyTelemetryContext)` with `with-logs-and-telemetry`.
 - Delete: derive `WhereDbModel` for filters; call `delete_db_entity(&where_dto, TABLE)`.
 - Select: derive `SelectDbEntity` + `WhereDbModel`; use `query_rows` (Vec) or `query_single_row` (Option). Group-by also supported via `#[group_by]` / `#[sql]`.
 - Bulk select: combine `BulkSelectDbEntity` (+ optional `SelectDbEntity`); build `BulkSelectBuilder` and call `bulk_query_rows` or `bulk_query_rows_with_transformation` to batch requests by `line_no`.
@@ -190,8 +224,15 @@ pub struct KeyValueDto {
     pub key: String,
     pub value: String,
 }
+use my_postgres::UpdateConflictType;
+
 postgres_client
-    .insert_or_update_db_entity(&KeyValueDto { client_id, key, value }, TABLE, PK_NAME)
+    .insert_or_update_db_entity(
+        TABLE,
+        UpdateConflictType::OnPrimaryKeyConstraint(PK_NAME.into()),
+        &KeyValueDto { client_id, key, value },
+        None,                                     // or Some(ctx) when telemetry is enabled
+    )
     .await?;
 
 // Select (vector)
