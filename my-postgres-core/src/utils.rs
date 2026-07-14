@@ -1,12 +1,10 @@
 use my_json::{json_reader::JsonValueRef, json_writer::RawJsonObject};
 
 pub fn compile_enum_with_model(case: &str, volume: &str) -> String {
-    let mut json_writer = my_json::json_writer::JsonObjectWriter::new();
-
-    json_writer.write("case", case);
-    json_writer.write("model", RawJsonObject::AsStr(volume));
-
-    json_writer.build()
+    my_json::json_writer::JsonObjectWriter::new()
+        .write("case", case)
+        .write("model", RawJsonObject::AsStr(volume))
+        .build()
 }
 
 pub fn get_case_and_model<'s>(
