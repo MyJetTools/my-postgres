@@ -368,7 +368,7 @@ pub struct JsonWhere {
 ### Other types (wiki)
 - `DateTimeAsMicroseconds` can map to `bigint` or `timestamp` columns via `#[sql_type("bigint")]` or `#[sql_type("timestamp")]`.
 - JSON columns: you can either deserialize with `#[json]` on the field or declare the DB type with `#[sql_type("json")]`/`#[sql_type("jsonb")]`; both can be combined if you want typed JSON and explicit SQL type.
-- Binary columns: a `Vec<u8>` (or `Option<Vec<u8>>`) field is mapped to a `bytea` column and is passed to postgres as a binary parameter. Put `#[sql_type("json")]` or `#[sql_type("jsonb")]` on it to serialize it as a json array of numbers instead. Other `Vec<T>` fields still require an explicit `#[sql_type("json")]`/`#[sql_type("jsonb")]`. Inside a `WhereDbModel` a `Vec<u8>` keeps the common `Vec<T>` meaning - an `IN (...)` list - so `bytea` columns can not be filtered by value with a generated where model.
+- Binary columns: a `Vec<u8>` (or `Option<Vec<u8>>`) field is mapped to a `bytea` column and is passed to postgres as a binary parameter. Put `#[sql_type("json")]` or `#[sql_type("jsonb")]` on it to serialize it as a json array of numbers instead. Other `Vec<T>` fields still require an explicit `#[sql_type("json")]`/`#[sql_type("jsonb")]`. A `Vec<u8>` used as a where field is a compile time error, since `Vec<T>` in a where model renders an `IN (...)` list which would not match a binary value - use `Vec<i16>` when an `IN (...)` list of numbers is meant.
 
 ```rust
 #[derive(SelectDbEntity)]

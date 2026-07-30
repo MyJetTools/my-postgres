@@ -178,6 +178,12 @@ impl<'s> WhereFields<'s> {
         });
 
         for prop in &self.where_fields {
+            if prop.is_binary()? {
+                // Vec<T> as a where field is rendered as an 'IN (...)' list, which would silently
+                // produce a wrong condition for a Vec<u8> which is stored as a bytea column
+                return prop.throw_error("Vec<u8> is stored as a bytea column and can not be used as a where field. Please use Vec<i16> if an 'IN (...)' list of numbers is required");
+            }
+
             let prop_name_ident = prop.get_field_name_ident();
             let db_column_name = prop.get_db_column_name()?;
             let metadata = prop.get_field_metadata()?;
