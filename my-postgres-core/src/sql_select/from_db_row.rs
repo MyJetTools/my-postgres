@@ -164,6 +164,24 @@ impl<'s, T: DeserializeOwned> FromDbRow<'s, Vec<T>> for Vec<T> {
     }
 }
 
+impl<'s> FromDbRow<'s, Vec<u8>> for crate::SqlBinary {
+    fn from_db_row(
+        row: &'s crate::DbRow,
+        column_name: DbColumnName,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Vec<u8> {
+        row.get(column_name.db_column_name)
+    }
+
+    fn from_db_row_opt(
+        row: &'s crate::DbRow,
+        column_name: DbColumnName,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> Option<Vec<u8>> {
+        row.get(column_name.db_column_name)
+    }
+}
+
 impl<'s, TKey: DeserializeOwned + Eq + Hash, TValue: DeserializeOwned>
     FromDbRow<'s, HashMap<TKey, TValue>> for HashMap<TKey, TValue>
 {

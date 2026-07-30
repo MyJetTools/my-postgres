@@ -114,6 +114,9 @@ impl TableColumn {
                     return Some(format!("'{}'", default_value));
                 }
             }
+            TableColumnType::Bytea => {
+                return Some(default_value.to_string());
+            }
         }
     }
 }

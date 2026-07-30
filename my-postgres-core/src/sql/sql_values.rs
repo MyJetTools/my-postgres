@@ -62,6 +62,10 @@ impl SqlValues {
         self.push(SqlString::from_static_str(value))
     }
 
+    pub fn push_binary(&mut self, value: &[u8]) -> usize {
+        self.push(SqlString::from_binary(value))
+    }
+
     pub fn get_values_to_invoke(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
         match self {
             SqlValues::Values(values) => {

@@ -20,11 +20,11 @@ pub fn fn_from<'s>(
 
         let metadata = field.get_field_metadata()?;
 
-        let reading = if let PropertyType::OptionOf(sub_prop) = &field.ty {
-            let type_ident = sub_prop.get_token_stream_with_generics();
+        let type_ident = field.get_ty_to_invoke_static_methods()?;
+
+        let reading = if let PropertyType::OptionOf(_) = &field.ty {
             quote!(#type_ident::from_db_row_opt(db_row, #db_column_name, &#metadata))
         } else {
-            let type_ident = field.ty.get_token_stream_with_generics();
             quote!(#type_ident::from_db_row(db_row, #db_column_name, &#metadata))
         };
 

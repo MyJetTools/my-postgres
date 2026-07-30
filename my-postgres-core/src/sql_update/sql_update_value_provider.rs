@@ -210,6 +210,17 @@ impl<T: Serialize> SqlUpdateValueProvider for Vec<T> {
     }
 }
 
+impl SqlUpdateValueProvider for crate::SqlBinary {
+    fn get_update_value(
+        &self,
+        params: &mut SqlValues,
+        _metadata: &Option<SqlValueMetadata>,
+    ) -> SqlUpdateValue {
+        let index = params.push_binary(self.as_slice());
+        SqlUpdateValue::Index(index)
+    }
+}
+
 impl<TKey: Serialize, TVale: Serialize> SqlUpdateValueProvider for HashMap<TKey, TVale> {
     fn get_update_value(
         &self,

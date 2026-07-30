@@ -10,6 +10,8 @@ pub enum SqlType {
     JsonB,
     #[value("json")]
     Json,
+    #[value("bytea")]
+    Bytea,
 }
 
 #[attribute_name("sql_type")]

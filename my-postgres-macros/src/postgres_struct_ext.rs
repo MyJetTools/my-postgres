@@ -80,6 +80,14 @@ pub trait PostgresStructPropertyExt<'s> {
 
     fn get_ty(&'s self) -> &'s PropertyType<'s>;
 
+    /// Property is a `Vec<u8>` (or `Option<Vec<u8>>`) which is not marked as json/jsonb,
+    /// which means it is stored as a postgres `bytea` column
+    fn is_binary(&self) -> Result<bool, syn::Error>;
+
+    /// Type to invoke static trait methods (`fill_select_part`, `from_db_row`, ...) on.
+    /// `Option<T>` is unwrapped and binary properties are handled by `my_postgres::SqlBinary`
+    fn get_ty_to_invoke_static_methods(&'s self) -> Result<proc_macro2::TokenStream, syn::Error>;
+
     fn get_field_name_ident(&self) -> &syn::Ident;
 
     fn get_default_value(&self) -> Result<Option<DefaultValue>, syn::Error>;
@@ -123,9 +131,15 @@ pub trait PostgresStructPropertyExt<'s> {
         let ignore_if_none = self.has_ignore_if_none_attr();
 
         let result = if is_update {
+            let update_value = if self.is_binary()? {
+                quote::quote!(my_postgres::SqlBinary::from_ref(&self.#name))
+            } else {
+                quote::quote!(&self.#name)
+            };
+
             quote::quote! {
                 my_postgres::sql_update::SqlUpdateModelValue{
-                    value: Some(&self.#name),
+                    value: Some(#update_value),
                     ignore_if_none: #ignore_if_none,
                     metadata: #metadata
                 }
@@ -169,9 +183,15 @@ pub trait PostgresStructPropertyExt<'s> {
         let result = if is_update {
             let ignore_if_none = self.has_ignore_if_none_attr();
 
+            let update_value = if self.is_binary()? {
+                quote::quote!(my_postgres::SqlBinary::from_ref(value))
+            } else {
+                quote::quote!(value)
+            };
+
             quote::quote! {
                if let Some(value) = &self.#prop_name{
-                  my_postgres::sql_update::SqlUpdateModelValue {value: Some(value), ignore_if_none:#ignore_if_none, metadata: #metadata}
+                  my_postgres::sql_update::SqlUpdateModelValue {value: Some(#update_value), ignore_if_none:#ignore_if_none, metadata: #metadata}
                }else{
                 my_postgres::sql_update::SqlUpdateModelValue {value: None, ignore_if_none:#ignore_if_none, metadata: #metadata}
                }
@@ -201,6 +221,44 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
 
     fn get_ty(&'s self) -> &'s PropertyType<'s> {
         &self.ty
+    }
+
+    fn is_binary(&self) -> Result<bool, syn::Error> {
+        let ty = if let PropertyType::OptionOf(ty) = &self.ty {
+            ty.as_ref()
+        } else {
+            &self.ty
+        };
+
+        let PropertyType::VecOf(sub_ty) = ty else {
+            return Ok(false);
+        };
+
+        if !sub_ty.is_u8() {
+            return Ok(false);
+        }
+
+        let sql_type: Option<SqlTypeAttribute> = self.try_get_attribute()?;
+
+        // Vec<u8> is a bytea column unless json or jsonb is requested explicitly
+        match sql_type {
+            Some(sql_type) => Ok(sql_type.name.as_str() == SqlType::Bytea.as_str()),
+            None => Ok(true),
+        }
+    }
+
+    fn get_ty_to_invoke_static_methods(&'s self) -> Result<proc_macro2::TokenStream, syn::Error> {
+        if self.is_binary()? {
+            return Ok(quote::quote!(my_postgres::SqlBinary));
+        }
+
+        let ty = if let PropertyType::OptionOf(ty) = &self.ty {
+            ty.as_ref()
+        } else {
+            &self.ty
+        };
+
+        Ok(ty.get_token_stream_with_generics())
     }
 
     fn inside_json(&self) -> Result<Option<&str>, syn::Error> {
@@ -491,9 +549,23 @@ impl<'s> PostgresStructPropertyExt<'s> for StructProperty<'s> {
             PropertyType::OptionOf(_) => {
                 panic!("OptionOf should be unwrapped before");
             }
-            PropertyType::VecOf(_property_type) => sql_type_to_token_stream(
-                self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?,
-            ),
+            PropertyType::VecOf(property_type) => {
+                if property_type.is_u8() {
+                    // Vec<u8> is a bytea column unless json or jsonb is requested explicitly
+                    match self.try_get_sql_type_attr_value(&[
+                        SqlType::Json,
+                        SqlType::JsonB,
+                        SqlType::Bytea,
+                    ])? {
+                        Some(sql_type) => sql_type_to_token_stream(sql_type),
+                        None => quote::quote!(my_postgres::table_schema::TableColumnType::Bytea),
+                    }
+                } else {
+                    sql_type_to_token_stream(
+                        self.get_sql_type_attr_value(&[SqlType::Json, SqlType::JsonB])?,
+                    )
+                }
+            }
             PropertyType::Struct(name, _type_path) => {
                 let tp_as_token = TokenStream::from_str(name).unwrap();
                 if let Some(sql_type) =
@@ -533,6 +605,9 @@ fn sql_type_to_token_stream(value: SqlType) -> proc_macro2::TokenStream {
         }
         SqlType::Timestamp => {
             quote::quote!(my_postgres::table_schema::TableColumnType::Timestamp)
+        }
+        SqlType::Bytea => {
+            quote::quote!(my_postgres::table_schema::TableColumnType::Bytea)
         }
     }
 }

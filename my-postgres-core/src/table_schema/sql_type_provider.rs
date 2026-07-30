@@ -118,6 +118,12 @@ impl<T> SqlTypeProvider for Vec<T> {
     }
 }
 
+impl SqlTypeProvider for crate::SqlBinary {
+    fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
+        TableColumnType::Bytea
+    }
+}
+
 impl<TKey, TValue> SqlTypeProvider for HashMap<TKey, TValue> {
     fn get_sql_type(_metadata: Option<SqlValueMetadata>) -> TableColumnType {
         TableColumnType::Jsonb

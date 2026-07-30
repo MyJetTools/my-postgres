@@ -10,12 +10,20 @@ pub enum TableColumnType {
     Json,
     Timestamp,
     Jsonb,
+    Bytea,
 }
 
 impl TableColumnType {
     pub fn is_string(&self) -> bool {
         match self {
             TableColumnType::Text => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_binary(&self) -> bool {
+        match self {
+            TableColumnType::Bytea => true,
             _ => false,
         }
     }
@@ -39,6 +47,7 @@ impl TableColumnType {
             TableColumnType::Json => 7,
             TableColumnType::Timestamp => 8,
             TableColumnType::Jsonb => 8,
+            TableColumnType::Bytea => 9,
         }
     }
 
@@ -74,6 +83,7 @@ impl TableColumnType {
             "json" => Some(TableColumnType::Json),
             "jsonb" => Some(TableColumnType::Jsonb),
             "timestamp" => Some(TableColumnType::Timestamp),
+            "bytea" => Some(TableColumnType::Bytea),
             "character varying" => Some(TableColumnType::Text),
             _ => None,
         }
@@ -91,6 +101,7 @@ impl TableColumnType {
             TableColumnType::Json => "json",
             TableColumnType::Jsonb => "jsonb",
             TableColumnType::Timestamp => "timestamp",
+            TableColumnType::Bytea => "bytea",
         }
     }
 }

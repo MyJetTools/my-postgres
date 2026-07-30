@@ -1,5 +1,3 @@
-use types_reader::PropertyType;
-
 use crate::{
     postgres_struct_ext::PostgresStructPropertyExt, postgres_struct_schema::PostgresStructSchema,
 };
@@ -30,24 +28,14 @@ pub fn fn_fill_select_fields<'s>(
 
             let metadata = prop.get_field_metadata()?;
 
-            if let PropertyType::OptionOf(sub_type) = &prop.ty {
-                let type_ident = sub_type.get_token_stream_with_generics();
+            let type_ident = prop.get_ty_to_invoke_static_methods()?;
 
-                result.push(
-                    quote! {
-                        #type_ident::fill_select_part(sql, #db_column_name,  &#metadata);
-                    }
-                    .into(),
-                );
-            } else {
-                let type_ident = prop.ty.get_token_stream_with_generics();
-                result.push(
-                    quote! {
-                        #type_ident::fill_select_part(sql, #db_column_name, &#metadata);
-                    }
-                    .into(),
-                );
-            }
+            result.push(
+                quote! {
+                    #type_ident::fill_select_part(sql, #db_column_name, &#metadata);
+                }
+                .into(),
+            );
         }
     }
 

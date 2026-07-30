@@ -194,6 +194,16 @@ impl<T> SelectValueProvider for Vec<T> {
     }
 }
 
+impl SelectValueProvider for crate::SqlBinary {
+    fn fill_select_part(
+        sql: &mut SelectBuilder,
+        column_name: DbColumnName,
+        metadata: &Option<SqlValueMetadata>,
+    ) {
+        sql.push(SelectFieldValue::create_as_field(column_name, metadata));
+    }
+}
+
 impl<TKey, TValue> SelectValueProvider for HashMap<TKey, TValue> {
     fn fill_select_part(
         sql: &mut SelectBuilder,

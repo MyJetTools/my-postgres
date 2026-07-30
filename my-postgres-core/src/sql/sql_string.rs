@@ -15,9 +15,14 @@ pub enum SqlString {
     AsStr(&'static str),
     Str32([u8; STR_SIZE]),
     NonStrValue(NonStringValue),
+    Binary(Vec<u8>),
 }
 
 impl SqlString {
+    pub fn from_binary(src: &[u8]) -> Self {
+        Self::Binary(src.to_vec())
+    }
+
     pub fn from_str(src: &str) -> Self {
         let src_as_bytes = src.as_bytes();
         if src_as_bytes.len() < STR_SIZE {
@@ -39,6 +44,13 @@ impl SqlString {
             SqlString::AsString(value) => Some(value.as_str()),
             SqlString::AsStr(value) => Some(*value),
             SqlString::Str32(value) => Some(get_pascal_str(value)),
+            _ => None,
+        }
+    }
+
+    pub fn as_binary(&self) -> Option<&[u8]> {
+        match self {
+            SqlString::Binary(value) => Some(value.as_slice()),
             _ => None,
         }
     }
@@ -87,6 +99,7 @@ impl tokio_postgres::types::ToSql for SqlString {
                 NonStringValue::Float(value) => (*value).to_sql(ty, out),
                 NonStringValue::Double(value) => (*value).to_sql(ty, out),
             },
+            SqlString::Binary(value) => value.as_slice().to_sql(ty, out),
         }
     }
 
@@ -94,7 +107,7 @@ impl tokio_postgres::types::ToSql for SqlString {
     where
         Self: Sized,
     {
-        String::accepts(ty)
+        String::accepts(ty) || <&[u8] as tokio_postgres::types::ToSql>::accepts(ty)
     }
 
     fn to_sql_checked(
@@ -113,6 +126,7 @@ impl tokio_postgres::types::ToSql for SqlString {
                 NonStringValue::Float(value) => (*value).to_sql_checked(ty, out),
                 NonStringValue::Double(value) => (*value).to_sql_checked(ty, out),
             },
+            SqlString::Binary(value) => value.as_slice().to_sql_checked(ty, out),
         }
     }
 }
