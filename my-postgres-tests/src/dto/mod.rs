@@ -8,6 +8,7 @@ mod test_auto_generated_types_with_operator;
 mod test_auto_generated_types_with_range;
 mod test_basic_cases;
 mod test_binary_field;
+mod test_date_time_select_cases;
 mod test_generated_models;
 mod test_group_by_cases;
 mod test_json_field;

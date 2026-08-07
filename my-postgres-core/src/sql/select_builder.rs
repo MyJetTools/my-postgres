@@ -349,6 +349,9 @@ pub fn fill_select_fields(sql: &mut String, items: &[SelectFieldValue]) {
             }
             SelectFieldValue::DateTimeAsBigint(field_name) => {
                 sql.push_str(field_name.db_column_name);
+                sql.push_str(" as \"");
+                crate::utils::fill_adjusted_column_name(field_name.db_column_name, sql);
+                sql.push('"');
             }
             SelectFieldValue::LineNo(line_no) => {
                 sql.push_str(format!("{}::int as \"line_no\"", line_no).as_str());
