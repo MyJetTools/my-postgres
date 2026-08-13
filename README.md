@@ -13,6 +13,8 @@ Rust library for ergonomic PostgreSQL access with async Tokio, connection poolin
 - Attribute sources: `my-postgres-macros/src/attributes/`.
 - Table schema sync code paths: `my-postgres-core/src/sync_table_schema/`.
 - SQL builders: `my-postgres-core/src/sql/` (`select`, `insert`, `update`, `union`, `where`, etc.).
+- Public API surface: `my-postgres-core/src/my_postgres.rs` (all `MyPostgres` methods) and `my-postgres-core/src/with_retries.rs` (the retrying mirror).
+- Streaming reads: `my-postgres-core/src/connection/postgres_read_stream.rs`.
 - GroupBy helpers: `my-postgres-core/src/group_by_fields/`.
 - Connection/pool logic: `my-postgres-core/src/connection/`.
 - Tests: `my-postgres-macros/tests/src/dto/` (table_schema_tests, etc.) and `my-postgres-tests/src/`.
@@ -128,7 +130,8 @@ async fn main() {
 
 ## Timeouts and retries
 - Default SQL request timeout: 5s. Override with `.set_sql_request_timeout(Duration::from_secs(n))` on the builder.
-- Core has retry helpers for transient errors (see `with_retries` in `my-postgres-core`).
+- `.set_db_sync_timeout(Duration)` controls the schema-verification/sync step separately.
+- Core has retry helpers for transient errors: `db.with_retries(retries, delay)` returns a `SqlOperationWithRetries` mirroring the full API — see [Retries](#retries).
 
 ## Connection reuse & pooling
 Create a single connection and share it, or build a small pool:
@@ -144,6 +147,207 @@ let pool = PostgresConnection::new_as_multiple_connections(application_name, pos
 let pool = Arc::new(pool);
 let db = my_postgres::MyPostgres::from_connection_string(pool).build().await;
 ```
+
+## Calling convention (read this before the API reference)
+
+Two things trip people up on every `MyPostgres` method:
+
+1. **The telemetry argument is `#[cfg]`-gated on the parameter itself.**
+   Every method ends with
+   `#[cfg(feature = "with-logs-and-telemetry")] telemetry_context: Option<&MyTelemetryContext>`.
+   Without the feature the parameter **does not exist** — you call the method with
+   one fewer argument. With the feature enabled you must pass it (`None` or `Some(&ctx)`).
+
+   ```rust
+   // without "with-logs-and-telemetry"
+   let rows: Vec<Dto> = db.query_rows(TABLE, Some(&where_model)).await?;
+
+   // with "with-logs-and-telemetry"
+   let rows: Vec<Dto> = db.query_rows(TABLE, Some(&where_model), None).await?;
+   ```
+
+2. **`where_model` is `Option<&TWhereModel>` on every select-like method.**
+   Pass `Some(&model)`; to select everything pass `None::<&NoneWhereModel>`
+   (`NoneWhereModel` is the "no filter" marker type), or use
+   `StaticLineWhereModel::new("raw sql")` for a fixed clause.
+
+All examples in this README are written **without** the telemetry feature.
+
+## MyPostgres API reference
+
+### Reading
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `query_rows(table, where?)` | `Vec<TEntity>` | Standard select. `TEntity: SelectEntity` |
+| `query_single_row(table, where?)` | `Option<TEntity>` | First row, or `None` |
+| `query_rows_as_stream(table, where?)` | `PostgresReadStream<TEntity>` | Streams rows instead of buffering — see below |
+| `query_rows_with_processing(table, where?, post_processing)` | `Vec<TEntity>` | `post_processing: Fn(&mut String)` lets you patch the generated SQL before it is sent |
+| `query_single_row_with_processing(table, where?, post_processing)` | `Option<TEntity>` | Same, single row |
+| `get_count::<TWhere, TResult>(table, where?)` | `Option<TResult>` | `TResult: CountResult` — implemented for `i16`, `i32`, `u64`, `usize` |
+| `bulk_query(table, Vec<TWhereModel>)` | `Vec<UnionModel<TEntity, TWhereModel>>` | Runs the where-models as one `UNION` query; each result keeps its originating `where_model` next to its `items` |
+| `bulk_query_with_transformation(table, transform, Vec<TWhereModel>)` | `Vec<UnionModel<TOut, TWhereModel>>` | Same, mapping each entity through `Fn(TEntity) -> TOut` |
+| `bulk_query_rows_with_transformation(&BulkSelectBuilder<TIn>, transform)` | `Vec<TOut>` | `BulkSelectDbEntity` path: batches by `#[line_no]`; `transform: Fn(&TIn, Option<TEntity>) -> TOut` is called once per input, with `None` when that input matched no row |
+
+### Writing
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `insert_db_entity(&entity, table)` | `u64` | Rows affected |
+| `insert_db_entity_if_not_exists(&entity, table)` | `u64` | Appends a hardcoded `ON CONFLICT DO NOTHING` |
+| `bulk_insert_db_entities(&[entity], table)` | `()` | ⚠️ **panics** if the slice is empty |
+| `bulk_insert_db_entities_if_not_exists(table, &[entity])` | `()` | Note the reversed argument order vs. the method above |
+| `update_db_entity(&entity, table)` | `u64` | `TEntity: SqlUpdateModel + SqlWhereModel` |
+| `insert_or_update_db_entity(table, UpdateConflictType, &entity)` | `()` | `ON CONFLICT ... DO UPDATE` |
+| `bulk_insert_or_update_db_entity(table, UpdateConflictType, &[entity])` | `()` | Returns `Err(MyPostgresError::Other)` on an empty slice (does not panic) |
+| `concurrent_insert_or_update_single_entity(table, &where, create_fn, update_fn)` | `ConcurrentOperationResult<TModel>` | `e_tag`-gated read-modify-write; see the enum below |
+| `delete(table, &where)` | `()` | |
+| `delete_db_entity(table, &where)` | `()` | **Deprecated** — use `delete` |
+| `bulk_delete(table, &[where])` | `()` | |
+
+`ConcurrentOperationResult<TModel>` is `Created(TModel)`, `CreatedCanceled` (the
+`create_fn` returned `None`), `Updated(TModel)`, or `UpdateCanceledOnModel(TModel)`
+(the `update_fn` returned `false`).
+
+### Raw SQL
+
+For queries the builders cannot express, build a `SqlData` and run it directly:
+
+```rust
+use my_postgres::sql::SqlData;
+
+// SqlData::builder() starts with no parameters; add_*_value pushes $1, $2, ...
+let sql = SqlData::builder("UPDATE my_table SET counter = counter + $1 WHERE id = $2")
+    .add_int_value(1)
+    .add_string_value("some-id");
+
+let affected: u64 = db.execute_sql(sql).await?;
+```
+
+`SqlData::new(sql, values)` takes a prebuilt `SqlValues`; the fluent helpers are
+`add_string_value`, `add_small_int_value`, `add_int_value`, `add_big_int_value`,
+`add_float_value`.
+
+To read rows from raw SQL use `execute_sql_as_vec::<TEntity>(sql, &ctx)` — note it
+takes an explicit `RequestContext` (it does not build one for you):
+
+```rust
+let ctx = my_postgres::RequestContext::new(
+    std::time::Duration::from_secs(5),
+    "my_custom_query".to_string(),
+    false, // is_debug
+);
+let rows: Vec<MyDto> = db.execute_sql_as_vec(sql, &ctx).await?;
+```
+
+`RequestContext::new` follows the same rule as the query methods: it takes a fourth
+`Option<&MyTelemetryContext>` argument only when `with-logs-and-telemetry` is enabled.
+
+## Streaming reads: `query_rows_as_stream`
+
+`query_rows`/`query_single_row` buffer the whole result set into a `Vec` before
+returning. `query_rows_as_stream` instead returns a `PostgresReadStream<TEntity>`
+that yields rows as they arrive — use it when the result set is large enough that
+materializing it is a problem.
+
+```rust
+pub async fn query_rows_as_stream<TEntity: SelectEntity + Send + Sync + 'static, TWhereModel: SqlWhereModel + Debug>(
+    &self,
+    table_name: &str,
+    where_model: Option<&TWhereModel>,
+) -> Result<PostgresReadStream<TEntity>, MyPostgresError>
+```
+
+The entity and where-model derives are exactly the same as for `query_rows` —
+only the call and the consumption differ:
+
+```rust
+#[derive(SelectDbEntity)]
+pub struct KeyValueDto {
+    pub client_id: String,
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(WhereDbModel)]
+pub struct ByClient {
+    pub client_id: String,
+}
+
+let mut stream = db
+    .query_rows_as_stream::<KeyValueDto, _>(TABLE, Some(&ByClient { client_id }))
+    .await?;
+
+while let Some(row) = stream.get_next().await? {
+    // handle one row at a time — nothing is accumulated
+    process(row);
+}
+```
+
+### How it works
+
+`PostgresReadStream::new` spawns a background task that pulls from the underlying
+`tokio_postgres::RowStream` and pushes converted entities into an mpsc channel with
+a **buffer of 2048 rows**. So it is not lazy per-row: the reader task runs ahead and
+blocks once 2048 unconsumed rows have queued up. Consequences worth knowing:
+
+- The `sql_request_timeout` applies **per row-fetch**, not to the query as a whole.
+  A slow consumer that leaves the reader parked on a full channel is fine; a server
+  that goes quiet for longer than the timeout yields `MyPostgresError::TimeOut`.
+- A timeout or a transport error marks the connection as disconnected (so the pool
+  reconnects) and surfaces as an `Err` from `get_next()`. Errors are terminal —
+  stop iterating once you get one.
+- Telemetry (with `with-logs-and-telemetry`) is written when the stream finishes, and
+  a failure logs how many rows were successfully pulled before the error.
+
+### Collecting helpers
+
+If you want the stream drained into a container, `PostgresReadStream` has terminal
+methods that consume `self` — these still avoid building an intermediate `Vec`:
+
+| Method | Returns |
+| --- | --- |
+| `to_vec(convert)` | `Vec<TOut>` — `convert: Fn(TEntity) -> TOut` |
+| `to_hash_map(get_key, get_value)` | `HashMap<TKey, TValue>` |
+| `to_hash_set(get_value)` | `HashSet<TValue>` |
+| `to_btree_map(get_key, get_value)` | `BTreeMap<TKey, TValue>` |
+| `to_btree_set(get_value)` | `BTreeSet<TValue>` |
+
+```rust
+// Vec, mapping on the way out
+let ids: Vec<String> = db
+    .query_rows_as_stream::<KeyValueDto, _>(TABLE, Some(&where_model))
+    .await?
+    .to_vec(|dto| dto.client_id)
+    .await?;
+
+// Straight into a lookup map
+let by_key: HashMap<String, String> = db
+    .query_rows_as_stream::<KeyValueDto, _>(TABLE, Some(&where_model))
+    .await?
+    .to_hash_map(|dto| dto.key.clone(), |dto| dto.value)
+    .await?;
+```
+
+`to_vec(|x| x)` is the identity case if you only wanted the buffering behaviour and
+not a transformation.
+
+## Retries
+
+`with_retries(retries, delay_between_retries)` returns a `SqlOperationWithRetries`
+that mirrors the whole `MyPostgres` surface — including `query_rows_as_stream` — and
+re-runs the operation on transient failures:
+
+```rust
+let mut stream = db
+    .with_retries(3, Duration::from_secs(1))
+    .debug()                       // optional: force SQL debug printing for these calls
+    .query_rows_as_stream::<KeyValueDto, _>(TABLE, Some(&where_model))
+    .await?;
+```
+
+Retries wrap the *call that opens* the stream. Once rows are flowing, an error mid-stream
+is surfaced from `get_next()` and is not retried — restart the query yourself if you need that.
 
 ## Proc-macros (schema & models)
 Common derives and attributes (full list in code under `my-postgres-macros/src/attributes`):
@@ -186,11 +390,11 @@ pub struct MinMaxKeySelectDto {
 - Uses `tokio_postgres` under the hood; `DateTimeAsMicroseconds` for datetime fields. Attribute reference: `my-postgres-macros/src/attributes`.
 - Insert: `#[derive(InsertDbEntity)]` on a DTO; call `insert_db_entity(&dto, TABLE)` (optionally with telemetry). Generates `INSERT INTO ... VALUES ($1, $2, ...)`.
 - Update: mark keys with `#[primary_key]`; call `update_db_entity(&dto, TABLE)` to generate `UPDATE ... SET ... WHERE ...`.
-- Insert or update: derive both `InsertDbEntity` and `UpdateDbEntity`; call `insert_or_update_db_entity(TABLE, UpdateConflictType::OnPrimaryKeyConstraint(PK_NAME.into()), &dto, ctx?)` to emit `ON CONFLICT ON CONSTRAINT {PK_NAME} DO UPDATE`. `ctx?` is `None` without telemetry, or `Some(&MyTelemetryContext)` with `with-logs-and-telemetry` enabled.
-- Insert if not exists: `insert_db_entity_if_not_exists(&dto, TABLE, ctx?)` -> `ON CONFLICT DO NOTHING`. The `ON CONFLICT DO NOTHING` clause is hardcoded by the impl — no `UpdateConflictType`/constraint name is taken. `ctx?` is `None` without telemetry, or `Some(&MyTelemetryContext)` with `with-logs-and-telemetry`.
-- Delete: derive `WhereDbModel` for filters; call `delete_db_entity(&where_dto, TABLE)`.
-- Select: derive `SelectDbEntity` + `WhereDbModel`; use `query_rows` (Vec) or `query_single_row` (Option). Group-by also supported via `#[group_by]` / `#[sql]`.
-- Bulk select: combine `BulkSelectDbEntity` (+ optional `SelectDbEntity`); build `BulkSelectBuilder` and call `bulk_query_rows` or `bulk_query_rows_with_transformation` to batch requests by `line_no`.
+- Insert or update: derive both `InsertDbEntity` and `UpdateDbEntity`; call `insert_or_update_db_entity(TABLE, UpdateConflictType::OnPrimaryKeyConstraint(PK_NAME.into()), &dto)` to emit `ON CONFLICT ON CONSTRAINT {PK_NAME} DO UPDATE`. Append a trailing `Option<&MyTelemetryContext>` argument only when `with-logs-and-telemetry` is enabled — see [Calling convention](#calling-convention-read-this-before-the-api-reference).
+- Insert if not exists: `insert_db_entity_if_not_exists(&dto, TABLE)` -> `ON CONFLICT DO NOTHING`. The `ON CONFLICT DO NOTHING` clause is hardcoded by the impl — no `UpdateConflictType`/constraint name is taken.
+- Delete: derive `WhereDbModel` for filters; call `delete(TABLE, &where_dto)` (`delete_db_entity` is deprecated).
+- Select: derive `SelectDbEntity` + `WhereDbModel`; use `query_rows` (Vec), `query_single_row` (Option), or `query_rows_as_stream` (streamed). Group-by also supported via `#[group_by]` / `#[sql]`.
+- Bulk select: combine `BulkSelectDbEntity` (+ optional `SelectDbEntity`); build `BulkSelectBuilder` and call `bulk_query_rows_with_transformation` to batch requests by `line_no`. For a `UNION` of several where-models against one select model, use `bulk_query` / `bulk_query_with_transformation` instead.
 - Concurrent insert or update with `e_tag`: add `#[e_tag]` i64 field and use `concurrent_insert_or_update_single_entity` to gate updates on matching etag.
 
 #### Macros examples
@@ -231,7 +435,7 @@ postgres_client
         TABLE,
         UpdateConflictType::OnPrimaryKeyConstraint(PK_NAME.into()),
         &KeyValueDto { client_id, key, value },
-        None,                                     // or Some(ctx) when telemetry is enabled
+        // + a trailing Option<&MyTelemetryContext> when "with-logs-and-telemetry" is on
     )
     .await?;
 
@@ -247,7 +451,13 @@ pub struct KeyValueDto {
     pub key: String,
     pub value: String,
 }
-let rows: Vec<KeyValueDto> = postgres_client.query_rows(TABLE, &GetInputParam { client_id, key }).await?;
+let rows: Vec<KeyValueDto> = postgres_client.query_rows(TABLE, Some(&GetInputParam { client_id, key })).await?;
+
+// Select (streamed) — same derives, see "Streaming reads" above
+let mut stream = postgres_client
+    .query_rows_as_stream::<KeyValueDto, _>(TABLE, Some(&GetInputParam { client_id, key }))
+    .await?;
+while let Some(row) = stream.get_next().await? { /* ... */ }
 
 // Bulk select
 #[derive(BulkSelectDbEntity, SelectDbEntity)]
@@ -259,7 +469,10 @@ pub struct BulkSelectKeyValueDto {
     pub value: String,
 }
 let builder = BulkSelectBuilder::new(TABLE, keys);
-let rows: Vec<KeyValueDto> = postgres_client.bulk_query_rows(&builder).await?;
+// transform is called once per input key; the entity is None when that key matched no row
+let rows: Vec<Option<BulkSelectKeyValueDto>> = postgres_client
+    .bulk_query_rows_with_transformation(&builder, |_key, entity| entity)
+    .await?;
 
 // Group-by with aggregations
 #[derive(SelectDbEntity, Debug)]
@@ -274,7 +487,7 @@ pub struct MinMaxKeySelectDto {
     #[db_column_name("date")]
     pub max: GroupByMax<i64>,
 }
-let rows: Vec<MinMaxKeySelectDto> = postgres_client.query_rows(TABLE, &WhereDto { /* filters */ }).await?;
+let rows: Vec<MinMaxKeySelectDto> = postgres_client.query_rows(TABLE, Some(&WhereDto { /* filters */ })).await?;
 
 // Concurrent insert/update with e_tag
 #[derive(SelectDbEntity, InsertDbEntity, UpdateDbEntity)]
