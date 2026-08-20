@@ -92,7 +92,7 @@ impl TableSchema {
         if let Some(column) = self
             .columns
             .iter()
-            .find(|itm| itm.name.name.as_str() == column_name.name.as_str())
+            .find(|itm| itm.name.name == column_name.name)
         {
             let schema = DEFAULT_SCHEMA;
             let table_name = self.table_name;

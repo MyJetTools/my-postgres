@@ -36,7 +36,7 @@ impl UsedColumns {
     pub fn has_column(&self, column: &ColumnName) -> bool {
         if let Some(columns) = self.columns.as_ref() {
             for my_column in columns {
-                if my_column.name.as_str() == column.name.as_str() {
+                if my_column.name == column.name {
                     return true;
                 }
             }

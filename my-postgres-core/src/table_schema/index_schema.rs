@@ -145,7 +145,7 @@ impl IndexSchema {
             let field = self.fields.get(i).unwrap();
             let other_field = other.fields.get(i).unwrap();
 
-            if field.name.name.as_str() != other_field.name.name.as_str() {
+            if field.name.name != other_field.name.name {
                 return false;
             }
 
@@ -210,7 +210,7 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.name.as_str(), "id");
+        assert_eq!(item.name.name.as_ref(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 
@@ -224,7 +224,7 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.name.as_str(), "id");
+        assert_eq!(item.name.name.as_ref(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 
@@ -238,11 +238,11 @@ mod tests {
 
         let item = schema.fields.get(0).unwrap();
 
-        assert_eq!(item.name.name.as_str(), "email");
+        assert_eq!(item.name.name.as_ref(), "email");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Desc), true);
 
         let item = schema.fields.get(1).unwrap();
-        assert_eq!(item.name.name.as_str(), "id");
+        assert_eq!(item.name.name.as_ref(), "id");
         assert_eq!(item.order.is_the_same_to(&IndexOrder::Asc), true);
     }
 }

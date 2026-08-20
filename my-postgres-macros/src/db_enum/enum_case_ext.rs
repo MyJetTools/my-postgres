@@ -1,4 +1,5 @@
-use types_reader::rust_extensions::StrOrString;
+use std::borrow::Cow;
+
 use types_reader::EnumCase;
 
 use crate::attributes::EnumCaseAttribute;
@@ -9,7 +10,7 @@ pub struct EnumCaseValue<'s> {
 }
 
 impl<'s> EnumCaseValue<'s> {
-    pub fn get_value_as_str(&self) -> StrOrString<'s> {
+    pub fn get_value_as_str(&self) -> Cow<'s, str> {
         if let Some(attr) = &self.attr {
             if let Some(value) = attr.value {
                 return value.into();

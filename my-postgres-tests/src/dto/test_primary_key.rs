@@ -17,7 +17,7 @@ mod tests {
         let primary_keys = AccountDbModel::get_primary_key_columns().unwrap();
 
         assert_eq!(primary_keys.len(), 2);
-        assert_eq!(primary_keys.get(0).unwrap().name.as_str(), "id");
-        assert_eq!(primary_keys.get(1).unwrap().name.as_str(), "currency");
+        assert_eq!(primary_keys.get(0).unwrap().name.as_ref(), "id");
+        assert_eq!(primary_keys.get(1).unwrap().name.as_ref(), "currency");
     }
 }

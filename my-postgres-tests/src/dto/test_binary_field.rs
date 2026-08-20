@@ -37,15 +37,15 @@ mod tests {
     fn test_vec_of_u8_is_a_bytea_column() {
         let columns = EntityWithBinaryField::get_columns();
 
-        assert_eq!(columns[1].name.name.as_str(), "payload");
+        assert_eq!(columns[1].name.name.as_ref(), "payload");
         assert_eq!(columns[1].sql_type.as_db_type_str(), "bytea");
         assert!(!columns[1].is_nullable);
 
-        assert_eq!(columns[2].name.name.as_str(), "signature");
+        assert_eq!(columns[2].name.name.as_ref(), "signature");
         assert_eq!(columns[2].sql_type.as_db_type_str(), "bytea");
         assert!(columns[2].is_nullable);
 
-        assert_eq!(columns[3].name.name.as_str(), "as_json_array");
+        assert_eq!(columns[3].name.name.as_ref(), "as_json_array");
         assert_eq!(columns[3].sql_type.as_db_type_str(), "json");
     }
 

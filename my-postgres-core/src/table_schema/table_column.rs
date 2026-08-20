@@ -1,4 +1,4 @@
-use rust_extensions::StrOrString;
+use std::borrow::Cow;
 
 use crate::ColumnName;
 
@@ -9,7 +9,7 @@ pub struct TableColumn {
     pub name: ColumnName,
     pub sql_type: TableColumnType,
     pub is_nullable: bool,
-    pub default: Option<StrOrString<'static>>,
+    pub default: Option<Cow<'static, str>>,
 }
 
 impl TableColumn {
@@ -53,7 +53,7 @@ impl TableColumn {
     pub fn is_default_the_same(&self, other: &Self) -> bool {
         if let Some(self_default) = &self.default {
             if let Some(other_default) = &other.default {
-                return other_default.as_str() == self_default.as_str();
+                return other_default == self_default;
             }
         } else {
             if other.default.is_none() {
@@ -65,7 +65,7 @@ impl TableColumn {
     }
 
     pub fn get_default(&self) -> Option<String> {
-        let default_value = self.default.as_ref()?.as_str();
+        let default_value: &str = self.default.as_ref()?.as_ref();
 
         match &self.sql_type {
             TableColumnType::Text => {

@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use my_logger::LogEventCtx;
 #[cfg(feature = "with-logs-and-telemetry")]
 use my_telemetry::MyTelemetryContext;
-use rust_extensions::StrOrString;
+use std::borrow::Cow;
 
 use crate::{table_schema::*, ColumnName, MyPostgresError, PostgresConnection, RequestContext};
 
@@ -229,7 +229,7 @@ fn get_is_nullable(db_row: &tokio_postgres::Row) -> bool {
     is_nullable == "YES"
 }
 
-fn get_column_default(db_row: &tokio_postgres::Row) -> Option<StrOrString<'static>> {
+fn get_column_default(db_row: &tokio_postgres::Row) -> Option<Cow<'static, str>> {
     let value: Option<String> = db_row.get("column_default");
 
     let value = value?;

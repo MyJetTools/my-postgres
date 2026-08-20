@@ -1,23 +1,22 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
-
-use rust_extensions::StrOrString;
 
 #[derive(Clone, Debug)]
 pub struct ColumnName {
-    pub name: StrOrString<'static>,
+    pub name: Cow<'static, str>,
 }
 
 impl ColumnName {
-    pub fn new(name: StrOrString<'static>) -> Self {
+    pub fn new(name: Cow<'static, str>) -> Self {
         Self { name }
     }
     pub fn push_name(&self, dest: &mut String) {
-        let has_reserved = is_reserved(self.name.as_str());
+        let has_reserved = is_reserved(self.name.as_ref());
         if has_reserved {
             dest.push('"');
         }
 
-        dest.push_str(self.name.as_str());
+        dest.push_str(self.name.as_ref());
 
         if has_reserved {
             dest.push('"');
@@ -34,7 +33,7 @@ impl ColumnName {
 impl Into<ColumnName> for &'static str {
     fn into(self) -> ColumnName {
         ColumnName {
-            name: StrOrString::create_as_str(self),
+            name: Cow::Borrowed(self),
         }
     }
 }
@@ -42,7 +41,7 @@ impl Into<ColumnName> for &'static str {
 impl Into<ColumnName> for &'static String {
     fn into(self) -> ColumnName {
         ColumnName {
-            name: StrOrString::create_as_str(self),
+            name: Cow::Borrowed(self.as_str()),
         }
     }
 }
@@ -50,7 +49,7 @@ impl Into<ColumnName> for &'static String {
 impl Into<ColumnName> for String {
     fn into(self) -> ColumnName {
         ColumnName {
-            name: StrOrString::create_as_string(self),
+            name: Cow::Owned(self),
         }
     }
 }

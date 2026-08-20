@@ -32,7 +32,7 @@ pub async fn update_column(
                 super::TABLE_SCHEMA_SYNCHRONIZATION,
                 format!(
                     "Updating Type of column {}.",
-                    difference.db.name.name.as_str()
+                    difference.db.name.name
                 ),
                 LogEventCtx::new()
                     .add("table", table_name.to_string())
@@ -64,7 +64,7 @@ pub async fn update_column(
                 super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
                 format!(
                     "Updating IsNullable of column {}.",
-                    difference.db.name.name.as_str()
+                    difference.db.name.name
                 ),
                 LogEventCtx::new()
                     .add("table", table_name.to_string())
@@ -93,7 +93,7 @@ pub async fn update_column(
                 super::TABLE_SCHEMA_SYNCHRONIZATION.to_string(),
                 format!(
                     "Updating Default of column {}.",
-                    difference.db.name.name.as_str()
+                    difference.db.name.name
                 ),
                 LogEventCtx::new()
                     .add("table", table_name.to_string())
@@ -188,7 +188,7 @@ async fn try_to_update_column_type(
         sql_timeout,
         format!(
             "ALTER column {} of table {} ",
-            column_name.name.as_str(),
+            column_name.name,
             table_name
         ),
         crate::is_debug(table_name, "ALTER TABLE"),
@@ -222,7 +222,7 @@ async fn try_to_update_default(
 ) -> Result<(), UpdateColumnError> {
     let sql = if let Some(now_default) = db.default.as_ref() {
         if let Some(required_default) = required.default.as_ref() {
-            if required_default.as_str() == now_default.as_str() {
+            if required_default == now_default {
                 println!("BUG: We should not be here: #1");
                 return Ok(());
             } else {
@@ -230,7 +230,6 @@ async fn try_to_update_default(
                     r#"alter table {DEFAULT_SCHEMA}.{table_name}
                     alter column {column_name} set default {now_default}"#,
                     column_name = db.name.to_string(),
-                    now_default = now_default.as_str()
                 )
             }
         } else {

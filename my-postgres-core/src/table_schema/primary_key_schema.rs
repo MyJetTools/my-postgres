@@ -25,8 +25,7 @@ impl PrimaryKeySchema {
                 }
 
                 for i in 0..self_elements.len() {
-                    if self_elements.get(i).unwrap().name.as_str()
-                        != other_elements.get(i).unwrap().name.as_str()
+                    if self_elements.get(i).unwrap().name != other_elements.get(i).unwrap().name
                     {
                         return false;
                     }
@@ -95,7 +94,7 @@ impl PrimaryKeySchema {
                 if no > 0 {
                     result.push_str(", ");
                 }
-                result.push_str(column_name.name.as_str());
+                result.push_str(column_name.name.as_ref());
                 no += 1;
             }
 

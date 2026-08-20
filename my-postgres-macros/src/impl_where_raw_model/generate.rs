@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use types_reader::rust_extensions::slice_of_u8_utils::SliceOfU8Ext;
 use types_reader::{StructureSchema, TokensObject, TypeName};
 
 use crate::{postgres_struct_ext::PostgresStructPropertyExt, where_fields::WhereFields};
@@ -106,20 +105,14 @@ pub fn generate_where_raw_model<'s>(
 fn scan_sql_for_placeholders<'s>(sql: &'s str) -> Vec<SqlTransformToken<'s>> {
     let mut pos_from = 0usize;
 
-    let as_bytes = sql.as_bytes();
-
     let mut tokens = Vec::new();
 
-    while let Some(place_holder_start_position) =
-        as_bytes.find_sequence_pos("${".as_bytes(), pos_from)
-    {
-        let content =
-            std::str::from_utf8(&as_bytes[pos_from..place_holder_start_position]).unwrap();
+    while let Some(place_holder_start_position) = find_sequence_pos(sql, "${", pos_from) {
+        let content = &sql[pos_from..place_holder_start_position];
 
         tokens.push(SqlTransformToken::RawContent(content));
 
-        let place_holder_end_position =
-            as_bytes.find_sequence_pos("}".as_bytes(), place_holder_start_position);
+        let place_holder_end_position = find_sequence_pos(sql, "}", place_holder_start_position);
 
         if place_holder_end_position.is_none() {
             break;
@@ -127,10 +120,7 @@ fn scan_sql_for_placeholders<'s>(sql: &'s str) -> Vec<SqlTransformToken<'s>> {
 
         let place_holder_end_position = place_holder_end_position.unwrap();
 
-        let field_name = std::str::from_utf8(
-            &as_bytes[place_holder_start_position + 2..place_holder_end_position],
-        )
-        .unwrap();
+        let field_name = &sql[place_holder_start_position + 2..place_holder_end_position];
 
         tokens.push(SqlTransformToken::PlaceHolder(field_name));
 
@@ -138,12 +128,17 @@ fn scan_sql_for_placeholders<'s>(sql: &'s str) -> Vec<SqlTransformToken<'s>> {
     }
 
     if pos_from < sql.len() {
-        let content = std::str::from_utf8(&as_bytes[pos_from..sql.len()]).unwrap();
+        let content = &sql[pos_from..sql.len()];
 
         tokens.push(SqlTransformToken::RawContent(content))
     }
 
     tokens
+}
+
+fn find_sequence_pos(src: &str, sequence: &str, start_pos: usize) -> Option<usize> {
+    let pos = src[start_pos..].find(sequence)?;
+    Some(start_pos + pos)
 }
 
 #[derive(Debug)]
