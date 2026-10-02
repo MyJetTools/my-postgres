@@ -56,8 +56,26 @@ pub async fn start_connection_loop(
 
         #[cfg(all(unix, feature = "with-ssh"))]
         if let Some(ssh_config) = &ssh_config {
-            crate::ssh::start_ssh_tunnel_and_get_connection_string(&mut conn_string, ssh_config)
-                .await;
+            let result = crate::ssh::start_ssh_tunnel_and_get_connection_string(
+                &mut conn_string,
+                ssh_config,
+            )
+            .await;
+
+            // Without the tunnel the connection would go to the postgres host directly,
+            // bypassing ssh - so this pass ends here and the next one starts the tunnel again
+            if let Err(err) = result {
+                my_logger::LOGGER.write_fatal_error(
+                    "Starting ssh tunnel to postgres".to_string(),
+                    format!("Can not start ssh port forwarding. {:?}", err),
+                    LogEventCtx::new()
+                        .add("Host", postgres_host)
+                        .add("DbName", db_name.to_string()),
+                );
+
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
+            }
         }
 
         if conn_string.get_ssl_require() {
