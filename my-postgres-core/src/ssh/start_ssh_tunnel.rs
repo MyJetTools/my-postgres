@@ -32,7 +32,7 @@ pub async fn start_ssh_tunnel_and_get_connection_string(
         crate::ssh::generate_unix_socket_file(ssh_config.credentials.as_ref());
 
     let result = ssh_session
-        .start_port_forward(
+        .start_port_forward_to_tcp(
             format!("{}:{}", listen_host, listen_port),
             connection_string.get_host().to_string(),
             connection_string.get_port(),
